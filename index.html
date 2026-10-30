@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="portal-utils.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GLASSPRO | Sign-In & Time Clock</title>
+
+  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
+  <meta name="theme-color" content="#06101E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+
+  <!-- Desktop Browser Tab Icon (Inline SVG) -->
+  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
+  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+
+  <script>
+    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
+    (function() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        // 1. Obsidian-Navy Background
+        const grad = ctx.createLinearGradient(0, 0, 512, 512);
+        grad.addColorStop(0, "#06101E");
+        grad.addColorStop(1, "#0B1F3A");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 2. Top Crimson Red Accent Bar
+        ctx.fillStyle = "#DC2626";
+        ctx.fillRect(0, 0, 512, 76);
+
+        // 3. Subtle Diagonal Glass Reflection Slash
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.beginPath();
+        ctx.moveTo(340, 76);
+        ctx.lineTo(460, 76);
+        ctx.lineTo(290, 512);
+        ctx.lineTo(170, 512);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Center "GP" Monogram
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GP", 256, 235);
+
+        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
+        ctx.fillStyle = "#DC2626";
+        ctx.beginPath();
+        ctx.roundRect(76, 365, 360, 74, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.fillText("GLASSPRO", 256, 404);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const appleLink = document.getElementById("gpAppleIcon");
+        if (appleLink) appleLink.href = pngDataUrl;
+
+        // 6. Inject Web App Manifest for Android/Desktop "Install App"
+        const manifest = {
+          name: "GLASSPRO Operations Portal",
+          short_name: "GLASSPRO",
+          start_url: "./index.html",
+          display: "standalone",
+          background_color: "#06101E",
+          theme_color: "#06101E",
+          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+      } catch (e) {}
+    })();
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --obsidian: #06101E;
+      --navy: #0B1F3A;
+      --navy-light: #16325B;
+      --red: #DC2626;
+      --green: #059669;
+      --green-bg: #ECFDF5;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --mos-indigo: #4F46E5;
+      --mos-purple: #6D28D9;
+      --white: #FFFFFF;
+      --bg: #F4F7FB;
+      --border: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --text: #0F172A;
+      --text-secondary: #334155;
+      --muted: #64748B;
+      --shadow-md: 0 4px 20px -2px rgba(6, 16, 30, 0.06), 0 2px 6px -1px rgba(6, 16, 30, 0.04);
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .hidden { display: none !important; }
+
+    /* EXECUTIVE HEADER */
+    header {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
+      color: var(--white);
+      border-bottom: 3px solid var(--red);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(6, 16, 30, 0.25);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-badge {
+      background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%);
+      color: var(--white);
+      font-weight: 900;
+      font-size: 14px;
+      padding: 7px 12px;
+      border-radius: 7px;
+      letter-spacing: 1.2px;
+    }
+    .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.4px; color: #F8FAFC; }
+    .brand-text p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-pill {
+      font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08);
+      padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.14);
+      color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
+    .mos-launch-pill {
+      font-size: 11px; font-weight: 700; background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%);
+      color: var(--white); padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; text-decoration: none;
+    }
+    .user-pill { font-size: 12px; font-weight: 700; background: var(--white); color: var(--obsidian); padding: 6px 12px; border-radius: 6px; }
+    .logout-btn { background: var(--red); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+
+    /* TOP NAVIGATION BAR (LINKS ACROSS THE 4 SECTIONS) */
+    .nav-bar {
+      display: flex; background: var(--white); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 20; overflow-x: auto; padding: 0 16px;
+    }
+    .nav-btn {
+      flex: 1; min-width: 125px; padding: 15px 12px; border: none; background: none;
+      font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer;
+      border-bottom: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.6px;
+      text-align: center; text-decoration: none; display: inline-block;
+    }
+    .nav-btn.active { color: var(--obsidian); border-bottom-color: var(--red); font-weight: 800; background: rgba(220,38,38,0.03); }
+
+    /* MULTIPLY-OS PLAYBOOK BAR */
+    .mos-bar {
+      background: linear-gradient(90deg, #EEF2FF 0%, #F5F3FF 100%); border: 1px solid #C7D2FE;
+      border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 16px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .mos-tag { background: var(--mos-indigo); color: var(--white); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
+    .mos-sop-chip { background: var(--white); color: var(--mos-indigo); border: 1px solid #A5B4FC; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    /* SUB-NAVIGATION */
+    .sub-bar { display: flex; background: #E2E8F0; border-radius: var(--radius-md); padding: 5px; margin-bottom: 18px; gap: 5px; }
+    .sub-btn { flex: 1; padding: 10px 12px; border: none; background: transparent; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 7px; text-transform: uppercase; }
+    .sub-btn.active { background: var(--obsidian); color: var(--white); font-weight: 800; }
+
+    .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid rgba(15,23,42,0.08); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow-md); }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--obsidian); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    @media (min-width: 920px) { .desktop-split { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 20px; align-items: start; } }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) {
+      .brand-text p { display: none; }
+      .grid-3 { grid-template-columns: 1fr; gap: 10px; }
+      .sub-bar { display: grid; grid-template-columns: 1fr; }
+    }
+
+    
+    .grid-2 > div, .grid-3 > div { min-width: 0; position: relative; }
+    input[type="date"], input[type="time"], input[type="text"], input[type="number"], select {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 44px;
+      line-height: 1.25;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+    input, select { width: 100%; padding: 11px 13px; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--white); color: var(--text); }
+
+    .btn { display: inline-block; width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 800; text-align: center; border: none; border-radius: 9px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.6px; }
+    .btn-navy { background: linear-gradient(135deg, var(--navy) 0%, var(--obsidian) 100%); color: var(--white); }
+    .btn-red { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); }
+    .btn-green { background: linear-gradient(135deg, #10B981 0%, var(--green) 100%); color: var(--white); }
+    .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+
+    /* SIGN-IN KEYPAD & 4-BOX PIN DISPLAY */
+    .login-box { max-width: 420px; margin: 36px auto; text-align: center; padding: 28px 24px; border-top: 4px solid var(--red); }
+    .pin-boxes-container { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
+    .pin-digit-box {
+      width: 58px; height: 64px; border: 2px solid var(--border-strong); border-radius: 12px;
+      background: var(--white); display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; color: var(--obsidian);
+    }
+    .pin-digit-box.filled { border-color: var(--navy); background: #F8FAFC; color: var(--navy); box-shadow: 0 0 0 3px rgba(11,31,58,0.12); }
+    .pin-feedback-msg { font-size: 12px; font-weight: 700; color: var(--red); min-height: 20px; margin-bottom: 12px; }
+
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .key-btn {
+      font-family: 'JetBrains Mono', monospace; padding: 16px 12px; font-size: 22px; font-weight: 800;
+      background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong);
+      border-radius: 10px; cursor: pointer; user-select: none; transition: transform 0.05s, background 0.1s;
+    }
+    .key-btn:active { background: var(--obsidian); color: var(--white); transform: scale(0.96); }
+
+    /* CHRONOGRAPH & OVERTIME BANNERS */
+    .decimal-box {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 100%); color: var(--white);
+      text-align: center; padding: 20px; border-radius: 12px; margin: 14px 0; border-left: 5px solid var(--red);
+    }
+    .decimal-box span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #94A3B8; display: block; margin-bottom: 4px; }
+    .decimal-box strong { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 800; letter-spacing: 2px; }
+
+    .ot-alert-banner { padding: 12px 16px; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .ot-safe { background: var(--green-bg); color: #065F46; border: 1px solid #A7F3D0; }
+    .ot-approaching { background: var(--amber-bg); color: #92400E; border: 1px solid #FDE68A; }
+    .ot-critical { background: #FFEDD5; color: #9A3412; border: 1.5px solid #FB923C; }
+    .ot-exceeded { background: #FEF2F2; color: #991B1B; border: 1.5px solid #F87171; }
+
+    .geo-banner { background: #F8FAFC; border: 1px solid var(--border-strong); border-radius: 8px; padding: 11px 14px; font-size: 12px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
+    th { background: #F8FAFC; color: var(--text-secondary); text-align: left; padding: 11px 12px; text-transform: uppercase; font-size: 10px; font-weight: 800; border-bottom: 1.5px solid var(--border-strong); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .badge-ok { background: #D1FAE5; color: #065F46; }
+    .badge-issue { background: #FEE2E2; color: #991B1B; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-navy { background: #E0E7FF; color: #1E3A8A; }
+    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+    .map-link { color: var(--mos-indigo); font-weight: 700; text-decoration: none; font-size: 11px; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(6,16,30,0.65); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">GLASSPRO</div>
+      <div class="brand-text">
+        <h1>GLASS PRO BY AMERICAN GLASS</h1>
+        <p>Executive Operations, Timekeeping, Fleet & MultiplyOS Synchronization</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="dbStatus" class="hidden"></div>
+      <div id="activeUserBanner" class="hidden" style="display:flex; align-items:center; gap:8px;">
+        <span id="activeUserName" class="user-pill"></span>
+        <span id="activeUserTypeBadge" class="hidden"></span>
+        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CROSS-SECTION NAVIGATION BAR -->
+  <nav id="mainNavBar" class="nav-bar hidden">
+    <a href="index.html" id="navLinkTime" class="nav-btn active">1. Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+  </nav>
+
+  <div class="container">
+
+    <!-- MULTIPLY-OS PLAYBOOK BAR -->
+    <div id="mosQuickBar" class="mos-bar hidden">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span class="mos-tag">MultiplyOS Playbooks</span>
+        <span id="mosDivisionLabel" style="font-size:12px; font-weight:700;">Division SOPs:</span>
+        <div id="mosSopChipsContainer" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+      <div style="font-size:11px; font-weight:700; color:var(--mos-indigo);">MOS Sync: Active</div>
+    </div>
+
+    <!-- SIGN-IN KEYPAD CARD -->
+    <div id="loginScreen" class="card login-box">
+      <div class="card-title" style="justify-content:center; border-bottom:none; margin-bottom:4px;">Executive Portal Sign-In</div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
+        Tap the keypad or type your 4-digit PIN on your keyboard.
+      </p>
+
+      <div class="pin-boxes-container">
+        <div class="pin-digit-box" id="pinBox0">-</div>
+        <div class="pin-digit-box" id="pinBox1">-</div>
+        <div class="pin-digit-box" id="pinBox2">-</div>
+        <div class="pin-digit-box" id="pinBox3">-</div>
+      </div>
+
+      <div id="loginErrorMsg" class="pin-feedback-msg"></div>
+
+      <div class="keypad" id="keypadGrid">
+        <button type="button" class="key-btn" data-digit="1">1</button>
+        <button type="button" class="key-btn" data-digit="2">2</button>
+        <button type="button" class="key-btn" data-digit="3">3</button>
+        <button type="button" class="key-btn" data-digit="4">4</button>
+        <button type="button" class="key-btn" data-digit="5">5</button>
+        <button type="button" class="key-btn" data-digit="6">6</button>
+        <button type="button" class="key-btn" data-digit="7">7</button>
+        <button type="button" class="key-btn" data-digit="8">8</button>
+        <button type="button" class="key-btn" data-digit="9">9</button>
+        <button type="button" class="key-btn" id="btnClearPin" style="font-size:12px; font-family:'Inter',sans-serif; color:var(--red);">CLEAR</button>
+        <button type="button" class="key-btn" data-digit="0">0</button>
+        <button type="button" class="key-btn" id="btnSubmitPin" style="background:var(--obsidian); color:var(--white); font-size:13px; font-family:'Inter',sans-serif;">ENTER</button>
+      </div>
+
+      <button type="button" class="btn btn-red" id="btnMainSignIn">Access Workspace</button>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+        <button type="button" class="btn-outline" style="padding:4px 8px; font-size:10px;" id="btnTogglePinView">Reveal Digits</button>
+        <span style="font-size:11px; color:var(--muted);">Demo PINs only — replace with server authentication before production</span>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         ISOLATED KEYPAD ENGINE (ZERO EXTERNAL DEPENDENCIES - NEVER FAILS)
+         ==================================================================== -->
+    <script>
+      (function() {
+        const STARTER_USERS = [
+          { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
+          { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
+          { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
+        ];
+
+        window.PORTAL_USERS = [...STARTER_USERS];
+        try {
+          const saved = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
+          saved.forEach(u => {
+            if (u && u.pin_code && !window.PORTAL_USERS.some(s => String(s.pin_code) === String(u.pin_code))) {
+              window.PORTAL_USERS.push(u);
+            }
+          });
+        } catch (e) {}
+
+        let currentPin = "";
+        let showDigits = false;
+
+        function renderPinBoxes() {
+          for (let i = 0; i < 4; i++) {
+            const box = document.getElementById("pinBox" + i);
+            if (!box) continue;
+            if (i < currentPin.length) {
+              box.textContent = showDigits ? currentPin[i] : "•";
+              box.classList.add("filled");
+            } else {
+              box.textContent = "-";
+              box.classList.remove("filled");
+            }
+          }
+        }
+
+        function addDigit(d) {
+          document.getElementById("loginErrorMsg").textContent = "";
+          if (currentPin.length < 4) {
+            currentPin += String(d);
+            renderPinBoxes();
+          }
+          if (currentPin.length === 4) {
+            setTimeout(verifyPinNow, 60);
+          }
+        }
+
+        function clearDigits() {
+          currentPin = "";
+          document.getElementById("loginErrorMsg").textContent = "";
+          renderPinBoxes();
+        }
+
+        function verifyPinNow() {
+          if (currentPin.length !== 4) {
+            document.getElementById("loginErrorMsg").textContent = "Please enter a 4-digit PIN code.";
+            return;
+          }
+          const match = window.PORTAL_USERS.find(u => String(u.pin_code).trim() === currentPin);
+          if (!match) {
+            document.getElementById("loginErrorMsg").textContent = "Invalid PIN. Please contact your supervisor for assistance.";
+            currentPin = "";
+            renderPinBoxes();
+            return;
+          }
+          localStorage.setItem("gp_session_user", JSON.stringify(match));
+          sessionStorage.setItem("gp_session_user", JSON.stringify(match));
+          currentPin = "";
+          renderPinBoxes();
+          if (typeof window.activateUserSession === "function") {
+            window.activateUserSession(match);
+          }
+        }
+
+        // Bind all number buttons directly
+        document.querySelectorAll("#keypadGrid [data-digit]").forEach(btn => {
+          btn.addEventListener("click", function() {
+            addDigit(this.getAttribute("data-digit"));
+          });
+        });
+
+        document.getElementById("btnClearPin").addEventListener("click", clearDigits);
+        document.getElementById("btnSubmitPin").addEventListener("click", verifyPinNow);
+        document.getElementById("btnMainSignIn").addEventListener("click", verifyPinNow);
+        document.getElementById("btnTogglePinView").addEventListener("click", function() {
+          showDigits = !showDigits;
+          this.textContent = showDigits ? "Hide Digits" : "Reveal Digits";
+          renderPinBoxes();
+        });
+
+        // Physical Keyboard Support
+        window.addEventListener("keydown", function(e) {
+          const loginEl = document.getElementById("loginScreen");
+          if (!loginEl || loginEl.classList.contains("hidden")) return;
+          if (/^[0-9]$/.test(e.key)) addDigit(e.key);
+          else if (e.key === "Backspace") { currentPin = currentPin.slice(0, -1); renderPinBoxes(); }
+          else if (e.key === "Enter") verifyPinNow();
+        });
+      })();
+    </script>
+
+    <!-- TIME CLOCK WORKSPACE -->
+    <div id="timeWorkspace" class="hidden">
+      <div id="empOvertimeAlert" class="ot-alert-banner ot-safe">
+        <span id="empOvertimeText">Weekly Hours Status: 00.00 / 40.00 hrs</span>
+        <span id="empOvertimeBadge" class="badge badge-ok">Within Limit</span>
+      </div>
+
+      <div class="sub-bar">
+        <button type="button" id="timeSubBtnLive" class="sub-btn active" onclick="switchTimeTab('timeLivePane', this)">Live Punch Clock</button>
+        <button type="button" id="timeSubBtnManual" class="sub-btn" onclick="switchTimeTab('timeManualPane', this)">Manual Shift Entry</button>
+        
+      </div>
+
+      <div class="desktop-split">
+        <div>
+          <!-- PANE 1: LIVE PUNCH CLOCK -->
+          <div id="timeLivePane">
+            <div class="card">
+              <div class="card-title">
+                <span>Live Shift Chronograph</span>
+                <span id="punchStatusText" class="badge badge-navy">Off Clock</span>
+              </div>
+
+              <div class="geo-banner">
+                <div style="flex:1;">
+                  <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--muted);">High-Precision Street Geotag</strong>
+                  <span id="liveGeoText" style="font-weight:600;">Ready to capture street address & accuracy radius</span>
+                </div>
+                <button type="button" class="btn-outline" style="padding:5px 10px; font-size:10px;" onclick="previewGPS()">Verify GPS</button>
+              </div>
+
+              <div class="decimal-box">
+                <span>Active Shift Duration (00.00 Decimal)</span>
+                <strong id="liveDecimalDisplay">00.00</strong>
+              </div>
+
+              <div style="margin-bottom: 14px;">
+                <label>Unpaid Lunch / Break Deduction</label>
+                <select id="liveBreakMins" onchange="refreshLiveTimer()">
+                  <option value="0">No Unpaid Break (0 mins)</option>
+                  <option value="15">15 Minutes (00.25 hrs)</option>
+                  <option value="30">30 Minutes (00.50 hrs)</option>
+                  <option value="45">45 Minutes (00.75 hrs)</option>
+                  <option value="60">1 Hour (01.00 hrs)</option>
+                </select>
+              </div>
+
+              <button type="button" id="btnClockIn" class="btn btn-green" onclick="clockInNow()">Clock In Now (Geotag Location)</button>
+              <button type="button" id="btnClockOut" class="btn btn-red hidden" onclick="clockOutNow()">Clock Out & Sync Shift</button>
+            </div>
+          </div>
+
+          <!-- PANE 2: MANUAL SHIFT ENTRY -->
+          <div id="timeManualPane" class="hidden">
+            <div class="card">
+              <div class="card-title">Manual Shift Entry</div>
+              <div class="grid-2" style="margin-bottom:12px;">
+                <div>
+                  <label>Work Date</label>
+                  <input type="date" id="manDate" />
+                </div>
+                <div>
+                  <label>Lunch Break</label>
+                  <select id="manBreak" onchange="calcManualHours()">
+                    <option value="0">No Break (0m)</option>
+                    <option value="30" selected>30 Mins (00.50)</option>
+                    <option value="45">45 Mins (00.75)</option>
+                    <option value="60">1 Hour (01.00)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid-2" style="margin-bottom:18px; clear:both;">
+                <div>
+                  <label>Start Time</label>
+                  <input type="time" id="manStart" value="08:00" oninput="calcManualHours()" />
+                </div>
+                <div>
+                  <label>End Time</label>
+                  <input type="time" id="manEnd" value="17:00" oninput="calcManualHours()" />
+                </div>
+              </div>
+
+              <div style="margin-bottom:12px;">
+                <label>MultiplyOS Work Order # / Shift Notes (Optional)</label>
+                <input type="text" id="manNotes" placeholder="Optional WO# or shift reference" />
+              </div>
+
+              <div class="decimal-box">
+                <span>Calculated Shift Total (00.00)</span>
+                <strong id="manDecimalDisplay">08.50</strong>
+              </div>
+
+              <button type="button" id="btnManualSubmit" class="btn btn-navy" onclick="submitManualTime()">Submit Shift Hours</button>
+            </div>
+          </div>
+
+          <!-- PANE 3: PRIVATE ON-DEMAND PAY CALCULATOR -->
+          <div id="timePaycheckPane" class="hidden">
+            <div class="card">
+              <div class="card-title">
+                <span>Private On-Demand Pay Calculator</span>
+                <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red);" onclick="wipePayCalculator()">Wipe Screen</button>
+              </div>
+              <p style="font-size:12px; color:var(--muted); margin-bottom:14px;">
+                Zero-storage privacy mode: enter your hourly rate below to calculate estimated net pay. Figures wipe the moment you leave this tab.
+              </p>
+
+              <div class="grid-3" style="margin-bottom:14px;">
+                <div>
+                  <label>Logged Hours</label>
+                  <div id="calcTotalHrs" class="mono" style="font-size:22px; font-weight:800; padding:8px 0;">00.00</div>
+                </div>
+                <div>
+                  <label>Hourly Rate ($/hr)</label>
+                  <input type="number" id="calcHourlyRateInput" placeholder="0.00" step="0.25" oninput="runPayCalculator()" />
+                </div>
+                <div>
+                  <label>Commission Add-On ($)</label>
+                  <input type="number" id="calcCommissionInput" placeholder="0.00" step="1.00" oninput="runPayCalculator()" />
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Pay Category</th>
+                      <th>Hours / Basis</th>
+                      <th>Estimated Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody id="calcDetailsTable">
+                    <tr><td colspan="3" style="text-align:center; color:var(--muted);">Enter your hourly rate or commission above to calculate.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: MY SHIFT HISTORY -->
+        <div>
+          <div class="card">
+            <div class="card-title">My Shift & Geotag History</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>In / Out</th>
+                    <th>Verified Street Geotag</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="recentTimeTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTIPLY-OS SOP MODAL -->
+  <div id="mosSopModal" class="modal-backdrop hidden" onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="modal-card">
+      <div class="card-title">
+        <span id="mosModalTitle">MultiplyOS Standard Operating Procedure</span>
+        <span class="badge badge-purple">MOS Playbook</span>
+      </div>
+      <div id="mosModalBody" style="font-size:13px; line-height:1.65; color:var(--text-secondary); margin-bottom:18px;"></div>
+      <div style="text-align:right;">
+        <button type="button" class="btn btn-navy" style="width:auto; padding:10px 22px;" onclick="document.getElementById('mosSopModal').classList.add('hidden')">Acknowledge & Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Saved</div>
+
+  <!-- TIME CLOCK, GEOTAGGING & SUPABASE SYNC ENGINE -->
+  <script>
+    const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+
+    let supabaseClient = null;
+    let isCloudConnected = false;
+    try {
+      if (typeof window.supabase !== "undefined" && SUPABASE_URL.startsWith("https://")) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isCloudConnected = true;
+        document.getElementById("dbStatus").innerHTML = `<span class="status-dot"></span><span>Supabase configured (not verified)</span>`;
+      }
+    } catch (e) {}
+
+    const MOS_SOPS = {
+      "Operations": [
+        { title: "SOP-OP1: Daily Dispatch & Queue Audit", body: "1. Verify all morning technicians have clocked in with verified street geotags by 8:00 AM.<br>2. Audit MultiplyOS Work Order queue and confirm all glass parts are unboxed and inspected.<br>3. Review Overtime Watchlist for FT staff (>35h) and PT staff (>25h)." },
+        { title: "SOP-OP2: Fleet Defect Escalation", body: "1. Any vehicle inspection submitted with a 'NO' defect flag immediately places the unit in 'Flagged' status.<br>2. Cross-reference the discrepancy in the MultiplyOS Exception Queue." }
+      ],
+      "Front Office / Sales": [
+        { title: "SOP-SL3: Windshield Quote Follow-Up Script", body: "1. Contact unbooked auto and residential glass quotes within 24 hours.<br>2. Confirm deductible vs. cash options and verify OEM/OEE part availability.<br>3. Log converted Work Order # (WO#) in the Commission & WO tracker." }
+      ],
+      "Auto Glass": [
+        { title: "SOP-AG1: Pre-Install Walk-Around & ADAS", body: "1. Inspect vehicle for pre-existing dash lights, cowling damage, or scratches before removal.<br>2. Log OEM/OEE glass spec and urethane batch in the WO Specification drawer.<br>3. Complete ADAS recalibration scan." }
+      ]
+    };
+
+    let activeUser = null;
+    let timeLogs = [];
+    let liveInterval = null;
+
+    function format00(num) {
+      const safe = Math.max(0, parseFloat(num) || 0);
+      const parts = safe.toFixed(2).split(".");
+      return parts[0].padStart(2, "0") + "." + parts[1];
+    }
+
+    function formatCurrency(num) {
+      return "$" + Math.max(0, parseFloat(num) || 0).toFixed(2);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+
+    window.activateUserSession = async function(user) {
+      activeUser = user;
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("timeWorkspace").classList.remove("hidden");
+      document.getElementById("activeUserBanner").classList.remove("hidden");
+      document.getElementById("mainNavBar").classList.remove("hidden");
+      // mosQuickBar hidden per user preference
+
+      document.getElementById("activeUserName").textContent = `${user.employee_name} (${user.department})`;
+      document.getElementById("activeUserTypeBadge").textContent = user.employment_type || "Full-Time";
+
+      // Show/Hide Section Links Based on Permissions
+      document.getElementById("navLinkComm").classList.toggle("hidden", user.perm_commission === false);
+      document.getElementById("navLinkFleet").classList.toggle("hidden", !user.perm_vehicle_submit && !user.perm_vehicle_view);
+      document.getElementById("navLinkAdmin").classList.toggle("hidden", !user.perm_admin);
+
+      // Render MultiplyOS SOP Chips
+      const sops = MOS_SOPS[user.department] || MOS_SOPS["Operations"];
+      document.getElementById("mosDivisionLabel").textContent = `${user.department} Playbooks:`;
+      document.getElementById("mosSopChipsContainer").innerHTML = sops.map((s, idx) =>
+        `<button type="button" class="mos-sop-chip" onclick="showSopModal('${user.department}', ${idx})">${s.title}</button>`
+      ).join("");
+
+      if (user.department === "Front Office / Sales" || user.department === "Accounting") {
+        switchTimeTab('timeManualPane', document.getElementById('timeSubBtnManual'));
+      } else {
+        switchTimeTab('timeLivePane', document.getElementById('timeSubBtnLive'));
+      }
+
+      await fetchTimeLogs();
+      resumeClockState();
+    };
+
+    window.showSopModal = function(dept, idx) {
+      const sops = MOS_SOPS[dept] || MOS_SOPS["Operations"];
+      const sop = sops[idx];
+      if (!sop) return;
+      document.getElementById("mosModalTitle").textContent = sop.title;
+      document.getElementById("mosModalBody").innerHTML = sop.body;
+      document.getElementById("mosSopModal").classList.remove("hidden");
+    };
+
+    window.logoutPortal = function() {
+      localStorage.removeItem("gp_session_user");
+      sessionStorage.removeItem("gp_session_user");
+      activeUser = null;
+      if (liveInterval) clearInterval(liveInterval);
+      document.getElementById("timeWorkspace").classList.add("hidden");
+      document.getElementById("activeUserBanner").classList.add("hidden");
+      document.getElementById("mainNavBar").classList.add("hidden");
+      document.getElementById("mosQuickBar").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+    };
+
+    window.switchTimeTab = function(paneId, btn) {
+      if (paneId !== 'timePaycheckPane') wipePayCalculator();
+      document.getElementById("timeLivePane").classList.add("hidden");
+      document.getElementById("timeManualPane").classList.add("hidden");
+      document.getElementById("timePaycheckPane").classList.add("hidden");
+      document.getElementById(paneId).classList.remove("hidden");
+
+      document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      if (paneId === 'timePaycheckPane') initPayCalculator();
+    };
+
+    // HIGH-PRECISION STREET GEOTAGGING
+    async function captureGeotag() {
+      if (!navigator.geolocation) return { address: "GPS Not Supported", coords: "" };
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const accFeet = Math.round((pos.coords.accuracy || 0) * 3.28084);
+            const coords = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`);
+              if (res.ok) {
+                const data = await res.json();
+                const a = data.address || {};
+                const num = a.house_number ? a.house_number + " " : "";
+                const road = a.road || a.pedestrian || a.highway || "";
+                const city = a.city || a.town || a.village || a.county || "";
+                if (road && city) return resolve({ address: `${num}${road}, ${city} (±${accFeet}ft)`, coords });
+              }
+            } catch (e) {}
+            resolve({ address: `GPS: ${coords} (±${accFeet}ft)`, coords });
+          },
+          () => resolve({ address: "Location Permission Denied", coords: "" }),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    }
+
+    window.previewGPS = async function() {
+      document.getElementById("liveGeoText").textContent = "Locking onto high-precision GPS satellite...";
+      const geo = await captureGeotag();
+      document.getElementById("liveGeoText").textContent = geo.address;
+    };
+
+    function getClockKey() { return `gp_clock_in_${activeUser.pin_code}`; }
+    function getClockLocKey() { return `gp_clock_loc_${activeUser.pin_code}`; }
+    function getClockCoordsKey() { return `gp_clock_coords_${activeUser.pin_code}`; }
+
+    window.clockInNow = async function() {
+      if (localStorage.getItem(getClockKey())) return showToast("Already clocked in — clock out first.");
+      const btn = document.getElementById("btnClockIn");
+      btn.disabled = true;
+      btn.textContent = "Locking Street Geotag...";
+      const geo = await captureGeotag();
+      localStorage.setItem(getClockKey(), Date.now().toString());
+      localStorage.setItem(getClockLocKey(), geo.address);
+      localStorage.setItem(getClockCoordsKey(), geo.coords);
+      btn.disabled = false;
+      btn.textContent = "Clock In Now (Geotag Location)";
+      resumeClockState();
+      showToast("Clocked In: " + geo.address);
+    };
+
+    function resumeClockState() {
+      if (!activeUser) return;
+      if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+      const savedStart = localStorage.getItem(getClockKey());
+      const savedLoc = localStorage.getItem(getClockLocKey()) || "Location Not Recorded";
+
+      if (!savedStart) {
+        document.getElementById("liveDecimalDisplay").textContent = "00.00";
+        document.getElementById("punchStatusText").textContent = "Off Clock";
+        document.getElementById("punchStatusText").className = "badge badge-navy";
+        document.getElementById("btnClockIn").classList.remove("hidden");
+        document.getElementById("btnClockOut").classList.add("hidden");
+        updateOvertimeBanner();
+        return;
+      }
+
+      const startDate = new Date(parseInt(savedStart));
+      document.getElementById("punchStatusText").textContent = "On Clock Since " + startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      document.getElementById("punchStatusText").className = "badge badge-ok";
+      document.getElementById("liveGeoText").textContent = "Clock-In Address: " + savedLoc;
+      document.getElementById("btnClockIn").classList.add("hidden");
+      document.getElementById("btnClockOut").classList.remove("hidden");
+
+      refreshLiveTimer();
+      if (liveInterval) clearInterval(liveInterval);
+      liveInterval = setInterval(refreshLiveTimer, 10000);
+    }
+
+    window.refreshLiveTimer = function() {
+      if (!activeUser) return;
+      const savedStart = localStorage.getItem(getClockKey());
+      if (!savedStart) return;
+      const elapsed = (Date.now() - parseInt(savedStart)) / 3600000;
+      const brk = (parseInt(document.getElementById("liveBreakMins").value) || 0) / 60;
+      document.getElementById("liveDecimalDisplay").textContent = format00(Math.max(0, elapsed - brk));
+      updateOvertimeBanner();
+    };
+
+    window.clockOutNow = async function() {
+      const savedStart = localStorage.getItem(getClockKey());
+      if (!savedStart) return;
+      const btn = document.getElementById("btnClockOut");
+      btn.disabled = true;
+      btn.textContent = "Capturing Clock-Out Geotag...";
+
+      const outGeo = await captureGeotag();
+      const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
+      const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
+
+      const startObj = new Date(parseInt(savedStart));
+      const endObj = new Date();
+      const breakMins = parseInt(document.getElementById("liveBreakMins").value) || 0;
+      const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
+      const netDecimal = Math.max(0, elapsed - (breakMins / 60));
+
+      const record = {
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        work_date: GP.localDate(startObj),
+        clock_in: startObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        clock_out: endObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        break_minutes: breakMins,
+        decimal_hours: format00(netDecimal),
+        clock_in_location: inLoc,
+        clock_out_location: outGeo.address,
+        clock_in_coords: inCoords,
+        clock_out_coords: outGeo.coords,
+        notes: `In: ${inLoc} | Out: ${outGeo.address}`
+      };
+
+      await saveShiftRecord(record);
+      btn.disabled = false;
+      btn.textContent = "Clock Out & Sync Shift";
+      localStorage.removeItem(getClockKey());
+      localStorage.removeItem(getClockLocKey());
+      localStorage.removeItem(getClockCoordsKey());
+      clearInterval(liveInterval);
+      resumeClockState();
+    };
+
+    window.calcManualHours = function() {
+      const start = document.getElementById("manStart").value;
+      const end = document.getElementById("manEnd").value;
+      const brk = parseInt(document.getElementById("manBreak").value) || 0;
+      if (!start || !end) return 0;
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      let mins = (eh * 60 + em) - (sh * 60 + sm);
+      if (mins < 0) mins += 1440;
+      const dec = Math.max(0, mins - brk) / 60;
+      document.getElementById("manDecimalDisplay").textContent = format00(dec);
+      return dec;
+    };
+
+    window.submitManualTime = async function() {
+      const btn = document.getElementById("btnManualSubmit");
+      btn.disabled = true;
+      btn.textContent = "Saving & Geotagging...";
+      const date = document.getElementById("manDate").value;
+      const dec = calcManualHours();
+      if (!date || !Number.isFinite(dec) || dec <= 0 || dec > 24) {
+        btn.disabled = false;
+        btn.textContent = "Submit Shift Hours";
+        return alert("Enter a valid date and shift with more than zero and no more than 24 hours.");
+      }
+      const geo = await captureGeotag();
+      const note = document.getElementById("manNotes").value.trim();
+
+      const record = {
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        work_date: document.getElementById("manDate").value,
+        clock_in: document.getElementById("manStart").value,
+        clock_out: document.getElementById("manEnd").value,
+        break_minutes: parseInt(document.getElementById("manBreak").value) || 0,
+        decimal_hours: format00(dec),
+        clock_in_location: geo.address,
+        clock_out_location: geo.address,
+        clock_in_coords: geo.coords,
+        clock_out_coords: geo.coords,
+        notes: note ? `${note} (${geo.address})` : `Manual Entry (${geo.address})`
+      };
+
+      await saveShiftRecord(record);
+      document.getElementById("manNotes").value = "";
+      btn.disabled = false;
+      btn.textContent = "Submit Shift Hours";
+    };
+
+    async function saveShiftRecord(record) {
+      let cloudSaved = false;
+      if (isCloudConnected) {
+        try {
+          const result = await supabaseClient.from("time_logs").insert([record]);
+          if (!result.error) cloudSaved = true;
+          else {
+            const fallback = { employee_name: record.employee_name, department: record.department, work_date: record.work_date, clock_in: record.clock_in, clock_out: record.clock_out, break_minutes: record.break_minutes, decimal_hours: record.decimal_hours, notes: record.notes };
+            const retry = await supabaseClient.from("time_logs").insert([fallback]);
+            cloudSaved = !retry.error;
+          }
+        } catch (e) { console.warn("Shift cloud sync failed", e); }
+      }
+      record.id = Date.now();
+      timeLogs.unshift(record);
+      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+      showToast(`${record.decimal_hours} hrs saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
+      await fetchTimeLogs();
+    }
+
+    async function fetchTimeLogs() {
+      timeLogs = JSON.parse(localStorage.getItem("gp_time_logs") || "[]");
+      if (isCloudConnected) {
+        try {
+          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
+          if (uRes.data && uRes.data.length > 0) {
+            localStorage.setItem("gp_app_users", JSON.stringify(uRes.data));
+            uRes.data.forEach(u => {
+              if (!window.PORTAL_USERS.some(p => String(p.pin_code) === String(u.pin_code))) window.PORTAL_USERS.push(u);
+            });
+          }
+          const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
+          if (tRes.data) {
+            // Do not erase locally saved shifts if a cloud write is unavailable.
+            const keys = new Set(tRes.data.map(r => `${r.employee_name}|${r.work_date}|${r.clock_in}|${r.clock_out}`));
+            timeLogs = [...tRes.data, ...timeLogs.filter(r => !keys.has(`${r.employee_name}|${r.work_date}|${r.clock_in}|${r.clock_out}`))];
+            localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+          }
+        } catch (e) {}
+      }
+      updateOvertimeBanner();
+      renderHistoryTable();
+    }
+
+    function updateOvertimeBanner() {
+      if (!activeUser) return;
+      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase() && GP.isInCurrentWeek(r.work_date));
+      let hrs = myLogs.reduce((acc, r) => acc + parseFloat(r.decimal_hours || 0), 0);
+
+      const savedStart = localStorage.getItem(getClockKey());
+      if (savedStart) {
+        const elapsed = (Date.now() - Math.max(Number(savedStart), GP.weekStart().getTime())) / 3600000;
+        const brk = (parseInt(document.getElementById("liveBreakMins").value) || 0) / 60;
+        hrs += Math.max(0, elapsed - brk);
+      }
+
+      const isPT = activeUser.employment_type === "Part-Time";
+      const cap = isPT ? 30.0 : 40.0;
+      const warn = isPT ? 25.0 : 35.0;
+      const crit = isPT ? 28.0 : 38.0;
+      const rem = Math.max(0, cap - hrs);
+
+      const banner = document.getElementById("empOvertimeAlert");
+      const text = document.getElementById("empOvertimeText");
+      const badge = document.getElementById("empOvertimeBadge");
+
+      if (hrs > cap) {
+        banner.className = "ot-alert-banner ot-exceeded";
+        badge.className = "badge badge-issue";
+        badge.textContent = isPT ? "PT CAP EXCEEDED" : "OVERTIME ACTIVE";
+        text.textContent = `${isPT ? 'Part-Time Cap' : 'Overtime'} Alert: ${format00(hrs)} / ${format00(cap)} hrs (+${format00(hrs - cap)} hrs over)`;
+      } else if (hrs >= crit) {
+        banner.className = "ot-alert-banner ot-critical";
+        badge.className = "badge badge-issue";
+        badge.textContent = "CRITICAL ALERT";
+        text.textContent = `Critical Warning: ${format00(hrs)} / ${format00(cap)} hrs (Only ${format00(rem)} hrs remaining)`;
+      } else if (hrs >= warn) {
+        banner.className = "ot-alert-banner ot-approaching";
+        badge.className = "badge badge-warn";
+        badge.textContent = "APPROACHING LIMIT";
+        text.textContent = `Approaching Limit: ${format00(hrs)} / ${format00(cap)} hrs (${format00(rem)} hrs remaining)`;
+      } else {
+        banner.className = "ot-alert-banner ot-safe";
+        badge.className = "badge badge-ok";
+        badge.textContent = "WITHIN LIMIT";
+        text.textContent = `Weekly Hours Status: ${format00(hrs)} / ${format00(cap)} hrs (${format00(rem)} hrs remaining)`;
+      }
+    }
+
+    function renderHistoryTable() {
+      if (!activeUser) return;
+      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase());
+      const tbody = document.getElementById("recentTimeTable");
+      if (myLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted);">No shifts logged yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = myLogs.slice(0, 10).map(r => {
+        const validCoords = /^-?\d{1,3}(?:\.\d+)?,-?\d{1,3}(?:\.\d+)?$/.test(r.clock_in_coords || "");
+        const mapLink = validCoords ? `<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>` : "";
+        return `
+          <tr>
+            <td>${GP.escapeHtml(r.work_date)}</td>
+            <td>${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td>
+            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || r.notes || "Standard Punch")} ${mapLink}</td>
+            <td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // PRIVATE ON-DEMAND PAY CALCULATOR
+    function initPayCalculator() {
+      if (!activeUser) return;
+      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase() && GP.isInCurrentWeek(r.work_date));
+      const hrs = myLogs.reduce((acc, r) => acc + parseFloat(r.decimal_hours || 0), 0);
+      document.getElementById("calcTotalHrs").textContent = format00(hrs);
+      wipePayCalculator();
+    }
+
+    window.runPayCalculator = function() {
+      const rate = parseFloat(document.getElementById("calcHourlyRateInput").value) || 0;
+      const comm = parseFloat(document.getElementById("calcCommissionInput").value) || 0;
+      if (rate <= 0 && comm <= 0) return wipePayCalculator();
+
+      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase() && GP.isInCurrentWeek(r.work_date));
+      const hrs = myLogs.reduce((acc, r) => acc + parseFloat(r.decimal_hours || 0), 0);
+      const regHrs = Math.min(40.0, hrs);
+      const otHrs = Math.max(0, hrs - 40.0);
+
+      const regPay = regHrs * rate;
+      const otPay = otHrs * (rate * 1.5);
+      const gross = regPay + otPay + comm;
+      const taxes = gross * 0.203;
+      const net = gross - taxes;
+
+      document.getElementById("calcDetailsTable").innerHTML = `
+        <tr><td>Regular Pay</td><td class="mono">${format00(regHrs)} hrs</td><td class="mono" style="font-weight:700;">${formatCurrency(regPay)}</td></tr>
+        <tr><td>Overtime Pay (1.5x)</td><td class="mono">${format00(otHrs)} hrs</td><td class="mono" style="font-weight:700; color:var(--red);">${formatCurrency(otPay)}</td></tr>
+        <tr><td>Commission Add-On</td><td>Custom</td><td class="mono" style="font-weight:700; color:var(--mos-indigo);">${formatCurrency(comm)}</td></tr>
+        <tr style="background:#F8FAFC;"><td><b>Gross Pay</b></td><td>-</td><td class="mono" style="font-weight:800;">${formatCurrency(gross)}</td></tr>
+        <tr><td>Est. Fed & GA Taxes (20.3%)</td><td>-</td><td class="mono" style="color:var(--red);">-${formatCurrency(taxes)}</td></tr>
+        <tr style="background:var(--green-bg);"><td><b>Estimated Net Pay</b></td><td>-</td><td class="mono" style="font-weight:800; color:var(--green);">${formatCurrency(net)}</td></tr>
+      `;
+    };
+
+    window.wipePayCalculator = function() {
+      document.getElementById("calcHourlyRateInput").value = "";
+      document.getElementById("calcCommissionInput").value = "";
+      document.getElementById("calcDetailsTable").innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Enter your hourly rate or commission above to calculate.</td></tr>`;
+    };
+
+    window.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("manDate").value = GP.localDate();
+      calcManualHours();
+      const savedSession = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
+      if (savedSession) {
+        try { window.activateUserSession(JSON.parse(savedSession)); } catch (e) {}
+      } else {
+        fetchTimeLogs();
+      }
+    });
+  </script>
+</body>
+</html>
