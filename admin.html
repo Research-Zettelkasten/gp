@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="portal-utils.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GLASSPRO | Executive Management & MultiplyOS Hub</title>
+
+  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
+  <meta name="theme-color" content="#06101E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+
+  <!-- Desktop Browser Tab Icon (Inline SVG) -->
+  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
+  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+
+  <script>
+    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
+    (function() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        // 1. Obsidian-Navy Background
+        const grad = ctx.createLinearGradient(0, 0, 512, 512);
+        grad.addColorStop(0, "#06101E");
+        grad.addColorStop(1, "#0B1F3A");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 2. Top Crimson Red Accent Bar
+        ctx.fillStyle = "#DC2626";
+        ctx.fillRect(0, 0, 512, 76);
+
+        // 3. Subtle Diagonal Glass Reflection Slash
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.beginPath();
+        ctx.moveTo(340, 76);
+        ctx.lineTo(460, 76);
+        ctx.lineTo(290, 512);
+        ctx.lineTo(170, 512);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Center "GP" Monogram
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GP", 256, 235);
+
+        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
+        ctx.fillStyle = "#DC2626";
+        ctx.beginPath();
+        ctx.roundRect(76, 365, 360, 74, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.fillText("GLASSPRO", 256, 404);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const appleLink = document.getElementById("gpAppleIcon");
+        if (appleLink) appleLink.href = pngDataUrl;
+
+        // 6. Inject Web App Manifest for Android/Desktop "Install App"
+        const manifest = {
+          name: "GLASSPRO Operations Portal",
+          short_name: "GLASSPRO",
+          start_url: "./index.html",
+          display: "standalone",
+          background_color: "#06101E",
+          theme_color: "#06101E",
+          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+      } catch (e) {}
+    })();
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --obsidian: #06101E;
+      --navy: #0B1F3A;
+      --navy-light: #16325B;
+      --red: #DC2626;
+      --red-dark: #991B1B;
+      --green: #059669;
+      --green-bg: #ECFDF5;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --mos-indigo: #4F46E5;
+      --mos-purple: #6D28D9;
+      --white: #FFFFFF;
+      --bg: #F4F7FB;
+      --border: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --text: #0F172A;
+      --text-secondary: #334155;
+      --muted: #64748B;
+      --shadow-md: 0 4px 20px -2px rgba(6, 16, 30, 0.06);
+      --shadow-lg: 0 12px 32px -4px rgba(6, 16, 30, 0.18);
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding-bottom: 60px;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* EXECUTIVE HEADER */
+    header {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
+      color: var(--white);
+      border-bottom: 3px solid var(--red);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: relative;
+      z-index: 30;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%);
+      color: var(--white);
+      font-weight: 900;
+      font-size: 14px;
+      padding: 7px 12px;
+      border-radius: 7px;
+      letter-spacing: 1.2px;
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #F8FAFC;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #E2E8F0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+
+    .mos-launch-pill {
+      font-size: 11px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%);
+      color: var(--white);
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .user-pill {
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--white);
+      color: var(--obsidian);
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+
+    .logout-btn {
+      background: var(--red);
+      color: var(--white);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    /* TOP NAVIGATION BAR */
+    .nav-bar {
+      display: flex;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      overflow-x: auto;
+      padding: 0 16px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .nav-btn {
+      flex: 1;
+      min-width: 125px;
+      padding: 15px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .nav-btn.active {
+      color: var(--obsidian);
+      border-bottom-color: var(--red);
+      font-weight: 800;
+      background: rgba(220, 38, 38, 0.03);
+    }
+
+    /* SUB-NAVIGATION BAR */
+    .sub-bar {
+      display: flex;
+      background: #E2E8F0;
+      border-radius: var(--radius-md);
+      padding: 5px;
+      margin-bottom: 18px;
+      gap: 5px;
+      overflow-x: auto;
+    }
+
+    .sub-btn {
+      flex: 1;
+      min-width: 115px;
+      padding: 10px 10px;
+      border: none;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 7px;
+      text-transform: uppercase;
+      transition: all 0.15s ease;
+    }
+
+    .sub-btn:hover {
+      color: var(--obsidian);
+    }
+
+    .sub-btn.active {
+      background: var(--obsidian);
+      color: var(--white);
+      font-weight: 800;
+    }
+
+    /* MAIN CONTAINER & CARDS */
+    .container {
+      max-width: 1220px;
+      margin: 20px auto;
+      padding: 0 16px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--obsidian);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+
+    /* KPI METRIC CARDS */
+    .kpi-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--navy);
+    }
+
+    .kpi-card.kpi-amber::before {
+      background: var(--amber);
+    }
+
+    .kpi-card.kpi-mos::before {
+      background: linear-gradient(90deg, var(--mos-indigo), var(--mos-purple));
+    }
+
+    .kpi-card.kpi-red::before {
+      background: var(--red);
+    }
+
+    .kpi-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--obsidian);
+      margin-top: 6px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* GRID SYSTEM */
+    @media (min-width: 940px) {
+      .desktop-split {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 20px;
+        align-items: start;
+      }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .brand-text p {
+        display: none;
+      }
+      .grid-3, .grid-4, .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .sub-bar {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* FORMS & INPUTS */
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 13px;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1.5px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--text);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(11, 31, 58, 0.1);
+    }
+
+    input[readonly] {
+      background: #F1F5F9;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .btn-navy {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--obsidian) 100%);
+      color: var(--white);
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #10B981 0%, var(--green) 100%);
+      color: var(--white);
+    }
+
+    .btn-mos {
+      background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%);
+      color: var(--white);
+    }
+
+    .btn-outline {
+      background: var(--white);
+      color: var(--obsidian);
+      border: 1.5px solid var(--border-strong);
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--obsidian);
+      background: #F8FAFC;
+    }
+
+    /* CLICKABLE EMPLOYEE TRIGGER */
+    .emp-trigger {
+      color: var(--mos-indigo);
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      display: inline-block;
+      transition: color 0.15s ease;
+    }
+
+    .emp-trigger:hover {
+      color: var(--obsidian);
+    }
+
+    /* TIME DIFF PREVIEW BOX */
+    .diff-preview-box {
+      background: var(--obsidian);
+      color: var(--white);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-left: 4px solid var(--amber);
+    }
+
+    /* PERMISSION CHECKBOX GRID */
+    .perm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .perm-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--obsidian);
+      cursor: pointer;
+      text-transform: none;
+    }
+
+    .perm-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* DATA TABLES */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--white);
+    }
+
+    th {
+      background: #F8FAFC;
+      color: var(--text-secondary);
+      text-align: left;
+      padding: 11px 12px;
+      text-transform: uppercase;
+      font-size: 10px;
+      font-weight: 800;
+      border-bottom: 1.5px solid var(--border-strong);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background-color: #F8FAFC;
+    }
+
+    /* STATUS BADGES */
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge-ok {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .badge-issue {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+
+    .badge-warn {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .badge-navy {
+      background: #E0E7FF;
+      color: #1E3A8A;
+    }
+
+    .badge-purple {
+      background: #EDE9FE;
+      color: #5B21B6;
+    }
+
+    .map-link {
+      color: var(--mos-indigo);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 11px;
+    }
+
+    .map-link:hover {
+      text-decoration: underline;
+    }
+
+    /* EMPLOYEE WEEKLY BREAKDOWN MODAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 16, 30, 0.68);
+      backdrop-filter: blur(3px);
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.hidden {
+      display: none !important;
+      pointer-events: none !important;
+    }
+
+    .modal-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      max-width: 780px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-top: 5px solid var(--mos-indigo);
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      z-index: 9001;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: #E2E8F0;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 99px;
+      transition: width 0.25s ease;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--obsidian);
+      color: var(--white);
+      border-left: 4px solid var(--red);
+      padding: 13px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 9999;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">GLASSPRO</div>
+      <div class="brand-text">
+        <h1>GLASS PRO BY AMERICAN GLASS</h1>
+        <p>Executive Management Command Center & MultiplyOS Synchronization Hub</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="dbStatus" class="hidden"></div>
+      <label class="logout-btn" style="background:var(--mos-indigo); cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:0; color:#FFF;">
+        <span>☁️ Upload Mainstreet CSV</span>
+        <input type="file" accept=".csv" class="hidden" onchange="handleAdminCsvUpload(event)" />
+      </label>
+      <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
+        <span id="activeUserName" class="user-pill">Brandon Faircloth (Operations)</span>
+        <span id="activeUserTypeBadge" class="hidden"></span>
+        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="mainNavBar" class="nav-bar">
+    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn active">5. Management & MOS Hub</a>
+  </nav>
+
+  <div class="container">
+
+    <div class="sub-bar">
+      <button type="button" id="adminSubBtnOverview" class="sub-btn active" onclick="showAdminSubTab('adminOverviewPane', this)">1. Command Center</button>
+      <button type="button" id="adminSubBtnMOS" class="sub-btn" onclick="showAdminSubTab('adminMOSPane', this)">2. MultiplyOS Hub</button>
+      <button type="button" id="adminSubBtnUsers" class="sub-btn" onclick="showAdminSubTab('adminUsersPane', this)">3. Users & Roles</button>
+      <button type="button" id="adminSubBtnComm" class="sub-btn" onclick="showAdminSubTab('adminCommissionsPane', this)">4. Commissions & WOs</button>
+      <button type="button" id="adminSubBtnTime" class="sub-btn" onclick="showAdminSubTab('adminTimePane', this)">5. Time & Geotags</button>
+      <button type="button" id="adminSubBtnGarage" class="sub-btn" onclick="showAdminSubTab('adminGaragePane', this)">6. Fleet Garage</button>
+      <button type="button" id="adminSubBtnAudits" class="sub-btn" onclick="showAdminSubTab('adminFleetPane', this)">7. Audit Trail</button>
+    </div>
+
+    <!-- ====================================================================
+         PANE 1: EXECUTIVE COMMAND CENTER
+         ==================================================================== -->
+    <div id="adminOverviewPane">
+      <div class="grid-4" style="margin-bottom:18px;">
+        <div class="kpi-card">
+          <label>Total Logged Hours</label>
+          <div id="statTotalHours" class="kpi-value">00.00</div>
+          
+        </div>
+        <div class="kpi-card kpi-amber">
+          <label>Overtime / Cap Alerts</label>
+          <div id="statOtAlerts" class="kpi-value" style="color:var(--amber);">0</div>
+          
+        </div>
+        <div class="kpi-card kpi-mos">
+          <label>MultiplyOS WOs Logged</label>
+          <div id="statTotalCommissions" class="kpi-value" style="color:var(--mos-indigo);">0</div>
+          <div id="statTotalCommVolume" class="hidden">$0.00 logged volume</div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <label>Flagged Fleet Vehicles</label>
+          <div id="statFlaggedVehicles" class="kpi-value" style="color:var(--red);">0</div>
+          
+        </div>
+      </div>
+
+      <div class="desktop-split">
+        <div class="card">
+          <div class="card-title">
+            <span>Overtime & Hour Cap Compliance Watchlist</span>
+            <span class="badge badge-warn">Click Any Name for Weekly Popup</span>
+          </div>
+          <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+            Click any employee below to view their shift-by-shift breakdown, geotags, and work orders.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Classification</th>
+                  <th>Logged / Cap</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="adminOtWatchlistTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <span>6-Division Labor & WO Scoreboard</span>
+              <button type="button" class="btn-outline" onclick="copyMOSScoreboardSnapshot()">Copy MOS Snapshot</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>GLASSPRO Division</th>
+                    <th>Lead</th>
+                    <th>Staff</th>
+                    <th>Hours</th>
+                    <th>WOs</th>
+                  </tr>
+                </thead>
+                <tbody id="adminDeptSummaryTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 2: MULTIPLY-OS HUB
+         ==================================================================== -->
+    <div id="adminMOSPane" class="hidden">
+      <div class="card" style="border-top: 4px solid var(--mos-indigo);">
+        <div class="card-title">
+          <span>MultiplyOS (MOS) Divisional Scoreboard & Sync Bridge</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-outline" style="border-color:var(--mos-indigo); color:var(--mos-indigo);" onclick="copyMOSScoreboardSnapshot()">Copy Weekly MOS Scorecard</button>
+            <button type="button" class="btn-outline" onclick="exportMOSSyncPayload()">Export MOS JSON Payload</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="margin-bottom:18px;">
+          <table>
+            <thead>
+              <tr>
+                <th>MOS Division</th>
+                <th>Division Lead</th>
+                <th>Active Roster</th>
+                <th>Logged Hours</th>
+                <th>OT / Cap Alerts</th>
+                <th>Logged WOs</th>
+                <th>WO Value ($)</th>
+                <th>MOS Status</th>
+              </tr>
+            </thead>
+            <tbody id="mosScoreboardMatrixTable"></tbody>
+          </table>
+        </div>
+
+        <div class="desktop-split">
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">MultiplyOS Webhook & Workspace Settings</div>
+            <div style="margin-bottom:10px;">
+              <label>MultiplyOS Workspace Launch URL</label>
+              <input type="url" id="mosWorkspaceUrlInput" value="https://app.multiplyos.com" />
+            </div>
+            <div style="margin-bottom:12px;">
+              <label>MultiplyOS Webhook Endpoint (Optional)</label>
+              <input type="url" id="mosWebhookUrlInput" placeholder="https://hook.us1.make.com/..." />
+            </div>
+            <button type="button" class="btn btn-mos" onclick="saveMOSConfig()">Save MultiplyOS Settings</button>
+          </div>
+
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">
+              <span>MultiplyOS Compliance & Exception Queue</span>
+              <span class="badge badge-issue">Auto-Flagged</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Subject</th>
+                    <th>Exception Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="mosExceptionQueueTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 3: USERS & ROLES
+         ==================================================================== -->
+    <div id="adminUsersPane" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <span id="userFormTitle">Add or Update Employee Account</span>
+          <button type="button" class="btn-outline" onclick="resetUserForm()">Clear Form</button>
+        </div>
+        <input type="hidden" id="editingUserId" />
+
+        <div class="grid-4" style="margin-bottom:12px;">
+          <div>
+            <label>Employee Full Name *</label>
+            <input type="text" id="newEmpName" placeholder="Full Name" />
+          </div>
+          <div>
+            <label>MultiplyOS Division</label>
+            <select id="newEmpDept">
+              <option value="Auto Glass">Auto Glass</option>
+              <option value="Residential">Residential</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Front Office / Sales">Front Office / Sales</option>
+              <option value="Operations">Operations</option>
+              <option value="Accounting">Accounting</option>
+            </select>
+          </div>
+          <div>
+            <label>Employment Classification *</label>
+            <select id="newEmpType">
+              <option value="Full-Time">Full-Time (40h OT Threshold)</option>
+              <option value="Part-Time">Part-Time (30h Cap Threshold)</option>
+              <option value="Commission">Commission Only</option>
+              <option value="FT + Commission">FT + Commission</option>
+            </select>
+          </div>
+          <div>
+            <label>4-Digit PIN *</label>
+            <input type="text" id="newEmpPin" maxlength="4" placeholder="e.g. 4321" inputmode="numeric" />
+          </div>
+        </div>
+
+        <label>Assign Workspace Permissions:</label>
+        <div class="perm-grid">
+          <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
+          <label class="perm-label"><input type="checkbox" id="permCommission" checked /> Commission / WO Log</label>
+          <label class="perm-label"><input type="checkbox" id="permVehSubmit" /> Submit Vehicle Check</label>
+          <label class="perm-label"><input type="checkbox" id="permVehView" /> View Fleet History</label>
+          <label class="perm-label"><input type="checkbox" id="permSafety" checked /> Safety & SOPs</label>
+          <label class="perm-label"><input type="checkbox" id="permAdmin" /> Management Portal</label>
+        </div>
+
+        <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveEmployeeUser()">Save Employee Account</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Employee Roster & Classification Directory</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee (Click for Breakdown)</th>
+                <th>MOS Division</th>
+                <th>Classification</th>
+                <th>PIN</th>
+                <th>Permissions</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 4: COMMISSIONS & WOs
+         ==================================================================== -->
+    <div id="adminCommissionsPane" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <span>Commission & Work Order Review Board</span>
+          <button type="button" class="btn-outline" onclick="exportCommissionsCSV()">Export WOs CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee</th>
+                <th>WO#</th>
+                <th>Job Type</th>
+                <th>Specifications</th>
+                <th>Value</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminCommissionsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 5: TIME & GEOTAGS (WITH MANUAL EDIT + ADD MISSING SHIFT + AUDIT)
+         ==================================================================== -->
+    <div id="adminTimePane" class="hidden">
+
+      <!-- DRAWER A: EDIT EXISTING TIME PUNCH -->
+      <div id="editTimeCard" class="card hidden" style="border: 2px solid var(--obsidian); background:#F8FAFC;">
+        <div class="card-title">
+          <span>Manual Admin Time Punch Editor (Audited)</span>
+          <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red);" onclick="document.getElementById('editTimeCard').classList.add('hidden')">Cancel Edit</button>
+        </div>
+        <input type="hidden" id="editTimeId" />
+
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div>
+            <label>Employee</label>
+            <input type="text" id="editEmpName" readonly />
+          </div>
+          <div>
+            <label>Work Date *</label>
+            <input type="date" id="editDate" />
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:12px;">
+          <div>
+            <label>Clock-In Time *</label>
+            <input type="time" id="editStart" oninput="previewEditedHours()" />
+          </div>
+          <div>
+            <label>Clock-Out Time *</label>
+            <input type="time" id="editEnd" oninput="previewEditedHours()" />
+          </div>
+          <div>
+            <label>Unpaid Break Deduction</label>
+            <select id="editBreak" onchange="previewEditedHours()">
+              <option value="0">0 mins (00.00)</option>
+              <option value="15">15 mins (00.25)</option>
+              <option value="30">30 mins (00.50)</option>
+              <option value="45">45 mins (00.75)</option>
+              <option value="60">60 mins (01.00)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- LIVE BEFORE -> AFTER HOURS PREVIEW -->
+        <div class="diff-preview-box">
+          <div>
+            <span style="font-size:10px; text-transform:uppercase; color:#94A3B8; display:block;">Original Logged Hours</span>
+            <strong id="editOrigHoursDisplay" class="mono" style="font-size:20px; color:#CBD5E1;">00.00 hrs</strong>
+          </div>
+          <div style="font-size:18px; font-weight:900; color:var(--amber);">→</div>
+          <div>
+            <span style="font-size:10px; text-transform:uppercase; color:#94A3B8; display:block;">New Recalculated Hours</span>
+            <strong id="editNewHoursDisplay" class="mono" style="font-size:22px; color:#34D399;">00.00 hrs</strong>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="color:var(--red);">Mandatory Supervisor Audit Reason (Required to Save) *</label>
+          <input type="text" id="editAuditReason" placeholder="e.g. Forgot to clock out for lunch, late mobile route return..." />
+        </div>
+
+        <button type="button" class="btn btn-navy" onclick="saveEditedTimeRecord()">Save Time Adjustment & Record to Supervisor Audit Log</button>
+      </div>
+
+      <!-- DRAWER B: ADD MISSING TIME PUNCH FOR AN EMPLOYEE -->
+      <div id="addMissingTimeCard" class="card hidden" style="border: 2px solid var(--green); background:#F8FAFC;">
+        <div class="card-title">
+          <span>Add Missing Time Shift for Employee (Audited)</span>
+          <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red);" onclick="document.getElementById('addMissingTimeCard').classList.add('hidden')">Cancel</button>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div>
+            <label>Select Employee *</label>
+            <select id="addShiftEmpSelect"></select>
+          </div>
+          <div>
+            <label>Work Date *</label>
+            <input type="date" id="addShiftDate" />
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:12px;">
+          <div>
+            <label>Clock-In Time *</label>
+            <input type="time" id="addShiftStart" value="08:00" />
+          </div>
+          <div>
+            <label>Clock-Out Time *</label>
+            <input type="time" id="addShiftEnd" value="17:00" />
+          </div>
+          <div>
+            <label>Unpaid Break Mins</label>
+            <select id="addShiftBreak">
+              <option value="0">0 mins</option>
+              <option value="15">15 mins</option>
+              <option value="30" selected>30 mins</option>
+              <option value="45">45 mins</option>
+              <option value="60">60 mins</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="color:var(--green);">Mandatory Audit Reason for Adding Shift *</label>
+          <input type="text" id="addShiftReason" placeholder="e.g. Phone battery died on job site, forgot morning punch..." />
+        </div>
+
+        <button type="button" class="btn btn-green" onclick="saveAdminAddedShift()">Insert Shift & Record to Supervisor Audit Log</button>
+      </div>
+
+      <!-- PAYROLL HOURS & CLASSIFICATION SUMMARY TABLE -->
+      <div class="card">
+        <div class="card-title">
+          <span>Employee Payroll Hours & Overtime Breakdown</span>
+          <span class="badge badge-navy">Click Any Employee for Weekly Popup</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Classification</th>
+                <th>Total Hours</th>
+                <th>Regular (≤40h)</th>
+                <th>Overtime (&gt;40h)</th>
+                <th>WOs Logged</th>
+              </tr>
+            </thead>
+            <tbody id="adminPayrollTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ALL TIME LOGS TABLE -->
+      <div class="card">
+        <div class="card-title">
+          <span>All Time Logs & High-Precision Street Geotags</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-outline" style="border-color:var(--green); color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button>
+            <button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button>
+          </div>
+        </div>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
+          Click <b>Edit Punch</b> on any row below to adjust Clock-In, Clock-Out, Break Minutes, or Work Date. Every change automatically logs a Before → After record in the Audit Trail.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee</th>
+                <th>In / Out</th>
+                <th>Break</th>
+                <th>Total Hours</th>
+                <th>High-Precision Geotag & Map Link</th>
+                <th>Notes / Audit Status</th>
+                <th>Admin Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminTimeTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 6: FLEET GARAGE
+         ==================================================================== -->
+    <div id="adminGaragePane" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <span id="vehicleFormTitle">Add or Update Garage Vehicle</span>
+          <button type="button" class="btn-outline" onclick="resetVehicleForm()">Clear</button>
+        </div>
+        <input type="hidden" id="editingVehicleId" />
+
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div>
+            <label>Unit / Truck Name *</label>
+            <input type="text" id="garageUnitName" placeholder="e.g. Truck 1 - Auto" />
+          </div>
+          <div>
+            <label>Assigned Driver</label>
+            <select id="garageAssignedEmp">
+              <option value="Unassigned">Unassigned (Shop Spare)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div>
+            <label>Make *</label>
+            <input type="text" id="garageMake" placeholder="e.g. Ford" />
+          </div>
+          <div>
+            <label>Model *</label>
+            <input type="text" id="garageModel" placeholder="e.g. Transit" />
+          </div>
+        </div>
+        <div class="grid-3" style="margin-bottom:10px;">
+          <div>
+            <label>License Plate *</label>
+            <input type="text" id="garagePlate" placeholder="Tag Number" />
+          </div>
+          <div>
+            <label>VIN Number</label>
+            <input type="text" id="garageVin" placeholder="17-Digit VIN" />
+          </div>
+          <div>
+            <label>Current Mileage</label>
+            <input type="number" id="garageMileage" placeholder="e.g. 45000" />
+          </div>
+        </div>
+        <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveGarageVehicle()">Save Vehicle to Garage</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Company Fleet Garage Directory</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Truck / Unit</th>
+                <th>Vehicle Info</th>
+                <th>Driver</th>
+                <th>Mileage</th>
+                <th>Last Inspected</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminGarageTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         PANE 7: IMMUTABLE SUPERVISOR AUDIT LOGS
+         ==================================================================== -->
+    <div id="adminFleetPane" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <span>Immutable Supervisor Audit Logs (Showing 10)</span>
+          <span class="badge badge-navy">Tracks All Time Edits, Additions & Deletions</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Supervisor</th>
+                <th>Action Type</th>
+                <th>Before → After Details & Reason</th>
+              </tr>
+            </thead>
+            <tbody id="adminAuditTable"></tbody>
+          </table>
+        </div>
+        <div id="auditLoadMoreContainer" style="margin-top:12px; text-align:center;" class="hidden">
+          <button type="button" class="btn-outline" onclick="auditLimit += 10; renderAdminUI();">View More Audit Logs</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================================================================
+       INTERACTIVE EMPLOYEE WEEKLY BREAKDOWN POPUP MODAL
+       ====================================================================== -->
+  <div id="employeeBreakdownModal" class="modal-backdrop hidden" onclick="if(event.target === this) closeEmployeeBreakdownModal()">
+    <div class="modal-card">
+      <div class="card-title">
+        <div>
+          <span id="modalEmpNameTitle" style="font-size:16px;">Employee Weekly Breakdown</span>
+          <small id="modalEmpDeptSubtitle" style="display:block; color:var(--muted); font-size:11px; margin-top:2px;"></small>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="modalEmpTypeBadge" class="badge badge-navy">Full-Time</span>
+          <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red);" onclick="closeEmployeeBreakdownModal()">Close ✕</button>
+        </div>
+      </div>
+
+      <div class="grid-4" style="margin-bottom:14px;">
+        <div class="card" style="margin-bottom:0; padding:12px; background:#F8FAFC;">
+          <label>Total Logged</label>
+          <div id="modalStatTotalHrs" class="mono" style="font-size:20px; font-weight:800; color:var(--obsidian);">00.00 hrs</div>
+        </div>
+        <div class="card" style="margin-bottom:0; padding:12px; background:#F8FAFC;">
+          <label>Regular Hours</label>
+          <div id="modalStatRegHrs" class="mono" style="font-size:20px; font-weight:800; color:var(--green);">00.00 hrs</div>
+        </div>
+        <div class="card" style="margin-bottom:0; padding:12px; background:#F8FAFC;">
+          <label>Overtime (&gt;40h)</label>
+          <div id="modalStatOtHrs" class="mono" style="font-size:20px; font-weight:800; color:var(--red);">00.00 hrs</div>
+        </div>
+        <div class="card" style="margin-bottom:0; padding:12px; background:#F8FAFC;">
+          <label>WOs / Commission</label>
+          <div id="modalStatWos" class="mono" style="font-size:18px; font-weight:800; color:var(--mos-indigo);">0 ($0.00)</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
+          <span id="modalCapProgressText">Weekly Cap Progress</span>
+          <span id="modalCapStatusBadge" class="badge badge-ok">ON TRACK</span>
+        </div>
+        <div class="progress-track">
+          <div id="modalCapProgressBar" class="progress-fill" style="width:0%;"></div>
+        </div>
+      </div>
+
+      <div class="card-title" style="font-size:12px; margin-bottom:8px;">
+        <span>Logged Shifts & Geotags</span>
+        <button type="button" class="btn-outline" style="padding:4px 10px; border-color:var(--green); color:var(--green);" onclick="quickAddShiftForModalEmployee()">+ Add Shift for Employee</button>
+      </div>
+      <div class="table-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>In / Out</th>
+              <th>Break</th>
+              <th>Hours</th>
+              <th>Geotag / Notes</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="modalEmpShiftsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card-title" style="font-size:12px; margin-bottom:8px;">
+        <span>Logged Work Orders & Commissions</span>
+      </div>
+      <div class="table-wrap" style="max-height:180px; overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>WO#</th>
+              <th>Job Type & Specs</th>
+              <th>Value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="modalEmpWosBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Saved</div>
+
+  <script>
+    const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+
+    let supabaseClient = null;
+    let isCloudConnected = false;
+    try {
+      if (typeof window.supabase !== "undefined" && SUPABASE_URL.startsWith("https://")) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isCloudConnected = true;
+        document.getElementById("dbStatus").innerHTML = `<span class="status-dot"></span><span>Supabase configured (not verified)</span>`;
+      }
+    } catch (e) {}
+
+    const DIV_LEADS = {
+      "Auto Glass": "Lead Auto Tech",
+      "Residential": "Zane Touchton",
+      "Commercial": "Rusty Strome",
+      "Front Office / Sales": "Brandon Faircloth",
+      "Operations": "Brandon Faircloth",
+      "Accounting": "Tasha Mullinax"
+    };
+
+    const DEFAULT_USERS = [
+      { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
+      { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
+      { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
+    ];
+
+    const DEFAULT_GARAGE = [
+      { id: 1, unit_name: "Truck 1 - Auto", make: "Ford", model: "Transit", license_plate: "TAG-101", vin_number: "1FTNE3Y85GK10001", assigned_employee: "Lead Tech Employee", current_mileage: "45200", last_inspected_date: "Never", status: "Pending" },
+      { id: 2, unit_name: "Truck 2 - Residential", make: "Chevrolet", model: "Express", license_plate: "TAG-102", vin_number: "1GBGG31K3E110002", assigned_employee: "Brandon Faircloth", current_mileage: "62100", last_inspected_date: "Never", status: "Pending" },
+      { id: 3, unit_name: "Van 3 - Commercial", make: "Ram", model: "ProMaster", license_plate: "TAG-103", vin_number: "3C6TRVFG7GE10003", assigned_employee: "Unassigned", current_mileage: "28400", last_inspected_date: "Never", status: "Pending" }
+    ];
+
+    let activeUser = null;
+    let usersList = [...DEFAULT_USERS];
+    let garageList = [...DEFAULT_GARAGE];
+    let timeLogs = [];
+    let commissionLogs = [];
+    let vehicleLogs = [];
+    let auditLogs = [];
+    let auditLimit = 10;
+    let currentModalEmployeeName = "";
+
+    function format00(num) {
+      const parts = Math.max(0, parseFloat(num) || 0).toFixed(2).split(".");
+      return parts[0].padStart(2, "0") + "." + parts[1];
+    }
+
+    function formatCurrency(num) {
+      return "$" + Math.max(0, parseFloat(num) || 0).toFixed(2);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3200);
+    }
+
+    // Converts "08:05 AM" or "05:15 PM" or "17:15" into valid HTML <input type="time"> "HH:MM"
+    function to24HourTime(timeStr) {
+      if (!timeStr) return "08:00";
+      const clean = String(timeStr).trim().toUpperCase();
+      const isPM = clean.includes("PM");
+      const isAM = clean.includes("AM");
+      const parts = clean.replace(/[^0-9:]/g, "").split(":");
+      if (parts.length < 2) return "08:00";
+      let h = parseInt(parts[0], 10);
+      const m = parts[1].slice(0, 2).padStart(2, "0");
+      if (isNaN(h)) return "08:00";
+      if (isPM && h < 12) h += 12;
+      if (isAM && h === 12) h = 0;
+      return String(h).padStart(2, "0") + ":" + m;
+    }
+
+    function computeDecimalHours(start24, end24, breakMins) {
+      if (!start24 || !end24) return "00.00";
+      const [sh, sm] = start24.split(":").map(Number);
+      const [eh, em] = end24.split(":").map(Number);
+      let mins = (eh * 60 + em) - (sh * 60 + sm);
+      if (mins < 0) mins += 1440;
+      const dec = Math.max(0, mins - (parseInt(breakMins, 10) || 0)) / 60;
+      return format00(dec);
+    }
+
+    // Safely extracts numeric hours from any time_log row (even if decimal_hours was stored under another field)
+    function getShiftHours(r) {
+      if (!r) return 0;
+      const direct = parseFloat(r.decimal_hours ?? r.hours ?? r.total_hours);
+      if (!isNaN(direct) && direct > 0) return direct;
+      if (r.clock_in && r.clock_out) {
+        const calc = parseFloat(computeDecimalHours(to24HourTime(r.clock_in), to24HourTime(r.clock_out), r.break_minutes || 0));
+        if (!isNaN(calc)) return calc;
+      }
+      return 0;
+    }
+
+    // Normalizes employee names and matches exact or unique first-name matches (e.g., "Stephanie" <-> "Stephanie Calhoun")
+    function normalizeName(str) {
+      return String(str || "").toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function isSameEmployee(nameA, nameB) {
+      const a = normalizeName(nameA);
+      const b = normalizeName(nameB);
+      if (!a || !b) return false;
+      if (a === b) return true;
+      const firstA = a.split(" ")[0];
+      const firstB = b.split(" ")[0];
+      if (firstA && firstA === firstB && (a === firstA || b === firstB)) {
+        const sameFirstCount = usersList.filter(u => normalizeName(u.employee_name).split(" ")[0] === firstA).length;
+        if (sameFirstCount <= 1) return true;
+      }
+      return false;
+    }
+
+    // Deduplicates and merges LocalStorage + Supabase records so local shifts never disappear
+    function mergeRecordLists(cloudArr, localArr, keyFn) {
+      const map = new Map();
+      (cloudArr || []).forEach(item => {
+        if (item) map.set(keyFn(item), item);
+      });
+      (localArr || []).forEach(item => {
+        if (item && !map.has(keyFn(item))) {
+          map.set(keyFn(item), item);
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    window.logoutPortal = function() {
+      localStorage.removeItem("gp_session_user");
+      sessionStorage.removeItem("gp_session_user");
+      window.location.href = "index.html";
+    };
+
+    window.showAdminSubTab = function(paneId, btn) {
+      ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminGaragePane", "adminFleetPane"].forEach(id => {
+        document.getElementById(id).classList.add("hidden");
+      });
+      document.getElementById(paneId).classList.remove("hidden");
+      document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+    };
+
+    async function logAudit(actionType, detailsText) {
+      const entry = {
+        supervisor_name: activeUser ? activeUser.employee_name : "Admin",
+        action_type: actionType,
+        details: detailsText,
+        timestamp: new Date().toLocaleString()
+      };
+      if (isCloudConnected) {
+        try { await supabaseClient.from("audit_logs").insert([entry]); } catch (e) {}
+      }
+      entry.id = Date.now();
+      auditLogs.unshift(entry);
+      localStorage.setItem("gp_audit_logs", JSON.stringify(auditLogs));
+    }
+
+    async function loadAdminData() {
+      const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
+      if (localUsers.length > 0) usersList = localUsers;
+
+      const localGarage = JSON.parse(localStorage.getItem("gp_fleet_garage") || "[]");
+      if (localGarage.length > 0) garageList = localGarage;
+
+      const localTime = JSON.parse(localStorage.getItem("gp_time_logs") || "[]");
+      const localComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
+      const localVeh = JSON.parse(localStorage.getItem("gp_vehicle_logs") || "[]");
+      const localAudit = JSON.parse(localStorage.getItem("gp_audit_logs") || "[]");
+
+      timeLogs = localTime;
+      commissionLogs = localComm;
+      vehicleLogs = localVeh;
+      auditLogs = localAudit;
+
+      if (isCloudConnected) {
+        try {
+          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
+          if (uRes.data && uRes.data.length > 0) {
+            usersList = mergeRecordLists(uRes.data, localUsers, u => String(u.pin_code || u.employee_name).trim());
+            localStorage.setItem("gp_app_users", JSON.stringify(usersList));
+          }
+
+          const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
+          if (gRes.data && gRes.data.length > 0) {
+            garageList = gRes.data;
+            localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+          }
+
+          const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
+          if (tRes.data) {
+            timeLogs = mergeRecordLists(tRes.data, localTime, r => `${normalizeName(r.employee_name)}|${r.work_date}|${r.clock_in}|${r.clock_out}`);
+            localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+          }
+
+          const cRes = await supabaseClient.from("commission_logs").select("*").order("id", { ascending: false });
+          if (cRes.data) {
+            commissionLogs = mergeRecordLists(cRes.data, localComm, c => `${normalizeName(c.employee_name)}|${c.work_date}|${c.wo_number}`);
+            localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+          }
+
+          const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
+          if (vRes.data) {
+            vehicleLogs = mergeRecordLists(vRes.data, localVeh, v => `${v.license_plate}|${v.inspection_date}|${v.mileage}`);
+          }
+
+          const aRes = await supabaseClient.from("audit_logs").select("*").order("id", { ascending: false });
+          if (aRes.data) {
+            auditLogs = mergeRecordLists(aRes.data, localAudit, a => `${a.timestamp}|${a.action_type}|${a.details}`);
+            localStorage.setItem("gp_audit_logs", JSON.stringify(auditLogs));
+          }
+        } catch (e) {}
+      }
+
+      // Ensure any employee who has logged time in timeLogs is represented in the watchlist
+      timeLogs.forEach(t => {
+        if (t.employee_name && !usersList.some(u => isSameEmployee(u.employee_name, t.employee_name))) {
+          usersList.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            employee_name: t.employee_name.trim(),
+            department: t.department || "Operations",
+            employment_type: "Full-Time",
+            pin_code: "----",
+            perm_time: true,
+            perm_commission: true
+          });
+        }
+      });
+
+      renderAdminUI();
+    }
+
+    function buildMOSScoreboard() {
+      return Object.keys(DIV_LEADS).map(div => {
+        const staff = usersList.filter(u => u.department === div);
+        const divTime = timeLogs.filter(t => {
+          if (t.department === div) return true;
+          const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, t.employee_name));
+          return matchedUser && matchedUser.department === div;
+        });
+
+        const hrs = divTime.reduce((a, r) => a + getShiftHours(r), 0);
+        const wos = commissionLogs.filter(c => {
+          if (c.department === div) return true;
+          const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, c.employee_name));
+          return matchedUser && matchedUser.department === div;
+        });
+        const vol = wos.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
+
+        let alerts = 0;
+        staff.forEach(u => {
+          const eHrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name))
+                               .reduce((a, r) => a + getShiftHours(r), 0);
+          if ((u.employment_type === "Part-Time" && eHrs >= 25) || (u.employment_type !== "Part-Time" && eHrs >= 35)) {
+            alerts++;
+          }
+        });
+        return {
+          division: div,
+          lead: DIV_LEADS[div],
+          activeStaff: staff.length,
+          loggedHours: format00(hrs),
+          otExceptions: alerts,
+          loggedWOs: wos.length,
+          woVolume: vol
+        };
+      });
+    }
+
+    window.renderAdminUI = function() {
+      const totalHrs = timeLogs.reduce((a, r) => a + getShiftHours(r), 0);
+      const totalVol = commissionLogs.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
+      const flaggedVeh = vehicleLogs.filter(v => (v.issues_count || 0) > 0).length;
+
+      document.getElementById("statTotalHours").textContent = format00(totalHrs);
+      document.getElementById("statTotalCommissions").textContent = commissionLogs.length;
+      document.getElementById("statTotalCommVolume").textContent = `${formatCurrency(totalVol)} logged volume`;
+      document.getElementById("statFlaggedVehicles").textContent = flaggedVeh;
+
+      let empHtml = `<option value="Unassigned">Unassigned (Shop Spare)</option>`;
+      let shiftEmpHtml = "";
+      usersList.forEach(u => {
+        empHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`;
+        shiftEmpHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`;
+      });
+      document.getElementById("garageAssignedEmp").innerHTML = empHtml;
+      document.getElementById("addShiftEmpSelect").innerHTML = shiftEmpHtml;
+
+      let otAlerts = 0;
+      document.getElementById("adminOtWatchlistTable").innerHTML = usersList.map(u => {
+        const hrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
+                            .reduce((a, r) => a + getShiftHours(r), 0);
+        const isPT = u.employment_type === "Part-Time";
+        const cap = isPT ? 30.0 : 40.0;
+        const warn = isPT ? 25.0 : 35.0;
+        if (hrs >= warn) otAlerts++;
+        const bClass = hrs > cap ? "badge-issue" : (hrs >= warn ? "badge-warn" : "badge-ok");
+        const bText = hrs > cap ? "EXCEEDED" : (hrs >= warn ? "APPROACHING" : "ON TRACK");
+        const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
+
+        return `
+          <tr>
+            <td>
+              <span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(u.employee_name)}</span>
+              <br><small style="color:var(--muted);">${GP.escapeHtml(u.department || "Operations")}</small>
+            </td>
+            <td><span class="badge badge-navy">${GP.escapeHtml(u.employment_type || "Full-Time")}</span></td>
+            <td class="mono" style="font-weight:800;">${format00(hrs)} / ${format00(cap)}</td>
+            <td><span class="badge ${bClass}">${bText}</span></td>
+          </tr>
+        `;
+      }).join("");
+      document.getElementById("statOtAlerts").textContent = otAlerts;
+
+      // Render Payroll Summary Table inside Time & Geotags Pane
+      document.getElementById("adminPayrollTable").innerHTML = usersList.map(u => {
+        const hrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
+                            .reduce((a, r) => a + getShiftHours(r), 0);
+        const wosCount = commissionLogs.filter(c => isSameEmployee(c.employee_name, u.employee_name)).length;
+        const regHrs = Math.min(40.0, hrs);
+        const otHrs = Math.max(0, hrs - 40.0);
+        const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
+
+        return `
+          <tr>
+            <td>
+              <span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(u.employee_name)}</span>
+              <br><small style="color:var(--muted);">${GP.escapeHtml(u.department || "")}</small>
+            </td>
+            <td><span class="badge badge-navy">${GP.escapeHtml(u.employment_type || "Full-Time")}</span></td>
+            <td class="mono" style="font-weight:800;">${format00(hrs)}</td>
+            <td class="mono">${format00(regHrs)}</td>
+            <td class="mono" style="font-weight:800; color:${otHrs > 0 ? 'var(--red)' : 'inherit'};">${format00(otHrs)}</td>
+            <td class="mono" style="font-weight:800; color:var(--mos-indigo);">${wosCount} WOs</td>
+          </tr>
+        `;
+      }).join("");
+
+      const mosRows = buildMOSScoreboard();
+      document.getElementById("adminDeptSummaryTable").innerHTML = mosRows.map(r => `
+        <tr>
+          <td><b>${r.division}</b></td>
+          <td>${r.lead}</td>
+          <td>${r.activeStaff}</td>
+          <td class="mono" style="font-weight:700;">${r.loggedHours}</td>
+          <td class="mono" style="color:var(--mos-indigo); font-weight:700;">${r.loggedWOs}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("mosScoreboardMatrixTable").innerHTML = mosRows.map(r => `
+        <tr>
+          <td><b>${r.division}</b></td>
+          <td>${r.lead}</td>
+          <td>${r.activeStaff} Staff</td>
+          <td class="mono" style="font-weight:700;">${r.loggedHours} hrs</td>
+          <td>${r.otExceptions > 0 ? `<span class="badge badge-issue">${r.otExceptions} Alert(s)</span>` : `<span class="badge badge-ok">0 Alerts</span>`}</td>
+          <td class="mono" style="font-weight:700; color:var(--mos-indigo);">${r.loggedWOs} WOs</td>
+          <td class="mono" style="font-weight:700;">${formatCurrency(r.woVolume)}</td>
+          <td><span class="badge ${r.otExceptions > 0 ? 'badge-warn' : 'badge-ok'}">${r.otExceptions > 0 ? 'Review' : 'On Track'}</span></td>
+        </tr>
+      `).join("");
+
+     let exList = [];
+      
+      // 1. Pull in Flagged Fleet Vehicles
+      vehicleLogs.filter(v => (v.issues_count || 0) > 0).slice(0, 4).forEach(v => {
+        exList.push({ cat: "FLEET DEFECT", subj: `${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})`, det: v.discrepancies });
+      });
+      
+      // 2. Pull in Supervisor Audit Logs
+      auditLogs.slice(0, 5).forEach(a => {
+        exList.push({ cat: a.action_type, subj: a.supervisor_name, det: a.details });
+      });
+
+      // 3. THE BONUS: Pull in Quotes Due for Admin Review or CSR Follow-Up
+      const savedQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
+      savedQuotes.filter(q => q.status === "admin_review" || q.status === "follow_up").slice(0, 5).forEach(q => {
+        exList.push({
+          cat: q.status === "admin_review" ? "QUOTE RECEIPT" : "QUOTE FOLLOW-UP",
+          subj: `Quote #${q.quote_number} (${q.customer_name})`,
+          det: `<a href="quotes.html" class="map-link">${GP.escapeHtml(q.call_data?.notes || "Click to review in Quote Call-Back Portal")}</a>`
+        });
+      });
+
+      // Render it all to the table
+      document.getElementById("mosExceptionQueueTable").innerHTML = exList.map(x => `
+        <tr>
+          <td><span class="badge badge-issue">${GP.escapeHtml(x.cat)}</span></td>
+          <td><b>${GP.escapeHtml(x.subj)}</b></td>
+          <td>${x.cat === "QUOTE RECEIPT" || x.cat === "QUOTE FOLLOW-UP" ? x.det : GP.escapeHtml(x.det)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Zero exceptions flagged.</td></tr>`;
+
+      document.getElementById("adminUsersTable").innerHTML = usersList.map(u => {
+        let perms = [];
+        if (u.perm_time) perms.push("Time");
+        if (u.perm_commission !== false) perms.push("Comm");
+        if (u.perm_vehicle_submit) perms.push("SubVeh");
+        if (u.perm_admin) perms.push("Admin");
+        const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
+
+        return `
+          <tr>
+            <td><span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(u.employee_name)}</span></td>
+            <td>${GP.escapeHtml(u.department)}</td>
+            <td><span class="badge badge-purple">${GP.escapeHtml(u.employment_type || "Full-Time")}</span></td>
+            <td class="mono" style="font-weight:800;">${GP.escapeHtml(u.pin_code)}</td>
+            <td>${perms.map(p => `<span class="badge badge-navy" style="margin:1px;">${p}</span>`).join(" ")}</td>
+            <td>
+              <button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>
+              <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:4px 7px;" onclick="deleteUser('${u.id}', '${GP.escapeHtml(u.pin_code)}')">Del</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      document.getElementById("adminCommissionsTable").innerHTML = commissionLogs.map(c => {
+        const specs = [c.service_type, c.glass_spec !== "N/A" ? c.glass_spec : "", c.materials_used, c.helper_tech].filter(Boolean).join(" | ");
+        const bClass = c.status === "Approved" ? "badge-ok" : (c.status === "Flagged" ? "badge-issue" : "badge-warn");
+        const safeName = GP.escapeHtml(JSON.stringify(String(c.employee_name || "")));
+
+        return `
+          <tr>
+            <td>${GP.escapeHtml(c.work_date)}</td>
+            <td><span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(c.employee_name)}</span></td>
+            <td class="mono" style="font-weight:800;">${GP.escapeHtml(c.wo_number)}</td>
+            <td><b>${GP.escapeHtml(c.job_type)}</b></td>
+            <td style="font-size:11px;">${GP.escapeHtml(specs || "Standard")}</td>
+            <td class="mono" style="font-weight:800;">${c.job_amount > 0 ? formatCurrency(c.job_amount) : "-"}</td>
+            <td><span class="badge ${bClass}">${GP.escapeHtml(c.status || "Pending")}</span></td>
+            <td>
+              <button type="button" class="btn-outline" style="padding:3px 6px; color:var(--green);" onclick="setCommStatus('${c.id}', 'Approved')">Approve</button>
+              <button type="button" class="btn-outline" style="padding:3px 6px; color:var(--red);" onclick="deleteComm('${c.id}')">Del</button>
+            </td>
+          </tr>
+        `;
+      }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`;
+
+      document.getElementById("adminTimeTable").innerHTML = timeLogs.map(r => {
+        const mapPin = r.clock_in_coords ? `<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>` : "";
+        const isEdited = (r.notes || "").includes("[ADMIN EDIT") || (r.notes || "").includes("[ADMIN ADDED");
+        const safeName = GP.escapeHtml(JSON.stringify(String(r.employee_name || "")));
+        const hrs = getShiftHours(r);
+
+        return `
+          <tr>
+            <td>${GP.escapeHtml(r.work_date)}</td>
+            <td>
+              <span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(r.employee_name)}</span>
+              <br><small style="color:var(--muted);">${GP.escapeHtml(r.department || "")}</small>
+            </td>
+            <td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td>
+            <td class="mono">${r.break_minutes || 0}m</td>
+            <td class="mono" style="font-weight:800; font-size:14px;">${format00(hrs)}</td>
+            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || "Standard")} ${mapPin}</td>
+            <td style="font-size:12px;">
+              ${isEdited ? `<span class="badge badge-warn" style="margin-bottom:3px;">Audited Edit</span><br>` : ""}
+              ${GP.escapeHtml(r.notes || "")}
+            </td>
+            <td style="white-space:nowrap;">
+              <button type="button" class="btn-outline" style="padding:5px 9px; border-color:var(--navy); color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button>
+              <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button>
+            </td>
+          </tr>
+        `;
+      }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No time logs recorded yet.</td></tr>`;
+
+      document.getElementById("adminGarageTable").innerHTML = garageList.map(v => `
+        <tr>
+          <td><b>${GP.escapeHtml(v.unit_name)}</b></td>
+          <td>${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})</td>
+          <td><span class="badge badge-navy">${GP.escapeHtml(v.assigned_employee || 'Unassigned')}</span></td>
+          <td class="mono">${GP.escapeHtml(v.current_mileage || '0')} mi</td>
+          <td>${GP.escapeHtml(v.last_inspected_date || 'Never')}</td>
+          <td><span class="badge ${v.status === 'Flagged' ? 'badge-issue' : 'badge-ok'}">${GP.escapeHtml(v.status || 'Pending')}</span></td>
+          <td>
+            <button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadVehicleEditor('${v.id}')">Edit</button>
+            <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:4px 7px;" onclick="deleteVehicle('${v.id}')">Del</button>
+          </td>
+        </tr>
+      `).join("");
+
+      document.getElementById("adminAuditTable").innerHTML = auditLogs.slice(0, auditLimit).map(a => `
+        <tr>
+          <td style="font-size:11px; color:var(--muted); white-space:nowrap;">${GP.escapeHtml(a.timestamp)}</td>
+          <td><b>${GP.escapeHtml(a.supervisor_name)}</b></td>
+          <td><span class="badge badge-navy">${GP.escapeHtml(a.action_type)}</span></td>
+          <td style="font-size:12px; line-height:1.4;">${GP.escapeHtml(a.details)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="4" style="text-align:center; color:var(--muted);">No audit events recorded yet.</td></tr>`;
+      document.getElementById("auditLoadMoreContainer").classList.toggle("hidden", auditLogs.length <= auditLimit);
+    };
+
+    // ========================================================================
+    // INTERACTIVE EMPLOYEE WEEKLY BREAKDOWN MODAL LOGIC
+    // ========================================================================
+    window.openEmployeeBreakdownModal = function(empName) {
+      currentModalEmployeeName = empName;
+      const userObj = usersList.find(u => isSameEmployee(u.employee_name, empName)) || {
+        employee_name: empName,
+        department: "Operations",
+        employment_type: "Full-Time"
+      };
+
+      const empShifts = timeLogs.filter(t => isSameEmployee(t.employee_name, userObj.employee_name) && GP.isInCurrentWeek(t.work_date));
+      const empWos = commissionLogs.filter(c => isSameEmployee(c.employee_name, userObj.employee_name));
+
+      const totalHrs = empShifts.reduce((a, r) => a + getShiftHours(r), 0);
+      const regHrs = Math.min(40.0, totalHrs);
+      const otHrs = Math.max(0, totalHrs - 40.0);
+      const woVol = empWos.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
+
+      const isPT = userObj.employment_type === "Part-Time";
+      const cap = isPT ? 30.0 : 40.0;
+      const warn = isPT ? 25.0 : 35.0;
+      const pct = Math.min(100, Math.round((totalHrs / cap) * 100));
+
+      document.getElementById("modalEmpNameTitle").textContent = userObj.employee_name;
+      document.getElementById("modalEmpDeptSubtitle").textContent = `MultiplyOS Division: ${userObj.department || "Operations"}`;
+      document.getElementById("modalEmpTypeBadge").textContent = userObj.employment_type || "Full-Time";
+
+      document.getElementById("modalStatTotalHrs").textContent = `${format00(totalHrs)} hrs`;
+      document.getElementById("modalStatRegHrs").textContent = `${format00(regHrs)} hrs`;
+      document.getElementById("modalStatOtHrs").textContent = `${format00(otHrs)} hrs`;
+      document.getElementById("modalStatWos").textContent = `${empWos.length} (${formatCurrency(woVol)})`;
+
+      document.getElementById("modalCapProgressText").textContent = `${format00(totalHrs)} / ${format00(cap)} hrs (${pct}% of Weekly Cap)`;
+      const barEl = document.getElementById("modalCapProgressBar");
+      const badgeEl = document.getElementById("modalCapStatusBadge");
+      barEl.style.width = `${pct}%`;
+
+      if (totalHrs > cap) {
+        barEl.style.background = "var(--red)";
+        badgeEl.className = "badge badge-issue";
+        badgeEl.textContent = isPT ? "PT CAP EXCEEDED" : "OVERTIME ACTIVE";
+      } else if (totalHrs >= warn) {
+        barEl.style.background = "var(--amber)";
+        badgeEl.className = "badge badge-warn";
+        badgeEl.textContent = "APPROACHING LIMIT";
+      } else {
+        barEl.style.background = "var(--green)";
+        badgeEl.className = "badge badge-ok";
+        badgeEl.textContent = "ON TRACK";
+      }
+
+      const shiftsBody = document.getElementById("modalEmpShiftsBody");
+      if (empShifts.length === 0) {
+        shiftsBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No shifts logged for ${GP.escapeHtml(userObj.employee_name)} yet.</td></tr>`;
+      } else {
+        shiftsBody.innerHTML = empShifts.map(s => {
+          const hrs = getShiftHours(s);
+          return `
+            <tr>
+              <td>${GP.escapeHtml(s.work_date)}</td>
+              <td class="mono">${GP.escapeHtml(s.clock_in)} - ${GP.escapeHtml(s.clock_out)}</td>
+              <td class="mono">${s.break_minutes || 0}m</td>
+              <td class="mono" style="font-weight:800;">${format00(hrs)}</td>
+              <td style="font-size:11px;">${GP.escapeHtml(s.clock_in_location || s.notes || "Standard")}</td>
+              <td>
+                <button type="button" class="btn-outline" style="padding:3px 8px;" onclick="editShiftFromModal('${s.id}')">Edit Punch</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      const wosBody = document.getElementById("modalEmpWosBody");
+      if (empWos.length === 0) {
+        wosBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted);">No work orders logged for ${GP.escapeHtml(userObj.employee_name)} yet.</td></tr>`;
+      } else {
+        wosBody.innerHTML = empWos.map(w => {
+          const specs = [w.service_type, w.glass_spec !== "N/A" ? w.glass_spec : "", w.materials_used].filter(Boolean).join(" | ");
+          return `
+            <tr>
+              <td>${GP.escapeHtml(w.work_date)}</td>
+              <td class="mono" style="font-weight:800;">${GP.escapeHtml(w.wo_number)}</td>
+              <td><b>${GP.escapeHtml(w.job_type)}</b><br><small style="color:var(--muted);">${GP.escapeHtml(specs || "Standard")}</small></td>
+              <td class="mono" style="font-weight:700;">${w.job_amount > 0 ? formatCurrency(w.job_amount) : "-"}</td>
+              <td><span class="badge badge-ok">${GP.escapeHtml(w.status || "Pending")}</span></td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      document.getElementById("employeeBreakdownModal").classList.remove("hidden");
+    };
+
+    window.closeEmployeeBreakdownModal = function() {
+      document.getElementById("employeeBreakdownModal").classList.add("hidden");
+    };
+
+    window.editShiftFromModal = function(shiftId) {
+      closeEmployeeBreakdownModal();
+      showAdminSubTab('adminTimePane', document.getElementById('adminSubBtnTime'));
+      openEditTime(shiftId);
+    };
+
+    window.quickAddShiftForModalEmployee = function() {
+      const targetEmp = currentModalEmployeeName;
+      closeEmployeeBreakdownModal();
+      showAdminSubTab('adminTimePane', document.getElementById('adminSubBtnTime'));
+      openAddMissingShiftModal();
+      if (targetEmp) {
+        document.getElementById("addShiftEmpSelect").value = targetEmp;
+      }
+    };
+
+    // ========================================================================
+    // MANUAL ADMIN TIME PUNCH EDITOR & MISSING SHIFT CREATOR (WITH AUDIT DIFFS)
+    // ========================================================================
+    window.openEditTime = function(id) {
+      const r = timeLogs.find(x => String(x.id) === String(id));
+      if (!r) return;
+
+      document.getElementById("addMissingTimeCard").classList.add("hidden");
+      document.getElementById("editTimeId").value = r.id;
+      document.getElementById("editEmpName").value = r.employee_name;
+      document.getElementById("editDate").value = r.work_date;
+
+      const start24 = to24HourTime(r.clock_in);
+      const end24 = to24HourTime(r.clock_out);
+      document.getElementById("editStart").value = start24;
+      document.getElementById("editEnd").value = end24;
+      document.getElementById("editBreak").value = String(r.break_minutes || 0);
+      document.getElementById("editOrigHoursDisplay").textContent = format00(getShiftHours(r)) + " hrs";
+      document.getElementById("editAuditReason").value = "";
+
+      previewEditedHours();
+      const card = document.getElementById("editTimeCard");
+      card.classList.remove("hidden");
+      card.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.previewEditedHours = function() {
+      const start = document.getElementById("editStart").value;
+      const end = document.getElementById("editEnd").value;
+      const brk = document.getElementById("editBreak").value;
+      const newDec = computeDecimalHours(start, end, brk);
+      document.getElementById("editNewHoursDisplay").textContent = newDec + " hrs";
+    };
+
+    window.saveEditedTimeRecord = async function() {
+      const id = document.getElementById("editTimeId").value;
+      const date = document.getElementById("editDate").value;
+      const start = document.getElementById("editStart").value;
+      const end = document.getElementById("editEnd").value;
+      const brk = parseInt(document.getElementById("editBreak").value, 10) || 0;
+      const reason = document.getElementById("editAuditReason").value.trim();
+
+      if (!date || !start || !end) {
+        return alert("Please provide a valid Work Date, Clock-In Time, and Clock-Out Time.");
+      }
+      if (!reason) {
+        return alert("A Supervisor Audit Reason is required whenever manually editing an employee's time punch.");
+      }
+
+      const r = timeLogs.find(x => String(x.id) === String(id));
+      if (!r) return;
+
+      const oldSummary = `${r.work_date} (${r.clock_in} to ${r.clock_out}, ${r.break_minutes || 0}m break = ${format00(getShiftHours(r))} hrs)`;
+      const newDec = computeDecimalHours(start, end, brk);
+      const newSummary = `${date} (${start} to ${end}, ${brk}m break = ${newDec} hrs)`;
+      const supervisor = activeUser ? activeUser.employee_name : "Admin";
+      const updatedNotes = `[ADMIN EDIT by ${supervisor}: ${reason}] ${r.notes || ""}`.trim();
+
+      const updatedFields = {
+        work_date: date,
+        clock_in: start,
+        clock_out: end,
+        break_minutes: brk,
+        decimal_hours: newDec,
+        notes: updatedNotes
+      };
+
+      Object.assign(r, updatedFields);
+      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+
+      if (isCloudConnected) {
+        try {
+          await supabaseClient.from("time_logs").update(updatedFields).eq("id", r.id);
+        } catch (e) {}
+      }
+
+      await logAudit("EDIT_TIME", `Edited ${r.employee_name}: Changed ${oldSummary} -> ${newSummary} | Reason: ${reason}`);
+      document.getElementById("editTimeCard").classList.add("hidden");
+      showToast("Time punch updated & recorded in Supervisor Audit Log");
+      await loadAdminData();
+    };
+
+    window.openAddMissingShiftModal = function() {
+      document.getElementById("editTimeCard").classList.add("hidden");
+      document.getElementById("addShiftDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("addShiftReason").value = "";
+      const card = document.getElementById("addMissingTimeCard");
+      card.classList.remove("hidden");
+      card.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.saveAdminAddedShift = async function() {
+      const empName = document.getElementById("addShiftEmpSelect").value;
+      const date = document.getElementById("addShiftDate").value;
+      const start = document.getElementById("addShiftStart").value;
+      const end = document.getElementById("addShiftEnd").value;
+      const brk = parseInt(document.getElementById("addShiftBreak").value, 10) || 0;
+      const reason = document.getElementById("addShiftReason").value.trim();
+
+      if (!empName || !date || !start || !end) return alert("Please complete all shift fields.");
+      if (!reason) return alert("Please enter an Audit Reason for manually adding this shift.");
+
+      const empObj = usersList.find(u => isSameEmployee(u.employee_name, empName)) || { department: "Operations" };
+      const dec = computeDecimalHours(start, end, brk);
+      const supervisor = activeUser ? activeUser.employee_name : "Admin";
+
+      const record = {
+        employee_name: empName,
+        department: empObj.department,
+        work_date: date,
+        clock_in: start,
+        clock_out: end,
+        break_minutes: brk,
+        decimal_hours: dec,
+        clock_in_location: "Manual Admin Entry",
+        clock_out_location: "Manual Admin Entry",
+        notes: `[ADMIN ADDED by ${supervisor}: ${reason}]`
+      };
+
+      if (isCloudConnected) {
+        try {
+          let { error } = await supabaseClient.from("time_logs").insert([record]);
+          if (error) {
+            const fallback = {
+              employee_name: record.employee_name,
+              department: record.department,
+              work_date: record.work_date,
+              clock_in: record.clock_in,
+              clock_out: record.clock_out,
+              break_minutes: record.break_minutes,
+              decimal_hours: record.decimal_hours,
+              notes: record.notes
+            };
+            await supabaseClient.from("time_logs").insert([fallback]);
+          }
+        } catch (e) {}
+      }
+
+      record.id = Date.now();
+      timeLogs.unshift(record);
+      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+
+      await logAudit("ADMIN_ADD_TIME", `Added shift for ${empName} on ${date} (${start} to ${end}, ${brk}m break = ${dec} hrs) | Reason: ${reason}`);
+      document.getElementById("addMissingTimeCard").classList.add("hidden");
+      showToast("Shift added & logged in Supervisor Audit Trail");
+      await loadAdminData();
+    };
+
+    window.deleteTime = async function(id) {
+      const r = timeLogs.find(x => String(x.id) === String(id));
+      if (!r) return;
+      const reason = prompt(`Enter mandatory audit reason for deleting ${r.employee_name}'s time punch on ${r.work_date} (${format00(getShiftHours(r))} hrs):`);
+      if (!reason || !reason.trim()) return alert("Deletion cancelled: an audit reason is required to delete a time punch.");
+
+      if (isCloudConnected) {
+        try { await supabaseClient.from("time_logs").delete().eq("id", r.id); } catch (e) {}
+      }
+      timeLogs = timeLogs.filter(x => String(x.id) !== String(id));
+      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+      await logAudit("DELETE_TIME", `Deleted shift for ${r.employee_name} on ${r.work_date} (${r.clock_in}-${r.clock_out}, ${format00(getShiftHours(r))} hrs) | Reason: ${reason.trim()}`);
+      showToast("Time punch deleted & audited");
+      await loadAdminData();
+    };
+
+    // ========================================================================
+    // USER & ROLE MANAGEMENT CRUD
+    // ========================================================================
+    window.resetUserForm = function() {
+      document.getElementById("editingUserId").value = "";
+      document.getElementById("newEmpName").value = "";
+      document.getElementById("newEmpPin").value = "";
+      document.getElementById("userFormTitle").textContent = "Add or Update Employee Account";
+    };
+
+    window.loadUserEditor = function(pin) {
+      const u = usersList.find(x => String(x.pin_code) === String(pin));
+      if (!u) return;
+      document.getElementById("editingUserId").value = u.id;
+      document.getElementById("newEmpName").value = u.employee_name;
+      document.getElementById("newEmpDept").value = u.department;
+      document.getElementById("newEmpType").value = u.employment_type || "Full-Time";
+      document.getElementById("newEmpPin").value = u.pin_code;
+      document.getElementById("permTime").checked = !!u.perm_time;
+      document.getElementById("permCommission").checked = u.perm_commission !== false;
+      document.getElementById("permVehSubmit").checked = !!u.perm_vehicle_submit;
+      document.getElementById("permVehView").checked = !!u.perm_vehicle_view;
+      document.getElementById("permSafety").checked = !!u.perm_safety;
+      document.getElementById("permAdmin").checked = !!u.perm_admin;
+      document.getElementById("userFormTitle").textContent = `Editing: ${u.employee_name}`;
+      showAdminSubTab('adminUsersPane', document.getElementById('adminSubBtnUsers'));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.saveEmployeeUser = async function() {
+      const editId = document.getElementById("editingUserId").value;
+      const name = document.getElementById("newEmpName").value.trim();
+      const dept = document.getElementById("newEmpDept").value;
+      const empType = document.getElementById("newEmpType").value;
+      const pin = document.getElementById("newEmpPin").value.trim();
+
+      if (!name || !/^\d{4}$/.test(pin)) return alert("Enter Employee Name and 4-digit PIN.");
+      const dup = usersList.find(u => String(u.pin_code) === pin && String(u.id) !== String(editId));
+      if (dup) return alert(`PIN "${pin}" is already assigned to ${dup.employee_name}.`);
+
+      const obj = {
+        employee_name: name,
+        department: dept,
+        employment_type: empType,
+        pin_code: pin,
+        perm_time: document.getElementById("permTime").checked,
+        perm_commission: document.getElementById("permCommission").checked,
+        perm_vehicle_submit: document.getElementById("permVehSubmit").checked,
+        perm_vehicle_view: document.getElementById("permVehView").checked,
+        perm_safety: document.getElementById("permSafety").checked,
+        perm_admin: document.getElementById("permAdmin").checked
+      };
+
+      if (isCloudConnected) {
+        try {
+          if (editId) await supabaseClient.from("app_users").update(obj).eq("id", editId);
+          else await supabaseClient.from("app_users").insert([obj]);
+        } catch (e) {}
+      }
+      if (editId) {
+        const idx = usersList.findIndex(u => String(u.id) === String(editId));
+        if (idx >= 0) { obj.id = usersList[idx].id; usersList[idx] = obj; }
+      } else {
+        obj.id = Date.now();
+        usersList.push(obj);
+      }
+      localStorage.setItem("gp_app_users", JSON.stringify(usersList));
+      resetUserForm();
+      showToast("Employee saved");
+      await loadAdminData();
+    };
+
+    window.deleteUser = async function(id, pin) {
+      if (activeUser && String(activeUser.pin_code) === String(pin)) return alert("Cannot delete your own active account.");
+      if (!confirm("Remove this employee?")) return;
+      if (isCloudConnected) {
+        try { await supabaseClient.from("app_users").delete().eq("id", id); } catch (e) {}
+      }
+      usersList = usersList.filter(u => String(u.id) !== String(id));
+      localStorage.setItem("gp_app_users", JSON.stringify(usersList));
+      await loadAdminData();
+    };
+
+    // ========================================================================
+    // FLEET GARAGE CRUD
+    // ========================================================================
+    window.resetVehicleForm = function() {
+      document.getElementById("editingVehicleId").value = "";
+      document.getElementById("garageUnitName").value = "";
+      document.getElementById("garageMake").value = "";
+      document.getElementById("garageModel").value = "";
+      document.getElementById("garagePlate").value = "";
+      document.getElementById("garageVin").value = "";
+      document.getElementById("garageMileage").value = "";
+    };
+
+    window.loadVehicleEditor = function(id) {
+      const v = garageList.find(x => String(x.id) === String(id));
+      if (!v) return;
+      document.getElementById("editingVehicleId").value = v.id;
+      document.getElementById("garageUnitName").value = v.unit_name;
+      document.getElementById("garageAssignedEmp").value = v.assigned_employee || "Unassigned";
+      document.getElementById("garageMake").value = v.make;
+      document.getElementById("garageModel").value = v.model;
+      document.getElementById("garagePlate").value = v.license_plate;
+      document.getElementById("garageVin").value = v.vin_number || "";
+      document.getElementById("garageMileage").value = v.current_mileage || "";
+      showAdminSubTab('adminGaragePane', document.getElementById('adminSubBtnGarage'));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.saveGarageVehicle = async function() {
+      const editId = document.getElementById("editingVehicleId").value;
+      const obj = {
+        unit_name: document.getElementById("garageUnitName").value.trim(),
+        assigned_employee: document.getElementById("garageAssignedEmp").value,
+        make: document.getElementById("garageMake").value.trim(),
+        model: document.getElementById("garageModel").value.trim(),
+        license_plate: document.getElementById("garagePlate").value.trim(),
+        vin_number: document.getElementById("garageVin").value.trim(),
+        current_mileage: document.getElementById("garageMileage").value.trim() || "0",
+        last_inspected_date: "Never",
+        status: "Pending"
+      };
+      if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
+      if (isCloudConnected) {
+        try {
+          if (editId) await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId);
+          else await supabaseClient.from("fleet_vehicles").insert([obj]);
+        } catch (e) {}
+      }
+      if (editId) {
+        const idx = garageList.findIndex(v => String(v.id) === String(editId));
+        if (idx >= 0) { obj.id = garageList[idx].id; garageList[idx] = obj; }
+      } else {
+        obj.id = Date.now();
+        garageList.push(obj);
+      }
+      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+      resetVehicleForm();
+      showToast("Vehicle saved");
+      await loadAdminData();
+    };
+
+    window.deleteVehicle = async function(id) {
+      if (!confirm("Remove vehicle from garage?")) return;
+      if (isCloudConnected) {
+        try { await supabaseClient.from("fleet_vehicles").delete().eq("id", id); } catch (e) {}
+      }
+      garageList = garageList.filter(v => String(v.id) !== String(id));
+      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+      await loadAdminData();
+    };
+
+    // ========================================================================
+    // COMMISSIONS, SETTINGS & EXPORTS
+    // ========================================================================
+    window.setCommStatus = async function(id, st) {
+      const c = commissionLogs.find(x => String(x.id) === String(id));
+      if (c) c.status = st;
+      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+      if (isCloudConnected) {
+        try { await supabaseClient.from("commission_logs").update({ status: st }).eq("id", id); } catch (e) {}
+      }
+      if (c) await logAudit("WO_STATUS", `Marked WO ${c.wo_number} as ${st}`);
+      await loadAdminData();
+    };
+
+    window.deleteComm = async function(id) {
+      const c = commissionLogs.find(x => String(x.id) === String(id));
+      if (!confirm("Delete this Work Order?")) return;
+      if (isCloudConnected) {
+        try { await supabaseClient.from("commission_logs").delete().eq("id", id); } catch (e) {}
+      }
+      commissionLogs = commissionLogs.filter(x => String(x.id) !== String(id));
+      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+      if (c) await logAudit("DELETE_WO", `Deleted WO ${c.wo_number}`);
+      await loadAdminData();
+    };
+
+    window.saveTaxSettings = function() {
+      const fed = parseFloat(document.getElementById("settingFedTax").value) || 15.0;
+      const state = parseFloat(document.getElementById("settingStateTax").value) || 5.3;
+      localStorage.setItem("gp_tax_settings", JSON.stringify({ fedTax: fed, stateTax: state }));
+      showToast("Tax calculator defaults saved");
+    };
+
+    window.copyMOSScoreboardSnapshot = function() {
+      const rows = buildMOSScoreboard();
+      let txt = `GLASSPRO MULTIPLY-OS SCOREBOARD (${new Date().toLocaleDateString()})\n================================================\n`;
+      rows.forEach(r => {
+        txt += `• ${r.division} (Lead: ${r.lead}) | Staff: ${r.activeStaff} | Hrs: ${r.loggedHours} | WOs: ${r.loggedWOs} (${formatCurrency(r.woVolume)})\n`;
+      });
+      navigator.clipboard.writeText(txt).then(() => showToast("MOS Scorecard copied to clipboard"));
+    };
+
+    window.exportMOSSyncPayload = function() {
+      const blob = new Blob([JSON.stringify({
+        exported_at: new Date().toISOString(),
+        divisions: buildMOSScoreboard(),
+        work_orders: commissionLogs
+      }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "GlassPro_MultiplyOS_Payload.json";
+      a.click();
+    };
+
+    window.saveMOSConfig = function() {
+      localStorage.setItem("gp_mos_config", JSON.stringify({
+        workspaceUrl: document.getElementById("mosWorkspaceUrlInput").value.trim(),
+        webhookUrl: document.getElementById("mosWebhookUrlInput").value.trim()
+      }));
+      showToast("MultiplyOS settings saved");
+    };
+
+    function downloadCSV(filename, headers, rows) {
+      const csv = [headers.map(GP.csvCell).join(","), ...rows.map(row => row.map(GP.csvCell).join(","))].join("\r\n") + "\r\n";
+      const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    }
+
+    window.exportTimeCSV = function() {
+      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Break Mins", "Hours", "Geotag", "Notes"],
+        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || ""]));
+    };
+
+    window.exportCommissionsCSV = function() {
+      downloadCSV("GlassPro_WorkOrders.csv", ["Date", "Employee", "Department", "WO#", "Job Type", "Amount", "Location", "Glass Spec", "Status"],
+        commissionLogs.map(c => [c.work_date, c.employee_name, c.department, c.wo_number, c.job_type, c.job_amount || 0, c.service_type || "", c.glass_spec || "", c.status || ""]));
+    };
+
+    window.addEventListener("DOMContentLoaded", function() {
+      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
+      if (!saved) {
+        window.location.href = "index.html";
+        return;
+      }
+      try { activeUser = JSON.parse(saved); } catch (e) { window.location.href = "index.html"; return; }
+      if (!activeUser.perm_admin) { window.location.href = "index.html"; return; }
+      document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
+      document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+
+      window.handleAdminCsvUpload = function(event) {
+        const file = event.target.files[0];
+        if (!file || typeof Papa === "undefined") return;
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: async function(results) {
+            const existingQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
+            const existingNums = new Set(existingQuotes.map(q => Number(q.quote_number)));
+            const existingNames = new Set(existingQuotes.map(q => String(q.customer_name || "").trim().toUpperCase()));
+            const grouped = new Map();
+
+            results.data.forEach(row => {
+              const rawNum = row["Quote #"] || row["quote_number"];
+              if (!rawNum) return;
+              const qNum = parseInt(String(rawNum).replace(/\D/g, ""), 10);
+              if (isNaN(qNum)) return;
+              const cleanCurr = v => typeof v === "number" ? v : (parseFloat(String(v || "0").replace(/[^0-9.-]+/g, "")) || 0);
+
+              if (!grouped.has(qNum)) {
+                const cellVal = String(row["Cell"] || "").trim();
+                const phoneVal = String(row["Phone"] || "").trim();
+                grouped.set(qNum, {
+                  quote_number: qNum,
+                  quote_date: String(row["Quote Date"] || new Date().toLocaleDateString()).trim(),
+                  module: String(row["Module"] || "Auto").trim(),
+                  customer_name: String(row["Customer"] || "UNKNOWN CUSTOMER").trim(),
+                  phone: cellVal || phoneVal || "N/A",
+                  has_cell: Boolean(cellVal),
+                  subtotal: cleanCurr(row["Subtotal"]),
+                  tax: cleanCurr(row["Tax"]),
+                  total: cleanCurr(row["Total"]),
+                  csr: String(row["CSR"] || "SC: CALHOUN, STEPHANIE").trim(),
+                  parts: [],
+                  status: "open",
+                  contact_attempts: 0,
+                  call_data: null
+                });
+              }
+              const partCode = String(row["Part"] || "").trim();
+              const partDesc = String(row["Desc."] || "").trim();
+              if (partCode || partDesc) {
+                grouped.get(qNum).parts.push({
+                  category: String(row["Category"] || "").trim(),
+                  part: partCode,
+                  desc: partDesc,
+                  qty: parseFloat(row["Qty."]) || 1.0,
+                  total: cleanCurr(row["Part Total"])
+                });
+              }
+            });
+
+            let added = 0, rejected = 0;
+            grouped.forEach(cand => {
+              const normName = cand.customer_name.toUpperCase();
+              if (existingNums.has(cand.quote_number) || existingNames.has(normName)) {
+                rejected++;
+              } else {
+                existingQuotes.unshift(cand);
+                existingNums.add(cand.quote_number);
+                existingNames.add(normName);
+                added++;
+              }
+            });
+
+            localStorage.setItem("glasspro_quotes_v1", JSON.stringify(existingQuotes));
+            await logAudit("CSV_UPLOAD", `Uploaded ${file.name} in Tab 5: +${added} new quotes synced to Call-Back Board, ${rejected} duplicates blocked`);
+            showToast(`CSV Synced: +${added} Quotes Added, ${rejected} Duplicates Blocked`);
+            event.target.value = "";
+            await loadAdminData();
+          }
+        });
+      };
+
+      loadAdminData();
+    });
+  </script>
+</body>
+</html>
