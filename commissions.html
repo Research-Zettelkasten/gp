@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="portal-utils.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GLASSPRO | Commission & Work Order Tracker</title>
+
+  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
+  <meta name="theme-color" content="#06101E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+
+  <!-- Desktop Browser Tab Icon (Inline SVG) -->
+  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
+  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+
+  <script>
+    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
+    (function() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        // 1. Obsidian-Navy Background
+        const grad = ctx.createLinearGradient(0, 0, 512, 512);
+        grad.addColorStop(0, "#06101E");
+        grad.addColorStop(1, "#0B1F3A");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 2. Top Crimson Red Accent Bar
+        ctx.fillStyle = "#DC2626";
+        ctx.fillRect(0, 0, 512, 76);
+
+        // 3. Subtle Diagonal Glass Reflection Slash
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.beginPath();
+        ctx.moveTo(340, 76);
+        ctx.lineTo(460, 76);
+        ctx.lineTo(290, 512);
+        ctx.lineTo(170, 512);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Center "GP" Monogram
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GP", 256, 235);
+
+        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
+        ctx.fillStyle = "#DC2626";
+        ctx.beginPath();
+        ctx.roundRect(76, 365, 360, 74, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.fillText("GLASSPRO", 256, 404);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const appleLink = document.getElementById("gpAppleIcon");
+        if (appleLink) appleLink.href = pngDataUrl;
+
+        // 6. Inject Web App Manifest for Android/Desktop "Install App"
+        const manifest = {
+          name: "GLASSPRO Operations Portal",
+          short_name: "GLASSPRO",
+          start_url: "./index.html",
+          display: "standalone",
+          background_color: "#06101E",
+          theme_color: "#06101E",
+          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+      } catch (e) {}
+    })();
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --obsidian: #06101E; --navy: #0B1F3A; --navy-light: #16325B; --red: #DC2626;
+      --green: #059669; --green-bg: #ECFDF5; --amber: #D97706; --amber-bg: #FFFBEB;
+      --mos-indigo: #4F46E5; --mos-purple: #6D28D9; --white: #FFFFFF; --bg: #F4F7FB;
+      --border: #E2E8F0; --border-strong: #CBD5E1; --text: #0F172A; --text-secondary: #334155;
+      --muted: #64748B; --shadow-md: 0 4px 20px -2px rgba(6,16,30,0.06), 0 2px 6px -1px rgba(6,16,30,0.04);
+      --radius-md: 10px; --radius-lg: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .hidden { display: none !important; }
+
+    header {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
+      color: var(--white); border-bottom: 3px solid var(--red); padding: 14px 24px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+      box-shadow: 0 4px 20px rgba(6,16,30,0.25);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-badge { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); font-weight: 900; font-size: 14px; padding: 7px 12px; border-radius: 7px; letter-spacing: 1.2px; }
+    .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.4px; color: #F8FAFC; }
+    .brand-text p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-pill { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.14); color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
+    .mos-launch-pill { font-size: 11px; font-weight: 700; background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%); color: var(--white); padding: 6px 12px; border-radius: 6px; text-decoration: none; }
+    .user-pill { font-size: 12px; font-weight: 700; background: var(--white); color: var(--obsidian); padding: 6px 12px; border-radius: 6px; }
+    .logout-btn { background: var(--red); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+
+    .nav-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; overflow-x: auto; padding: 0 16px; }
+    .nav-btn { flex: 1; min-width: 125px; padding: 15px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.6px; text-align: center; text-decoration: none; display: inline-block; }
+    .nav-btn.active { color: var(--obsidian); border-bottom-color: var(--red); font-weight: 800; background: rgba(220,38,38,0.03); }
+
+    .mos-bar { background: linear-gradient(90deg, #EEF2FF 0%, #F5F3FF 100%); border: 1px solid #C7D2FE; border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .mos-tag { background: var(--mos-indigo); color: var(--white); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
+    .mos-sop-chip { background: var(--white); color: var(--mos-indigo); border: 1px solid #A5B4FC; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid rgba(15,23,42,0.08); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow-md); }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--obsidian); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    @media (min-width: 920px) { .desktop-split { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 20px; align-items: start; } }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .brand-text p { display: none; } .grid-2 { grid-template-columns: 1fr; gap: 10px; } }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+    input, select, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--white); color: var(--text); }
+    .btn { display: inline-block; width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 800; text-align: center; border: none; border-radius: 9px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.6px; }
+    .btn-navy { background: linear-gradient(135deg, var(--navy) 0%, var(--obsidian) 100%); color: var(--white); }
+    .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 8px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+
+    .spec-drawer { background: #F8FAFC; border: 1.5px dashed var(--navy-light); border-radius: 10px; padding: 16px; margin-top: 12px; margin-bottom: 14px; }
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
+    th { background: #F8FAFC; color: var(--text-secondary); text-align: left; padding: 11px 12px; text-transform: uppercase; font-size: 10px; font-weight: 800; border-bottom: 1.5px solid var(--border-strong); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .badge-ok { background: #D1FAE5; color: #065F46; }
+    .badge-issue { background: #FEE2E2; color: #991B1B; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-navy { background: #E0E7FF; color: #1E3A8A; }
+    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(6,16,30,0.65); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">GLASSPRO</div>
+      <div class="brand-text">
+        <h1>GLASS PRO BY AMERICAN GLASS</h1>
+        <p>Commission, Work Order & Specification Portal</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="dbStatus" class="hidden"></div>
+      <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
+        <span id="activeUserName" class="user-pill"></span>
+        <span id="activeUserTypeBadge" class="hidden"></span>
+        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="mainNavBar" class="nav-bar">
+    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn active">3. Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+  </nav>
+
+  <div class="container">
+
+    <div id="mosQuickBar" class="mos-bar hidden">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span class="mos-tag">MultiplyOS Playbooks</span>
+        <span id="mosDivisionLabel" style="font-size:12px; font-weight:700;">Division SOPs:</span>
+        <div id="mosSopChipsContainer" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+      <div style="font-size:11px; font-weight:700; color:var(--mos-indigo);">MOS Sync: Active</div>
+    </div>
+
+    <div class="desktop-split">
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>Log Work Order & Commission</span>
+            
+          </div>
+
+          <div class="grid-2" style="margin-bottom:12px;">
+            <div>
+              <label>Work Order # (WO#) *</label>
+              <input type="text" id="commWoNumber" placeholder="e.g. WO-10485" />
+            </div>
+            <div>
+              <label>Completion Date *</label>
+              <input type="date" id="commDate" />
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-bottom:12px;">
+            <div>
+              <label>Job Type / Division Category *</label>
+              <select id="commJobType">
+                <option value="Auto - Windshield Replacement">Auto - Windshield Replacement</option>
+                <option value="Auto - Windshield + ADAS Calibration">Auto - Windshield + ADAS Calibration</option>
+                <option value="Auto - Static / Dynamic ADAS Only">Auto - Static / Dynamic ADAS Only</option>
+                <option value="Auto - Tempered Door / Back Glass">Auto - Tempered Door / Back Glass</option>
+                <option value="Auto - Rock Chip Repair">Auto - Rock Chip Repair</option>
+                <option value="Residential - Insulated Glass Unit (IGU)">Residential - Insulated Glass Unit (IGU)</option>
+                <option value="Residential - Custom Shower Enclosure">Residential - Custom Shower Enclosure</option>
+                <option value="Residential - Mirror / Tabletop / Shelving">Residential - Mirror / Tabletop / Shelving</option>
+                <option value="Commercial - Storefront / Door Service">Commercial - Storefront / Door Service</option>
+                <option value="Commercial - Heavy Glass / Curtain Wall">Commercial - Heavy Glass / Curtain Wall</option>
+                <option value="Sales - Quote Follow-Up Conversion">Sales - Quote Follow-Up Conversion</option>
+              </select>
+            </div>
+            <div>
+              <label>Commission / Job Value ($) (Optional)</label>
+              <input type="number" id="commAmount" placeholder="0.00" step="0.01" />
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <button type="button" id="btnToggleSpecDrawer" class="btn-outline" style="width:100%; padding:10px;" onclick="toggleSpecDrawer()">
+              + Open Optional Job Specification Tab (Parts, Location, Split Tech)
+            </button>
+          </div>
+
+          <div id="commSpecDrawer" class="spec-drawer hidden">
+            <div class="card-title" style="font-size:12px; margin-bottom:10px;">
+              <span>Job Specifications & Technical Details</span>
+              <span class="badge badge-navy">Optional</span>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:10px;">
+              <div>
+                <label>Service Location</label>
+                <select id="commServiceType">
+                  <option value="In-Shop">In-Shop (Valdosta Bay)</option>
+                  <option value="Mobile Route">Mobile Field Route</option>
+                  <option value="Commercial Job Site">Commercial Job Site</option>
+                </select>
+              </div>
+              <div>
+                <label>Glass / Part Specification</label>
+                <select id="commGlassSpec">
+                  <option value="N/A">Standard / N/A</option>
+                  <option value="OEE / Aftermarket">OEE / Aftermarket</option>
+                  <option value="OEM Dealer Glass">OEM Dealer Glass</option>
+                  <option value="Acoustic / Heated / HUD">Acoustic / Heated / HUD</option>
+                  <option value="Custom Tempered / Laminated">Custom Tempered / Laminated</option>
+                  <option value="Low-E Double Pane IGU">Low-E Double Pane IGU</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:10px;">
+              <div>
+                <label>Molding / Hardware / Urethane Used</label>
+                <input type="text" id="commMaterials" placeholder="e.g. Universal molding, 2 tubes Dow, clips" />
+              </div>
+              <div>
+                <label>Helper / Split Commission Tech</label>
+                <select id="commHelperTech">
+                  <option value="Solo (100%)">Solo Job (100%)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label>Additional Specification Notes / Customer Details</label>
+              <textarea id="commSpecNotes" rows="2" placeholder="Pinchweld notes, recalibration target details, custom measurements..."></textarea>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-navy" onclick="submitCommissionLog()">Submit Work Order to MultiplyOS Queue</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>My Logged Work Orders</span>
+            <span id="myCommCountBadge" class="badge badge-navy">0 Logged</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>WO#</th>
+                  <th>Job Type & Specs</th>
+                  <th>Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="myCommissionTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mosSopModal" class="modal-backdrop hidden" onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="modal-card">
+      <div class="card-title">
+        <span id="mosModalTitle">MultiplyOS Standard Operating Procedure</span>
+        <span class="badge badge-purple">MOS Playbook</span>
+      </div>
+      <div id="mosModalBody" style="font-size:13px; line-height:1.65; color:var(--text-secondary); margin-bottom:18px;"></div>
+      <div style="text-align:right;">
+        <button type="button" class="btn btn-navy" style="width:auto; padding:10px 22px;" onclick="document.getElementById('mosSopModal').classList.add('hidden')">Acknowledge & Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Saved</div>
+
+  <script>
+    const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+
+    let supabaseClient = null;
+    let isCloudConnected = false;
+    try {
+      if (typeof window.supabase !== "undefined" && SUPABASE_URL.startsWith("https://")) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isCloudConnected = true;
+        document.getElementById("dbStatus").innerHTML = `<span class="status-dot"></span><span>Supabase configured (not verified)</span>`;
+      }
+    } catch (e) {}
+
+    const MOS_SOPS = {
+      "Operations": [{ title: "SOP-OP1: Daily Dispatch & Queue Audit", body: "1. Verify all morning technicians have clocked in by 8:00 AM.<br>2. Audit MultiplyOS Work Order queue and confirm glass parts are inspected." }],
+      "Front Office / Sales": [{ title: "SOP-SL3: Windshield Quote Follow-Up Script", body: "1. Contact unbooked auto and residential glass quotes within 24 hours.<br>2. Log converted Work Order # (WO#) upon scheduling." }],
+      "Auto Glass": [{ title: "SOP-AG1: Pre-Install Walk-Around & ADAS", body: "1. Inspect vehicle for pre-existing dash lights or scratches before removal.<br>2. Log OEM/OEE glass spec and urethane batch in the WO Specification drawer." }],
+      "Residential": [{ title: "SOP-RES1: Custom Shower & IGU Install", body: "1. Verify out-of-square tolerances and hardware finish.<br>2. Log Low-E / Tempered spec and helper split tech." }],
+      "Commercial": [{ title: "SOP-COM1: Storefront & Job Site Safety", body: "1. Verify PPE, setting blocks, and commercial door closer tension before sign-off." }]
+    };
+
+    let activeUser = null;
+    let usersList = [];
+    let commissionLogs = [];
+
+    function formatCurrency(num) { return "$" + Math.max(0, parseFloat(num) || 0).toFixed(2); }
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg; t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+
+    window.logoutPortal = function() {
+      localStorage.removeItem("gp_session_user");
+      sessionStorage.removeItem("gp_session_user");
+      window.location.href = "index.html";
+    };
+
+    window.toggleSpecDrawer = function() {
+      const d = document.getElementById("commSpecDrawer");
+      const btn = document.getElementById("btnToggleSpecDrawer");
+      const isHidden = d.classList.contains("hidden");
+      d.classList.toggle("hidden", !isHidden);
+      btn.textContent = isHidden ? "- Hide Optional Job Specification Tab" : "+ Open Optional Job Specification Tab (Parts, Location, Split Tech)";
+    };
+
+    window.showSopModal = function(dept, idx) {
+      const sops = MOS_SOPS[dept] || MOS_SOPS["Operations"];
+      const sop = sops[idx];
+      if (!sop) return;
+      document.getElementById("mosModalTitle").textContent = sop.title;
+      document.getElementById("mosModalBody").innerHTML = sop.body;
+      document.getElementById("mosSopModal").classList.remove("hidden");
+    };
+
+    window.submitCommissionLog = async function() {
+      const wo = document.getElementById("commWoNumber").value.trim();
+      const date = document.getElementById("commDate").value;
+      const jobType = document.getElementById("commJobType").value;
+      const amount = parseFloat(document.getElementById("commAmount").value) || 0;
+      const serviceType = document.getElementById("commServiceType").value;
+      const glassSpec = document.getElementById("commGlassSpec").value;
+      const materials = document.getElementById("commMaterials").value.trim();
+      const helperTech = document.getElementById("commHelperTech").value;
+      const specNotes = document.getElementById("commSpecNotes").value.trim();
+
+      if (!wo || !date) return alert("Please enter the Work Order # (WO#) and Completion Date.");
+      if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) return alert("Enter a valid nonnegative job amount.");
+      if (commissionLogs.some(c => c.wo_number === wo.toUpperCase() && c.employee_name === activeUser.employee_name && c.work_date === date)) return alert("This work order is already logged for this date.");
+
+      const rec = {
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        work_date: date,
+        wo_number: wo.toUpperCase(),
+        job_type: jobType,
+        job_amount: amount,
+        service_type: serviceType,
+        glass_spec: glassSpec,
+        materials_used: materials,
+        helper_tech: helperTech,
+        spec_notes: specNotes,
+        status: "Pending Review"
+      };
+
+      let cloudSaved = false;
+      if (isCloudConnected) {
+        try {
+          const { error } = await supabaseClient.from("commission_logs").insert([rec]);
+          cloudSaved = !error;
+        } catch (e) { console.warn("Commission cloud sync failed", e); }
+      }
+      rec.id = Date.now();
+      commissionLogs.unshift(rec);
+      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+
+      document.getElementById("commWoNumber").value = "";
+      document.getElementById("commAmount").value = "";
+      document.getElementById("commMaterials").value = "";
+      document.getElementById("commSpecNotes").value = "";
+      showToast(`Work Order ${rec.wo_number} saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
+      await loadCommissionsData();
+    };
+
+    async function loadCommissionsData() {
+      commissionLogs = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
+      usersList = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
+      if (isCloudConnected) {
+        try {
+          const cRes = await supabaseClient.from("commission_logs").select("*").order("id", { ascending: false });
+          if (cRes.data) {
+            const keys = new Set(cRes.data.map(c => `${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`));
+            commissionLogs = [...cRes.data, ...commissionLogs.filter(c => !keys.has(`${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`))];
+            localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+          }
+          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
+          if (uRes.data && uRes.data.length > 0) usersList = uRes.data;
+        } catch (e) {}
+      }
+
+      const helperSelect = document.getElementById("commHelperTech");
+      let hHtml = `<option value="Solo (100%)">Solo Job (100%)</option>`;
+      usersList.forEach(u => {
+        if (u.employee_name !== activeUser.employee_name) {
+          hHtml += `<option value="Split w/ ${GP.escapeHtml(u.employee_name)}">Split w/ ${GP.escapeHtml(u.employee_name)}</option>`;
+        }
+      });
+      helperSelect.innerHTML = hHtml;
+
+      const myComm = commissionLogs.filter(c => (c.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase());
+      document.getElementById("myCommCountBadge").textContent = `${myComm.length} Logged`;
+
+      const tbody = document.getElementById("myCommissionTable");
+      if (myComm.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = myComm.map(c => {
+        const specs = [c.service_type, c.glass_spec !== "N/A" ? c.glass_spec : "", c.materials_used, c.helper_tech !== "Solo (100%)" ? c.helper_tech : "", c.spec_notes].filter(Boolean).join(" | ");
+        const badgeClass = c.status === "Approved" ? "badge-ok" : (c.status === "Flagged" ? "badge-issue" : "badge-warn");
+        return `
+          <tr>
+            <td>${GP.escapeHtml(c.work_date)}</td>
+            <td class="mono" style="font-weight:700;">${GP.escapeHtml(c.wo_number)}</td>
+            <td><b>${GP.escapeHtml(c.job_type)}</b><br><small style="color:var(--muted);">${GP.escapeHtml(specs || "Standard")}</small></td>
+            <td class="mono" style="font-weight:700;">${c.job_amount > 0 ? formatCurrency(c.job_amount) : "-"}</td>
+            <td><span class="badge ${badgeClass}">${GP.escapeHtml(c.status || "Pending")}</span></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
+      if (!saved) { window.location.href = "index.html"; return; }
+      activeUser = JSON.parse(saved);
+
+      document.getElementById("commDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
+      document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+
+      document.getElementById("navLinkFleet").classList.toggle("hidden", !activeUser.perm_vehicle_submit && !activeUser.perm_vehicle_view);
+      document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
+
+      const sops = MOS_SOPS[activeUser.department] || MOS_SOPS["Operations"];
+      document.getElementById("mosDivisionLabel").textContent = `${activeUser.department} Playbooks:`;
+      document.getElementById("mosSopChipsContainer").innerHTML = sops.map((s, idx) =>
+        `<button type="button" class="mos-sop-chip" onclick="showSopModal('${activeUser.department}', ${idx})">${s.title}</button>`
+      ).join("");
+
+      loadCommissionsData();
+    });
+  </script>
+</body>
+</html>
