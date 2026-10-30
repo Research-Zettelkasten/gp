@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="portal-utils.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GLASSPRO | Vehicle Inspection & Safety Portal</title>
+
+  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
+  <meta name="theme-color" content="#06101E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+
+  <!-- Desktop Browser Tab Icon (Inline SVG) -->
+  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
+  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+
+  <script>
+    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
+    (function() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        // 1. Obsidian-Navy Background
+        const grad = ctx.createLinearGradient(0, 0, 512, 512);
+        grad.addColorStop(0, "#06101E");
+        grad.addColorStop(1, "#0B1F3A");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 2. Top Crimson Red Accent Bar
+        ctx.fillStyle = "#DC2626";
+        ctx.fillRect(0, 0, 512, 76);
+
+        // 3. Subtle Diagonal Glass Reflection Slash
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.beginPath();
+        ctx.moveTo(340, 76);
+        ctx.lineTo(460, 76);
+        ctx.lineTo(290, 512);
+        ctx.lineTo(170, 512);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Center "GP" Monogram
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GP", 256, 235);
+
+        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
+        ctx.fillStyle = "#DC2626";
+        ctx.beginPath();
+        ctx.roundRect(76, 365, 360, 74, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.fillText("GLASSPRO", 256, 404);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const appleLink = document.getElementById("gpAppleIcon");
+        if (appleLink) appleLink.href = pngDataUrl;
+
+        // 6. Inject Web App Manifest for Android/Desktop "Install App"
+        const manifest = {
+          name: "GLASSPRO Operations Portal",
+          short_name: "GLASSPRO",
+          start_url: "./index.html",
+          display: "standalone",
+          background_color: "#06101E",
+          theme_color: "#06101E",
+          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+      } catch (e) {}
+    })();
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --obsidian: #06101E; --navy: #0B1F3A; --navy-light: #16325B; --red: #DC2626;
+      --green: #059669; --mos-indigo: #4F46E5; --mos-purple: #6D28D9; --white: #FFFFFF;
+      --bg: #F4F7FB; --border: #E2E8F0; --border-strong: #CBD5E1; --text: #0F172A;
+      --text-secondary: #334155; --muted: #64748B; --shadow-md: 0 4px 20px -2px rgba(6,16,30,0.06);
+      --radius-md: 10px; --radius-lg: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .hidden { display: none !important; }
+
+    header {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
+      color: var(--white); border-bottom: 3px solid var(--red); padding: 14px 24px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-badge { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); font-weight: 900; font-size: 14px; padding: 7px 12px; border-radius: 7px; letter-spacing: 1.2px; }
+    .brand-text h1 { font-size: 16px; font-weight: 800; color: #F8FAFC; }
+    .brand-text p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-pill { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.14); color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; }
+    .mos-launch-pill { font-size: 11px; font-weight: 700; background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%); color: var(--white); padding: 6px 12px; border-radius: 6px; text-decoration: none; }
+    .user-pill { font-size: 12px; font-weight: 700; background: var(--white); color: var(--obsidian); padding: 6px 12px; border-radius: 6px; }
+    .logout-btn { background: var(--red); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+
+    .nav-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; overflow-x: auto; padding: 0 16px; }
+    .nav-btn { flex: 1; min-width: 125px; padding: 15px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.6px; text-align: center; text-decoration: none; display: inline-block; }
+    .nav-btn.active { color: var(--obsidian); border-bottom-color: var(--red); font-weight: 800; background: rgba(220,38,38,0.03); }
+
+    .sub-bar { display: flex; background: #E2E8F0; border-radius: var(--radius-md); padding: 5px; margin-bottom: 18px; gap: 5px; }
+    .sub-btn { flex: 1; padding: 10px 12px; border: none; background: transparent; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 7px; text-transform: uppercase; }
+    .sub-btn.active { background: var(--obsidian); color: var(--white); font-weight: 800; }
+
+    .container { max-width: 1140px; margin: 20px auto; padding: 0 16px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid rgba(15,23,42,0.08); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow-md); }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--obsidian); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .brand-text p { display: none; } .grid-3, .grid-2 { grid-template-columns: 1fr; gap: 10px; } .sub-bar { display: grid; grid-template-columns: 1fr; } }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+    input, select, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--white); color: var(--text); }
+    input[readonly] { background: #F1F5F9; color: #475569; font-weight: 700; }
+
+    .btn { display: inline-block; width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 800; text-align: center; border: none; border-radius: 9px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.6px; }
+    .btn-red { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); }
+    .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+
+    .section-banner { background: linear-gradient(90deg, var(--obsidian) 0%, var(--navy) 100%); color: var(--white); padding: 12px 16px; border-radius: 8px; font-weight: 800; font-size: 12px; margin: 20px 0 10px 0; text-transform: uppercase; }
+    .check-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; background: var(--white); }
+    .check-item.flagged { border-color: var(--red); background: #FEF2F2; }
+    .check-item.passed { border-color: #6EE7B7; }
+    .check-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .check-question { font-size: 14px; font-weight: 600; flex: 1; min-width: 220px; }
+    .choice-group { display: flex; gap: 6px; }
+    .choice-btn { padding: 9px 16px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border-strong); background: var(--bg); border-radius: 6px; cursor: pointer; min-width: 60px; }
+    @media (max-width: 650px) { .choice-group { width: 100%; } .choice-btn { flex: 1; padding: 10px 0; } }
+    .choice-btn.selected-yes { background: var(--obsidian); color: var(--white); border-color: var(--obsidian); }
+    .choice-btn.selected-no { background: var(--red); color: var(--white); border-color: var(--red); }
+    .choice-btn.selected-na { background: #64748B; color: var(--white); border-color: #64748B; }
+    .issue-drawer { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-strong); display: none; }
+    .issue-drawer.open { display: block; }
+
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
+    th { background: #F8FAFC; color: var(--text-secondary); text-align: left; padding: 11px 12px; text-transform: uppercase; font-size: 10px; font-weight: 800; border-bottom: 1.5px solid var(--border-strong); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .badge-ok { background: #D1FAE5; color: #065F46; }
+    .badge-issue { background: #FEE2E2; color: #991B1B; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
+    @media print { header, .nav-bar, .sub-bar, .no-print { display: none !important; } body { background: white; padding: 0; } .container { max-width: 100%; margin: 0; padding: 0; } .print-sheet { display: block !important; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">GLASSPRO</div>
+      <div class="brand-text">
+        <h1>GLASS PRO BY AMERICAN GLASS</h1>
+        <p>Fleet Garage Inspection & Workplace Safety Portal</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="dbStatus" class="hidden"></div>
+      <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
+        <span id="activeUserName" class="user-pill">Brandon Faircloth (Operations)</span>
+        <span id="activeUserTypeBadge" class="hidden"></span>
+        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="mainNavBar" class="nav-bar">
+    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn active">4. Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+  </nav>
+
+  <div class="container">
+
+    <div class="sub-bar no-print">
+      <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">1. 35-Point Vehicle Check</button>
+      <button type="button" id="subBtnHistory" class="sub-btn" onclick="switchFleetTab('historyPane', this)">2. Fleet Inspection History</button>
+      <button type="button" id="subBtnSafety" class="sub-btn" onclick="switchFleetTab('safetyPane', this)">3. Safety & MultiplyOS SOPs</button>
+    </div>
+
+    <!-- PANE 1: 35-POINT VEHICLE INSPECTION -->
+    <div id="inspectPane" class="no-print">
+      <div class="card">
+        <div class="card-title">
+          <span>Fleet Vehicle Inspection</span>
+          <button type="button" class="btn-outline" onclick="markAllPassing()">Mark All 35 Passing</button>
+        </div>
+
+        <div style="margin-bottom:14px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid var(--border-strong);">
+          <label style="color:var(--red);">Select Assigned or Spare Fleet Vehicle:</label>
+          <select id="garageVehicleSelect" onchange="onSelectGarageVehicle()">
+            <option value="">-- Choose Assigned or Spare Vehicle --</option>
+          </select>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div>
+            <label>Inspection Date *</label>
+            <input type="date" id="vDate" />
+          </div>
+          <div>
+            <label>License Plate</label>
+            <input type="text" id="vPlate" readonly />
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div>
+            <label>Make</label>
+            <input type="text" id="vMake" readonly />
+          </div>
+          <div>
+            <label>Model</label>
+            <input type="text" id="vModel" readonly />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Current Odometer Mileage *</label>
+            <input type="number" id="vMileage" placeholder="Enter current mileage" />
+          </div>
+          <div>
+            <label>VIN Number</label>
+            <input type="text" id="vVin" readonly />
+          </div>
+        </div>
+      </div>
+
+      <div id="checklistContainer"></div>
+
+      <div class="card">
+        <div class="card-title">Discrepancies & Additional Comments</div>
+        <div style="margin-bottom:12px;">
+          <label>Discrepancies found during inspection:</label>
+          <textarea id="vDiscrepancies" rows="2" placeholder="Describe any issues or repairs needed..."></textarea>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label>Additional Comments:</label>
+          <textarea id="vComments" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+        <button type="button" class="btn btn-red" onclick="submitVehicleInspection()">Submit Inspection & Sync</button>
+      </div>
+    </div>
+
+    <!-- PANE 2: FLEET INSPECTION HISTORY -->
+    <div id="historyPane" class="hidden no-print">
+      <div class="card">
+        <div class="card-title">Fleet Inspection History</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Driver</th>
+                <th>Vehicle & Plate</th>
+                <th>Mileage</th>
+                <th>Status</th>
+                <th>Official Report</th>
+              </tr>
+            </thead>
+            <tbody id="employeeVehicleInfoTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE 3: WORKPLACE & FIELD SAFETY SOPs -->
+    <div id="safetyPane" class="hidden no-print">
+      <div class="card">
+        <div class="card-title">
+          <span>Workplace Safety & MultiplyOS Standard Operating Procedures</span>
+          <span class="badge badge-purple">MultiplyOS Aligned</span>
+        </div>
+        <div class="grid-3">
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">1. Required PPE Compliance</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - ANSI Z87.1 safety glasses required in shop and field.<br>
+              - Kevlar sleeves and cut-resistant gloves for raw glass.<br>
+              - Closed-toe safety footwear required on all routes.
+            </p>
+          </div>
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">2. Fleet & Mobile Rig SOP</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - Complete 35-point Weekly Vehicle Inspection prior to route.<br>
+              - Verify glass racks, tie-downs, and vacuum cups daily.<br>
+              - Flagged vehicle defects automatically alert Operations.
+            </p>
+          </div>
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">3. MultiplyOS Handbook Sign-Off</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - Clock-in/out requires high-precision street geotagging.<br>
+              - Full-Time (&gt;35h) and Part-Time (&gt;25h) require supervisor approval prior to exceeding cap.<br>
+              - Log all completed WOs daily for scoreboard accuracy.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRINTABLE OFFICIAL REPORT AREA -->
+    <div id="printReportArea" class="hidden print-sheet"></div>
+  </div>
+
+  <div id="toast">Saved</div>
+
+  <script>
+    const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+
+    let supabaseClient = null;
+    let isCloudConnected = false;
+    try {
+      if (typeof window.supabase !== "undefined" && SUPABASE_URL.startsWith("https://")) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isCloudConnected = true;
+        document.getElementById("dbStatus").innerHTML = `<span class="status-dot"></span><span>Supabase configured (not verified)</span>`;
+      }
+    } catch (e) {}
+
+    const DEFAULT_GARAGE = [
+      { id: 1, unit_name: "Truck 1 - Auto", make: "Ford", model: "Transit", license_plate: "TAG-101", vin_number: "1FTNE3Y85GK10001", assigned_employee: "Lead Tech Employee", current_mileage: "45200", last_inspected_date: "Never", status: "Pending" },
+      { id: 2, unit_name: "Truck 2 - Residential", make: "Chevrolet", model: "Express", license_plate: "TAG-102", vin_number: "1GBGG31K3E110002", assigned_employee: "Brandon Faircloth", current_mileage: "62100", last_inspected_date: "Never", status: "Pending" },
+      { id: 3, unit_name: "Van 3 - Commercial", make: "Ram", model: "ProMaster", license_plate: "TAG-103", vin_number: "3C6TRVFG7GE10003", assigned_employee: "Unassigned", current_mileage: "28400", last_inspected_date: "Never", status: "Pending" }
+    ];
+
+    const INSPECTION_SECTIONS = [
+      {
+        title: "Exterior Inspection (360 Walk-around)",
+        items: [
+          { id: "q1", text: "Is the vehicle exterior free of visible damage?", passVal: "Yes" },
+          { id: "q2", text: "Are there any signs of fluid leakage underneath vehicle?", passVal: "No" },
+          { id: "q3", text: "Is the vehicle clean in appearance?", passVal: "Yes" },
+          { id: "q4", text: "Are all four tires properly inflated to proper PSI?", passVal: "Yes" },
+          { id: "q5", text: "Is the tire tread depth and tread wearing acceptable?", passVal: "Yes" },
+          { id: "q6", text: "Are wiper blades adequate?", passVal: "Yes" }
+        ]
+      },
+      {
+        title: "Interior Inspection",
+        items: [
+          { id: "q7", text: "Is the vehicle's interior clean of debris?", passVal: "Yes" },
+          { id: "q8", text: "Is the interior of the vehicle free of visible damage?", passVal: "Yes" },
+          { id: "q9", text: "Are safety belts working properly?", passVal: "Yes" },
+          { id: "q10", text: "Is a first aid kit available?", passVal: "Yes" },
+          { id: "q11", text: "Is an emergency/accident kit available?", passVal: "Yes" },
+          { id: "q12", text: "Is the vehicle registration easily accessible?", passVal: "Yes" },
+          { id: "q13", text: "Is the vehicle insurance information accessible?", passVal: "Yes" },
+          { id: "q14", text: "Is a spare tire available and inflated?", passVal: "Yes" },
+          { id: "q15", text: "Is there a jack system available?", passVal: "Yes" },
+          { id: "q16", text: "Is the owner's manual available?", passVal: "Yes" }
+        ]
+      },
+      {
+        title: "Operating Inspection",
+        items: [
+          { id: "q17", text: "Are the headlights working?", passVal: "Yes" },
+          { id: "q18", text: "Are the taillights working?", passVal: "Yes" },
+          { id: "q19", text: "Are the brake lights working?", passVal: "Yes" },
+          { id: "q20", text: "Are the back-up lights working?", passVal: "Yes" },
+          { id: "q21", text: "Are the interior lights working?", passVal: "Yes" },
+          { id: "q22", text: "Are the windshield wipers working properly?", passVal: "Yes" },
+          { id: "q23", text: "Is the horn working?", passVal: "Yes" },
+          { id: "q24", text: "Are the proper mirrors available? (Rearview, side, instructor)", passVal: "Yes" },
+          { id: "q25", text: "Is the parking brake working?", passVal: "Yes" },
+          { id: "q26", text: "Do the turn signals work?", passVal: "Yes" },
+          { id: "q27", text: "Is the sun visor operable?", passVal: "Yes" },
+          { id: "q28", text: "Does the heating/cooling system work properly?", passVal: "Yes" }
+        ]
+      },
+      {
+        title: "Under-the-hood Inspection",
+        items: [
+          { id: "q29", text: "Is the engine oil within range?", passVal: "Yes" },
+          { id: "q30", text: "Is the windshield wiper fluid within range?", passVal: "Yes" },
+          { id: "q31", text: "Is the power steering fluid within range?", passVal: "Yes" },
+          { id: "q32", text: "Is the transmission fluid within range?", passVal: "Yes" },
+          { id: "q33", text: "Is the brake fluid within proper levels?", passVal: "Yes" },
+          { id: "q34", text: "Is the coolant within proper levels?", passVal: "Yes" },
+          { id: "q35", text: "Do all belts appear in good condition?", passVal: "Yes" }
+        ]
+      }
+    ];
+
+    let activeUser = null;
+    let garageList = [...DEFAULT_GARAGE];
+    let vehicleLogs = [];
+    let checklistAnswers = {};
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg; t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+
+    window.logoutPortal = function() {
+      localStorage.removeItem("gp_session_user");
+      sessionStorage.removeItem("gp_session_user");
+      window.location.href = "index.html";
+    };
+
+    window.switchFleetTab = function(paneId, btn) {
+      document.getElementById("inspectPane").classList.add("hidden");
+      document.getElementById("historyPane").classList.add("hidden");
+      document.getElementById("safetyPane").classList.add("hidden");
+      document.getElementById("printReportArea").classList.add("hidden");
+      document.getElementById(paneId).classList.remove("hidden");
+      document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+    };
+
+    function renderChecklistUI() {
+      const container = document.getElementById("checklistContainer");
+      let html = "";
+      INSPECTION_SECTIONS.forEach(sec => {
+        html += `<div class="section-banner">${sec.title}</div>`;
+        sec.items.forEach(item => {
+          checklistAnswers[item.id] = { status: "", dateCorrected: "", comment: "", passVal: item.passVal, text: item.text };
+          html += `
+            <div class="check-item" id="row_${item.id}">
+              <div class="check-row">
+                <div class="check-question">
+                  ${item.text}${item.passVal === "No" ? `<small style="display:block; color:var(--muted); font-weight:400;">(Select "NO" if there are NO leaks)</small>` : ""}
+                </div>
+                <div class="choice-group">
+                  <button type="button" class="choice-btn" id="btn_${item.id}_Yes" onclick="selectAnswer('${item.id}', 'Yes')">YES</button>
+                  <button type="button" class="choice-btn" id="btn_${item.id}_No" onclick="selectAnswer('${item.id}', 'No')">NO</button>
+                  <button type="button" class="choice-btn" id="btn_${item.id}_NA" onclick="selectAnswer('${item.id}', 'N/A')">N/A</button>
+                </div>
+              </div>
+              <div class="issue-drawer" id="drawer_${item.id}">
+                <div class="grid-2">
+                  <div>
+                    <label style="color:var(--red);">Issue / Discrepancy Comment</label>
+                    <input type="text" placeholder="Explain issue..." oninput="checklistAnswers['${item.id}'].comment = this.value" />
+                  </div>
+                  <div>
+                    <label>Date Corrected</label>
+                    <input type="date" onchange="checklistAnswers['${item.id}'].dateCorrected = this.value" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      });
+      container.innerHTML = html;
+    }
+
+    window.selectAnswer = function(itemId, val) {
+      const info = checklistAnswers[itemId];
+      info.status = val;
+      ["Yes", "No", "NA"].forEach(k => { document.getElementById(`btn_${itemId}_${k}`).className = "choice-btn"; });
+      const btnKey = val === "N/A" ? "NA" : val;
+      const isIssue = (val !== "N/A" && val !== info.passVal);
+      const activeBtn = document.getElementById(`btn_${itemId}_${btnKey}`);
+      const rowEl = document.getElementById(`row_${itemId}`); const drawerEl = document.getElementById(`drawer_${itemId}`);
+
+      if (val === "N/A") {
+        activeBtn.classList.add("selected-na"); rowEl.className = "check-item"; drawerEl.classList.remove("open");
+      } else if (isIssue) {
+        activeBtn.classList.add("selected-no"); rowEl.className = "check-item flagged"; drawerEl.classList.add("open");
+      } else {
+        activeBtn.classList.add("selected-yes"); rowEl.className = "check-item passed"; drawerEl.classList.remove("open");
+      }
+    };
+
+    window.markAllPassing = function() {
+      INSPECTION_SECTIONS.forEach(sec => sec.items.forEach(item => selectAnswer(item.id, item.passVal)));
+      showToast("All 35 items marked as passing");
+    };
+
+    window.onSelectGarageVehicle = function() {
+      const vId = document.getElementById("garageVehicleSelect").value;
+      const v = garageList.find(item => String(item.id) === String(vId));
+      document.getElementById("vMake").value = v ? v.make : "";
+      document.getElementById("vModel").value = v ? v.model : "";
+      document.getElementById("vPlate").value = v ? v.license_plate : "";
+      document.getElementById("vVin").value = v ? (v.vin_number || "N/A") : "";
+      document.getElementById("vMileage").value = v ? (v.current_mileage || "") : "";
+    };
+
+    window.submitVehicleInspection = async function() {
+      const vId = document.getElementById("garageVehicleSelect").value;
+      const make = document.getElementById("vMake").value.trim();
+      const model = document.getElementById("vModel").value.trim();
+      const plate = document.getElementById("vPlate").value.trim();
+      const mileage = document.getElementById("vMileage").value.trim();
+
+      if (!vId || !make || !plate || !mileage) return alert("Please select a vehicle and enter current mileage.");
+      if (!/^\d{1,8}$/.test(mileage)) return alert("Mileage must be a whole number between 0 and 99,999,999.");
+      if (!document.getElementById("vDate").value) return alert("Choose an inspection date.");
+      const unanswered = Object.keys(checklistAnswers).filter(k => !checklistAnswers[k].status);
+      if (unanswered.length > 0) return alert(`Please answer all checklist questions (${unanswered.length} remaining).`);
+
+      let issueList = [];
+      Object.keys(checklistAnswers).forEach(k => {
+        const item = checklistAnswers[k];
+        if (item.status !== "N/A" && item.status !== item.passVal) issueList.push(`${item.text} (${item.comment || "No comment"})`);
+      });
+
+      const record = {
+        company_name: "Glass Pro By American Glass",
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        inspection_date: document.getElementById("vDate").value,
+        make, model,
+        vin_number: document.getElementById("vVin").value.trim(),
+        license_plate: plate,
+        mileage,
+        odometer_reading: mileage,
+        checklist_data: JSON.parse(JSON.stringify(checklistAnswers)),
+        discrepancies: document.getElementById("vDiscrepancies").value.trim() || issueList.join("; "),
+        additional_comments: document.getElementById("vComments").value.trim(),
+        issues_count: issueList.length
+      };
+
+      let cloudSaved = false;
+      if (isCloudConnected) {
+        try {
+          const { error } = await supabaseClient.from("vehicle_inspections").insert([record]);
+          cloudSaved = !error;
+        } catch (e) { console.warn("Fleet inspection cloud sync failed", e); }
+      }
+      record.id = Date.now();
+      vehicleLogs.unshift(record);
+      localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
+
+      const vObj = garageList.find(v => String(v.id) === String(vId));
+      if (vObj) {
+        vObj.current_mileage = mileage;
+        vObj.last_inspected_date = record.inspection_date;
+        vObj.status = issueList.length > 0 ? "Flagged" : "Passed";
+        localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+        if (isCloudConnected) {
+          try { await supabaseClient.from("fleet_vehicles").update(vObj).eq("id", vObj.id); } catch (e) {}
+        }
+      }
+
+      document.getElementById("vDiscrepancies").value = "";
+      document.getElementById("vComments").value = "";
+      renderChecklistUI();
+      showToast(`Inspection saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
+      await loadFleetData();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    async function loadFleetData() {
+      const savedG = localStorage.getItem("gp_fleet_garage");
+      if (savedG) garageList = JSON.parse(savedG);
+      vehicleLogs = JSON.parse(localStorage.getItem("gp_vehicle_logs") || "[]");
+
+      if (isCloudConnected) {
+        try {
+          const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
+          if (gRes.data && gRes.data.length > 0) { garageList = gRes.data; localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList)); }
+          const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
+          if (vRes.data) {
+            const keys = new Set(vRes.data.map(v => `${GP.escapeHtml(v.employee_name)}|${GP.escapeHtml(v.inspection_date)}|${GP.escapeHtml(v.license_plate)}|${GP.escapeHtml(v.mileage)}`));
+            vehicleLogs = [...vRes.data, ...vehicleLogs.filter(v => !keys.has(`${GP.escapeHtml(v.employee_name)}|${GP.escapeHtml(v.inspection_date)}|${GP.escapeHtml(v.license_plate)}|${GP.escapeHtml(v.mileage)}`))];
+            localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
+          }
+        } catch (e) {}
+      }
+
+      const sel = document.getElementById("garageVehicleSelect");
+      let html = `<option value="">-- Choose Assigned or Spare Vehicle --</option>`;
+      garageList.forEach(v => {
+        const isMine = v.assigned_employee && v.assigned_employee.toLowerCase() === activeUser.employee_name.toLowerCase();
+        html += `<option value="${v.id}" ${isMine ? 'selected' : ''}>${GP.escapeHtml(v.unit_name)} (${GP.escapeHtml(v.make)}${GP.escapeHtml(v.model)} - ${GP.escapeHtml(v.license_plate)})${isMine ? '[Assigned To You]' : ''}</option>`;
+      });
+      sel.innerHTML = html;
+      onSelectGarageVehicle();
+
+      document.getElementById("employeeVehicleInfoTable").innerHTML = vehicleLogs.map((v, idx) => `
+        <tr>
+          <td>${GP.escapeHtml(v.inspection_date)}</td>
+          <td><b>${GP.escapeHtml(v.employee_name)}</b></td>
+          <td><b>${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)}</b> (${GP.escapeHtml(v.license_plate)})</td>
+          <td class="mono">${GP.escapeHtml(v.mileage)}</td>
+          <td>${v.issues_count > 0 ? `<span class="badge badge-issue">${GP.escapeHtml(v.issues_count)} ISSUE(S)</span>` : `<span class="badge badge-ok">PASSED</span>`}</td>
+          <td><button type="button" class="btn-outline" onclick="printInspectionReport(${idx})">View / Print</button></td>
+        </tr>
+      `).join("") || `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No vehicle inspections submitted yet.</td></tr>`;
+    }
+
+    window.printInspectionReport = function(idx) {
+      const v = vehicleLogs[idx];
+      if (!v) return;
+      let tablesHtml = "";
+      INSPECTION_SECTIONS.forEach(sec => {
+        tablesHtml += `
+          <h4 style="background:#0B1F3A; color:white; padding:6px 10px; margin-top:12px; font-size:13px;">${sec.title}</h4>
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="background:#E2E8F0; color:#000;">
+                <th style="border:1px solid #000; padding:4px; width:52%;">Item</th>
+                <th style="border:1px solid #000; padding:4px; width:6%; text-align:center;">Yes</th>
+                <th style="border:1px solid #000; padding:4px; width:6%; text-align:center;">No</th>
+                <th style="border:1px solid #000; padding:4px; width:6%; text-align:center;">N/A</th>
+                <th style="border:1px solid #000; padding:4px; width:12%;">Date Corrected</th>
+                <th style="border:1px solid #000; padding:4px; width:18%;">Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        sec.items.forEach(item => {
+          const ans = (v.checklist_data && v.checklist_data[item.id]) || {};
+          tablesHtml += `
+            <tr>
+              <td style="border:1px solid #000; padding:4px;">${item.text}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center; font-weight:bold;">${ans.status === "Yes" ? "X" : ""}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center; font-weight:bold;">${ans.status === "No" ? "X" : ""}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center; font-weight:bold;">${ans.status === "N/A" ? "X" : ""}</td>
+              <td style="border:1px solid #000; padding:4px;">${GP.escapeHtml(ans.dateCorrected || "")}</td>
+              <td style="border:1px solid #000; padding:4px;">${GP.escapeHtml(ans.comment || "")}</td>
+            </tr>
+          `;
+        });
+        tablesHtml += `</tbody></table>`;
+      });
+
+      const printDiv = document.getElementById("printReportArea");
+      printDiv.innerHTML = `
+        <div style="background:white; padding:16px; border:1px solid #ccc; margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #0B1F3A; padding-bottom:10px; margin-bottom:12px;">
+            <div>
+              <h2 style="color:#0B1F3A; margin:0; font-size:18px;">WEEKLY VEHICLE INSPECTION REPORT</h2>
+              <p style="font-size:12px; margin:2px 0;"><b>Company Name:</b> ${GP.escapeHtml(v.company_name)}</p>
+            </div>
+            <div class="no-print" style="display:flex; gap:6px;">
+              <button type="button" class="btn-outline" onclick="window.print()">Print Official Form</button>
+              <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red);" onclick="document.getElementById('printReportArea').classList.add('hidden')">Close</button>
+            </div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px;">
+            <tr>
+              <td style="border:1px solid #000; padding:5px;"><b>Employee Name:</b> ${GP.escapeHtml(v.employee_name)}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>Department:</b> ${GP.escapeHtml(v.department)}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>Date of Inspection:</b> ${GP.escapeHtml(v.inspection_date)}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:5px;"><b>Make:</b> ${GP.escapeHtml(v.make)}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>Model:</b> ${GP.escapeHtml(v.model)}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>License Plate:</b> ${GP.escapeHtml(v.license_plate)}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000; padding:5px;"><b>VIN Number:</b> ${GP.escapeHtml(v.vin_number || "N/A")}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>Mileage:</b> ${GP.escapeHtml(v.mileage)}</td>
+              <td style="border:1px solid #000; padding:5px;"><b>Odometer Reading:</b> ${GP.escapeHtml(v.odometer_reading || v.mileage)}</td>
+            </tr>
+          </table>
+          ${tablesHtml}
+          <div style="margin-top:12px; font-size:12px; border:1px solid #000; padding:8px;"><b>Discrepancies:</b><br>${GP.escapeHtml(v.discrepancies || "None")}</div>
+          <div style="margin-top:8px; font-size:12px; border:1px solid #000; padding:8px;"><b>Additional Comments:</b><br>${GP.escapeHtml(v.additional_comments || "None")}</div>
+          <p style="font-size:10px; color:#666; margin-top:8px;">Rev. 4/28/14 - Weekly Vehicle Inspection Checklist</p>
+        </div>
+      `;
+      printDiv.classList.remove("hidden");
+      printDiv.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.addEventListener("DOMContentLoaded", function() {
+      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
+      if (!saved) { window.location.href = "index.html"; return; }
+      activeUser = JSON.parse(saved);
+
+      document.getElementById("vDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
+      document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+      document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
+
+      renderChecklistUI();
+      loadFleetData();
+    });
+  </script>
+</body>
+</html>
