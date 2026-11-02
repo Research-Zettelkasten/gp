@@ -186,7 +186,7 @@
     <div class="header-right">
       <div id="dbStatus" class="hidden"></div>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
-        <span id="activeUserName" class="user-pill">Brandon Faircloth (Operations)</span>
+        <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -394,11 +394,8 @@
       }
     } catch (e) {}
 
-    const DEFAULT_GARAGE = [
-      { id: 1, unit_name: "Truck 1 - Auto", make: "Ford", model: "Transit", license_plate: "TAG-101", vin_number: "1FTNE3Y85GK10001", assigned_employee: "Lead Tech Employee", current_mileage: "45200", last_inspected_date: "Never", status: "Pending" },
-      { id: 2, unit_name: "Truck 2 - Residential", make: "Chevrolet", model: "Express", license_plate: "TAG-102", vin_number: "1GBGG31K3E110002", assigned_employee: "Brandon Faircloth", current_mileage: "62100", last_inspected_date: "Never", status: "Pending" },
-      { id: 3, unit_name: "Van 3 - Commercial", make: "Ram", model: "ProMaster", license_plate: "TAG-103", vin_number: "3C6TRVFG7GE10003", assigned_employee: "Unassigned", current_mileage: "28400", last_inspected_date: "Never", status: "Pending" }
-    ];
+    // Fleet inventory is protected data and is loaded from Supabase after Auth.
+    const DEFAULT_GARAGE = [];
 
     const INSPECTION_SECTIONS = [
       {
@@ -470,11 +467,7 @@
       setTimeout(() => { t.style.display = "none"; }, 3000);
     }
 
-    window.logoutPortal = function() {
-      localStorage.removeItem("gp_session_user");
-      sessionStorage.removeItem("gp_session_user");
-      window.location.href = "index.html";
-    };
+    window.logoutPortal = async function() { await GP.signOut(supabaseClient); };
 
     window.switchFleetTab = function(paneId, btn) {
       document.getElementById("inspectPane").classList.add("hidden");
@@ -559,6 +552,7 @@
     };
 
     window.submitVehicleInspection = async function() {
+      if (!activeUser?.perm_admin && !activeUser?.perm_vehicle_submit) return showToast("Vehicle inspection submission permission is required");
       const vId = document.getElementById("garageVehicleSelect").value;
       const make = document.getElementById("vMake").value.trim();
       const model = document.getElementById("vModel").value.trim();
@@ -567,6 +561,11 @@
 
       if (!vId || !make || !plate || !mileage) return alert("Please select a vehicle and enter current mileage.");
       if (!/^\d{1,8}$/.test(mileage)) return alert("Mileage must be a whole number between 0 and 99,999,999.");
+      const selectedVehicle = garageList.find(v => String(v.id) === String(vId));
+      const priorMileage = parseInt(selectedVehicle?.current_mileage || "0", 10) || 0;
+      if (priorMileage > 0 && parseInt(mileage, 10) < priorMileage) {
+        if (!confirm(`Entered mileage (${mileage}) is lower than the Fleet Garage mileage (${priorMileage}). Continue only if this is a correction or odometer replacement.`)) return;
+      }
       if (!document.getElementById("vDate").value) return alert("Choose an inspection date.");
       const unanswered = Object.keys(checklistAnswers).filter(k => !checklistAnswers[k].status);
       if (unanswered.length > 0) return alert(`Please answer all checklist questions (${unanswered.length} remaining).`);
@@ -587,6 +586,8 @@
         license_plate: plate,
         mileage,
         odometer_reading: mileage,
+        fleet_unit_name: selectedVehicle?.unit_name || `${make} ${model}`,
+        fleet_assigned_employee: selectedVehicle?.assigned_employee || activeUser.employee_name,
         checklist_data: JSON.parse(JSON.stringify(checklistAnswers)),
         discrepancies: document.getElementById("vDiscrepancies").value.trim() || issueList.join("; "),
         additional_comments: document.getElementById("vComments").value.trim(),
@@ -596,11 +597,14 @@
       let cloudSaved = false;
       if (isCloudConnected) {
         try {
-          const { error } = await supabaseClient.from("vehicle_inspections").insert([record]);
-          cloudSaved = !error;
+          const result = await supabaseClient.from("vehicle_inspections").insert([record]).select("*").limit(1);
+          if (!result.error && result.data && result.data[0]) {
+            Object.assign(record, result.data[0]);
+            cloudSaved = true;
+          }
         } catch (e) { console.warn("Fleet inspection cloud sync failed", e); }
       }
-      record.id = Date.now();
+      if (!record.id) record.id = Date.now();
       vehicleLogs.unshift(record);
       localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
 
@@ -610,8 +614,14 @@
         vObj.last_inspected_date = record.inspection_date;
         vObj.status = issueList.length > 0 ? "Flagged" : "Passed";
         localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
-        if (isCloudConnected) {
-          try { await supabaseClient.from("fleet_vehicles").update(vObj).eq("id", vObj.id); } catch (e) {}
+        if (isCloudConnected && activeUser?.perm_admin) {
+          try {
+            let result = await supabaseClient.from("fleet_vehicles").update({unit_name:vObj.unit_name,assigned_employee:vObj.assigned_employee,make:vObj.make,model:vObj.model,license_plate:vObj.license_plate,vin_number:vObj.vin_number,current_mileage:vObj.current_mileage,last_inspected_date:vObj.last_inspected_date,status:vObj.status}).eq("id", vObj.id).select("*").limit(1);
+            if(!result.error && (!result.data || result.data.length===0)){
+              result=await supabaseClient.from("fleet_vehicles").insert([{unit_name:vObj.unit_name,assigned_employee:vObj.assigned_employee,make:vObj.make,model:vObj.model,license_plate:vObj.license_plate,vin_number:vObj.vin_number,current_mileage:vObj.current_mileage,last_inspected_date:vObj.last_inspected_date,status:vObj.status}]).select("*").limit(1);
+            }
+            if(!result.error && result.data?.[0]){const oldId=vObj.id;Object.assign(vObj,result.data[0]);document.getElementById("garageVehicleSelect").value=String(vObj.id);localStorage.setItem("gp_fleet_garage",JSON.stringify(garageList));}
+          } catch (e) {}
         }
       }
 
@@ -631,17 +641,14 @@
 
       if (isCloudConnected) {
         try {
-          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
-          if (uRes.data && uRes.data.length > 0) {
-            const localUsers = usersList.slice();
-            usersList = uRes.data.map(u => {
-              const localMatch = localUsers.find(l => String(l.pin_code) === String(u.pin_code));
-              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
-            });
-            localStorage.setItem("gp_app_users", JSON.stringify(usersList));
-          }
+          usersList = await GP.employeeDirectory(supabaseClient);
           const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
-          if (gRes.data && gRes.data.length > 0) { garageList = gRes.data; localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList)); }
+          if (gRes.data && gRes.data.length > 0) {
+            const cloudPlates = new Set(gRes.data.map(v => String(v.license_plate || "").trim().toUpperCase()));
+            const pendingLocal = savedG ? garageList.filter(v => Number(v.id) > 1000000000000 && !cloudPlates.has(String(v.license_plate || "").trim().toUpperCase())) : [];
+            garageList = [...gRes.data, ...pendingLocal];
+            localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+          }
           const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
           if (vRes.data) {
             const keys = new Set(vRes.data.map(v => `${GP.escapeHtml(v.employee_name)}|${GP.escapeHtml(v.inspection_date)}|${GP.escapeHtml(v.license_plate)}|${GP.escapeHtml(v.mileage)}`));
@@ -740,17 +747,34 @@
         status: existing?.status || "Pending"
       };
       if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
+      const duplicatePlate = garageList.find(v => String(v.id) !== String(editId) && String(v.license_plate || "").trim().toUpperCase() === obj.license_plate.toUpperCase());
+      if (duplicatePlate) return alert(`License plate ${obj.license_plate} is already assigned to ${duplicatePlate.unit_name}.`);
+      let cloudRow = null;
       if (isCloudConnected) {
         try {
-          if (editId) await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId);
-          else await supabaseClient.from("fleet_vehicles").insert([obj]);
+          if (editId) {
+            const updateResult = await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId).select("*");
+            if (!updateResult.error && updateResult.data && updateResult.data[0]) cloudRow = updateResult.data[0];
+            else if (!updateResult.error && (!updateResult.data || updateResult.data.length === 0)) {
+              const insertResult = await supabaseClient.from("fleet_vehicles").insert([obj]).select("*").limit(1);
+              if (!insertResult.error && insertResult.data && insertResult.data[0]) cloudRow = insertResult.data[0];
+            }
+          } else {
+            const insertResult = await supabaseClient.from("fleet_vehicles").insert([obj]).select("*").limit(1);
+            if (!insertResult.error && insertResult.data && insertResult.data[0]) cloudRow = insertResult.data[0];
+          }
         } catch (e) {}
       }
       if (editId) {
         const idx = garageList.findIndex(v => String(v.id) === String(editId));
-        if (idx >= 0) { obj.id = garageList[idx].id; garageList[idx] = obj; }
+        if (idx >= 0) {
+          obj.id = cloudRow?.id || garageList[idx].id;
+          if (cloudRow) Object.assign(obj, cloudRow);
+          garageList[idx] = obj;
+        }
       } else {
-        obj.id = Date.now();
+        if (cloudRow) Object.assign(obj, cloudRow);
+        if (!obj.id) obj.id = Date.now();
         garageList.push(obj);
       }
       localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
@@ -846,21 +870,31 @@
       printDiv.scrollIntoView({ behavior: "smooth" });
     };
 
-    window.addEventListener("DOMContentLoaded", function() {
-      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
-      if (!saved) { window.location.href = "index.html"; return; }
-      activeUser = JSON.parse(saved);
+    window.addEventListener("DOMContentLoaded", async function() {
+      activeUser = await GP.requireAuth(supabaseClient, "fleet");
+      if (!activeUser) return;
 
-      document.getElementById("vDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("vDate").value = GP.localDate();
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
-      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
-      document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
+      GP.applyNavPermissions(activeUser);
+
+      const canSubmit = !!(activeUser.perm_admin || activeUser.perm_vehicle_submit);
+      const canView = !!(activeUser.perm_admin || activeUser.perm_vehicle_view);
+      const canSafety = !!(activeUser.perm_admin || activeUser.perm_safety);
+      document.getElementById("subBtnInspect").classList.toggle("hidden", !canSubmit);
+      document.getElementById("subBtnHistory").classList.toggle("hidden", !canView);
+      document.getElementById("subBtnSafety").classList.toggle("hidden", !canSafety);
+      document.getElementById("subBtnGarage").classList.toggle("hidden", !canView && !activeUser.perm_admin);
       document.getElementById("garageAdminEditor").classList.toggle("hidden", !activeUser.perm_admin);
       document.getElementById("garageAccessBadge").textContent = activeUser.perm_admin ? "Admin Edit Enabled" : "View Only";
 
       renderChecklistUI();
-      loadFleetData();
+      await loadFleetData();
+
+      if (canSubmit) switchFleetTab("inspectPane", document.getElementById("subBtnInspect"));
+      else if (canView) switchFleetTab("historyPane", document.getElementById("subBtnHistory"));
+      else if (canSafety) switchFleetTab("safetyPane", document.getElementById("subBtnSafety"));
     });
   </script>
 </body>
