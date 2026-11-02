@@ -180,7 +180,7 @@
       <div class="brand-badge">GLASSPRO</div>
       <div class="brand-text">
         <h1>GLASS PRO BY AMERICAN GLASS</h1>
-        <p>Fleet Garage Inspection & Workplace Safety Portal</p>
+        <p>Vehicle Check, Fleet Garage & Workplace Safety Portal</p>
       </div>
     </div>
     <div class="header-right">
@@ -207,6 +207,7 @@
       <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">1. 35-Point Vehicle Check</button>
       <button type="button" id="subBtnHistory" class="sub-btn" onclick="switchFleetTab('historyPane', this)">2. Fleet Inspection History</button>
       <button type="button" id="subBtnSafety" class="sub-btn" onclick="switchFleetTab('safetyPane', this)">3. Safety & MultiplyOS SOPs</button>
+      <button type="button" id="subBtnGarage" class="sub-btn" onclick="switchFleetTab('garagePane', this)">4. Fleet Garage</button>
     </div>
 
     <!-- PANE 1: 35-POINT VEHICLE INSPECTION -->
@@ -332,6 +333,47 @@
       </div>
     </div>
 
+    <!-- PANE 4: FLEET GARAGE DIRECTORY / ADMIN EDITOR -->
+    <div id="garagePane" class="hidden no-print">
+      <div id="garageAdminEditor" class="card">
+        <div class="card-title">
+          <span id="vehicleFormTitle">Add or Update Garage Vehicle</span>
+          <span class="badge badge-navy">Admin Controls</span>
+        </div>
+        <input type="hidden" id="editingVehicleId" />
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div><label>Unit / Truck Name *</label><input type="text" id="garageUnitName" placeholder="e.g. Truck 1 - Auto" /></div>
+          <div><label>Assigned Driver</label><select id="garageAssignedEmp"><option value="Unassigned">Unassigned (Shop Spare)</option></select></div>
+        </div>
+        <div class="grid-2" style="margin-bottom:10px;">
+          <div><label>Make *</label><input type="text" id="garageMake" placeholder="e.g. Ford" /></div>
+          <div><label>Model *</label><input type="text" id="garageModel" placeholder="e.g. Transit" /></div>
+        </div>
+        <div class="grid-3">
+          <div><label>License Plate *</label><input type="text" id="garagePlate" placeholder="TAG-101" /></div>
+          <div><label>VIN Number</label><input type="text" id="garageVin" placeholder="17-Digit VIN" /></div>
+          <div><label>Current Mileage</label><input type="number" id="garageMileage" placeholder="e.g. 45000" /></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button type="button" class="btn btn-red" onclick="saveGarageVehicle()">Save Vehicle to Garage</button>
+          <button type="button" class="btn-outline" onclick="resetVehicleForm()">Clear Form</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Company Fleet Garage Directory</span>
+          <span id="garageAccessBadge" class="badge badge-navy">Directory</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Truck / Unit</th><th>Vehicle Info</th><th>Driver</th><th>Mileage</th><th>Last Inspected</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="fleetGarageTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- PRINTABLE OFFICIAL REPORT AREA -->
     <div id="printReportArea" class="hidden print-sheet"></div>
   </div>
@@ -418,6 +460,7 @@
 
     let activeUser = null;
     let garageList = [...DEFAULT_GARAGE];
+    let usersList = [];
     let vehicleLogs = [];
     let checklistAnswers = {};
 
@@ -437,6 +480,7 @@
       document.getElementById("inspectPane").classList.add("hidden");
       document.getElementById("historyPane").classList.add("hidden");
       document.getElementById("safetyPane").classList.add("hidden");
+      document.getElementById("garagePane").classList.add("hidden");
       document.getElementById("printReportArea").classList.add("hidden");
       document.getElementById(paneId).classList.remove("hidden");
       document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
@@ -582,10 +626,20 @@
     async function loadFleetData() {
       const savedG = localStorage.getItem("gp_fleet_garage");
       if (savedG) garageList = JSON.parse(savedG);
+      usersList = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
       vehicleLogs = JSON.parse(localStorage.getItem("gp_vehicle_logs") || "[]");
 
       if (isCloudConnected) {
         try {
+          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
+          if (uRes.data && uRes.data.length > 0) {
+            const localUsers = usersList.slice();
+            usersList = uRes.data.map(u => {
+              const localMatch = localUsers.find(l => String(l.pin_code) === String(u.pin_code));
+              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
+            });
+            localStorage.setItem("gp_app_users", JSON.stringify(usersList));
+          }
           const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
           if (gRes.data && gRes.data.length > 0) { garageList = gRes.data; localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList)); }
           const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
@@ -595,6 +649,13 @@
             localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
         } catch (e) {}
+      }
+
+      const driverSelect = document.getElementById("garageAssignedEmp");
+      if (driverSelect) {
+        const currentDriver = driverSelect.value;
+        driverSelect.innerHTML = `<option value="Unassigned">Unassigned (Shop Spare)</option>` + usersList.map(u => `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department || "")})</option>`).join("");
+        if ([...driverSelect.options].some(o => o.value === currentDriver)) driverSelect.value = currentDriver;
       }
 
       const sel = document.getElementById("garageVehicleSelect");
@@ -616,7 +677,98 @@
           <td><button type="button" class="btn-outline" onclick="printInspectionReport(${idx})">View / Print</button></td>
         </tr>
       `).join("") || `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No vehicle inspections submitted yet.</td></tr>`;
+
+      const garageBody = document.getElementById("fleetGarageTable");
+      if (garageBody) {
+        garageBody.innerHTML = garageList.map(v => `
+          <tr>
+            <td><b>${GP.escapeHtml(v.unit_name)}</b></td>
+            <td>${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})</td>
+            <td><span class="badge badge-navy">${GP.escapeHtml(v.assigned_employee || "Unassigned")}</span></td>
+            <td class="mono">${GP.escapeHtml(v.current_mileage || "0")} mi</td>
+            <td>${GP.escapeHtml(v.last_inspected_date || "Never")}</td>
+            <td><span class="badge ${v.status === "Flagged" ? "badge-issue" : "badge-ok"}">${GP.escapeHtml(v.status || "Pending")}</span></td>
+            <td>${activeUser?.perm_admin ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadVehicleEditor('${v.id}')">Edit</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:4px 7px;" onclick="deleteVehicle('${v.id}')">Del</button>` : `<span style="color:var(--muted);font-size:11px;">View only</span>`}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--muted);">No fleet vehicles registered.</td></tr>`;
+      }
     }
+
+    window.resetVehicleForm = function() {
+      if (!activeUser?.perm_admin) return;
+      document.getElementById("editingVehicleId").value = "";
+      document.getElementById("garageUnitName").value = "";
+      document.getElementById("garageAssignedEmp").value = "Unassigned";
+      document.getElementById("garageMake").value = "";
+      document.getElementById("garageModel").value = "";
+      document.getElementById("garagePlate").value = "";
+      document.getElementById("garageVin").value = "";
+      document.getElementById("garageMileage").value = "";
+      document.getElementById("vehicleFormTitle").textContent = "Add or Update Garage Vehicle";
+    };
+
+    window.loadVehicleEditor = function(id) {
+      if (!activeUser?.perm_admin) return showToast("Admin role required to edit Fleet Garage");
+      const v = garageList.find(x => String(x.id) === String(id));
+      if (!v) return;
+      document.getElementById("editingVehicleId").value = v.id;
+      document.getElementById("garageUnitName").value = v.unit_name || "";
+      document.getElementById("garageAssignedEmp").value = v.assigned_employee || "Unassigned";
+      document.getElementById("garageMake").value = v.make || "";
+      document.getElementById("garageModel").value = v.model || "";
+      document.getElementById("garagePlate").value = v.license_plate || "";
+      document.getElementById("garageVin").value = v.vin_number || "";
+      document.getElementById("garageMileage").value = v.current_mileage || "";
+      document.getElementById("vehicleFormTitle").textContent = `Editing: ${v.unit_name}`;
+      switchFleetTab("garagePane", document.getElementById("subBtnGarage"));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.saveGarageVehicle = async function() {
+      if (!activeUser?.perm_admin) return showToast("Admin role required to update Fleet Garage");
+      const editId = document.getElementById("editingVehicleId").value;
+      const existing = editId ? garageList.find(v => String(v.id) === String(editId)) : null;
+      const obj = {
+        unit_name: document.getElementById("garageUnitName").value.trim(),
+        assigned_employee: document.getElementById("garageAssignedEmp").value,
+        make: document.getElementById("garageMake").value.trim(),
+        model: document.getElementById("garageModel").value.trim(),
+        license_plate: document.getElementById("garagePlate").value.trim(),
+        vin_number: document.getElementById("garageVin").value.trim(),
+        current_mileage: document.getElementById("garageMileage").value.trim() || "0",
+        last_inspected_date: existing?.last_inspected_date || "Never",
+        status: existing?.status || "Pending"
+      };
+      if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
+      if (isCloudConnected) {
+        try {
+          if (editId) await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId);
+          else await supabaseClient.from("fleet_vehicles").insert([obj]);
+        } catch (e) {}
+      }
+      if (editId) {
+        const idx = garageList.findIndex(v => String(v.id) === String(editId));
+        if (idx >= 0) { obj.id = garageList[idx].id; garageList[idx] = obj; }
+      } else {
+        obj.id = Date.now();
+        garageList.push(obj);
+      }
+      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+      resetVehicleForm();
+      showToast("Fleet Garage vehicle saved");
+      await loadFleetData();
+    };
+
+    window.deleteVehicle = async function(id) {
+      if (!activeUser?.perm_admin) return showToast("Admin role required to update Fleet Garage");
+      if (!confirm("Remove vehicle from Fleet Garage?")) return;
+      if (isCloudConnected) {
+        try { await supabaseClient.from("fleet_vehicles").delete().eq("id", id); } catch (e) {}
+      }
+      garageList = garageList.filter(v => String(v.id) !== String(id));
+      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+      await loadFleetData();
+    };
 
     window.printInspectionReport = function(idx) {
       const v = vehicleLogs[idx];
@@ -702,7 +854,10 @@
       document.getElementById("vDate").value = new Date().toISOString().split("T")[0];
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
       document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
+      document.getElementById("garageAdminEditor").classList.toggle("hidden", !activeUser.perm_admin);
+      document.getElementById("garageAccessBadge").textContent = activeUser.perm_admin ? "Admin Edit Enabled" : "View Only";
 
       renderChecklistUI();
       loadFleetData();
