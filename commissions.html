@@ -1,518 +1,1447 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <script src="portal-utils.js"></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>GLASSPRO | Commission & Work Order Tracker</title>
+-- ============================================================================
+-- GLASSPRO PORTAL - SUPABASE AUTH + RLS PRODUCTION MIGRATION
+-- 2026-11-02
+--
+-- PURPOSE
+--   * Converts the portal from browser-trusted PIN login to Supabase Auth.
+--   * Keeps the 4-digit PIN only as an employee identifier / one-time legacy
+--     profile claim secret. It is NOT used for normal login after claiming.
+--   * Enables Row Level Security on every portal table.
+--   * Links employee-owned rows to auth.users UUIDs.
+--   * Keeps shared quote/fleet data available only to employees whose profile
+--     grants the corresponding module permission.
+--
+-- DEPLOYMENT ORDER
+--   1. Back up the Supabase database and place the portal in maintenance mode.
+--   2. Enable Supabase Email/Password Auth and configure the production Site URL
+--      / Redirect URL. Keep email confirmation ON when practical.
+--   3. Run this entire SQL file in Supabase SQL Editor. RLS takes effect as soon
+--      as the transaction commits, so the legacy PIN-only frontend will stop
+--      reading protected data at that point.
+--   4. Deploy the matching Auth/RLS-ready portal build immediately after SQL.
+--   5. The FIRST active administrator uses "First-Time Setup" with their
+--      existing legacy PIN. This one bootstrap claim may use the signed-up email
+--      even if the legacy admin profile did not yet have auth_email populated.
+--   6. In Management -> Users & Roles, assign each remaining employee's work
+--      Auth email. Employees then create/sign into that exact email account and
+--      enter their existing PIN one time to claim their provisioned profile.
+--
+-- AUTH SETTINGS
+--   Email/password provider and public user sign-up must be enabled for this
+--   browser-only onboarding design; no service_role key is ever exposed. RLS
+--   leaves unprovisioned Auth accounts with no portal data access. Email
+--   confirmation may stay ON (recommended); if enabled, the employee confirms
+--   the email, signs in, and then completes the PIN claim.
+--
+-- IMPORTANT
+--   Supabase service_role / secret keys must NEVER be placed in these HTML files.
+--   This migration deliberately uses only the browser-safe publishable key.
+-- ============================================================================
 
-  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
-  <meta name="theme-color" content="#06101E" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+begin;
 
-  <!-- Desktop Browser Tab Icon (Inline SVG) -->
-  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
-  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
 
-  <script>
-    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
-    (function() {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext("2d");
 
-        // 1. Obsidian-Navy Background
-        const grad = ctx.createLinearGradient(0, 0, 512, 512);
-        grad.addColorStop(0, "#06101E");
-        grad.addColorStop(1, "#0B1F3A");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 512);
+create table if not exists private.profile_claim_attempts (
+  auth_user_id uuid primary key,
+  attempts integer not null default 0,
+  window_started_at timestamptz not null default now(),
+  locked_until timestamptz,
+  updated_at timestamptz not null default now()
+);
+revoke all on private.profile_claim_attempts from public, anon, authenticated;
 
-        // 2. Top Crimson Red Accent Bar
-        ctx.fillStyle = "#DC2626";
-        ctx.fillRect(0, 0, 512, 76);
+-- --------------------------------------------------------------------------
+-- 1) EMPLOYEE / ROLE DIRECTORY
+-- --------------------------------------------------------------------------
+create table if not exists public.app_users (
+  id bigint generated by default as identity primary key,
+  employee_name text not null,
+  department text not null default 'Operations',
+  employment_type text not null default 'Full-Time',
+  pin_code text not null,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  auth_email text,
+  active boolean not null default true,
+  claimed_at timestamptz,
+  perm_time boolean not null default true,
+  perm_quotes boolean not null default true,
+  perm_commission boolean not null default true,
+  perm_vehicle_submit boolean not null default false,
+  perm_vehicle_view boolean not null default false,
+  perm_safety boolean not null default true,
+  perm_admin boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-        // 3. Subtle Diagonal Glass Reflection Slash
-        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-        ctx.beginPath();
-        ctx.moveTo(340, 76);
-        ctx.lineTo(460, 76);
-        ctx.lineTo(290, 512);
-        ctx.lineTo(170, 512);
-        ctx.closePath();
-        ctx.fill();
+alter table public.app_users add column if not exists employee_name text;
+alter table public.app_users add column if not exists department text default 'Operations';
+alter table public.app_users add column if not exists employment_type text default 'Full-Time';
+alter table public.app_users add column if not exists pin_code text;
+alter table public.app_users add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table public.app_users add column if not exists auth_email text;
+alter table public.app_users add column if not exists active boolean default true;
+alter table public.app_users add column if not exists claimed_at timestamptz;
+alter table public.app_users add column if not exists perm_time boolean default true;
+alter table public.app_users add column if not exists perm_quotes boolean default true;
+alter table public.app_users add column if not exists perm_commission boolean default true;
+alter table public.app_users add column if not exists perm_vehicle_submit boolean default false;
+alter table public.app_users add column if not exists perm_vehicle_view boolean default false;
+alter table public.app_users add column if not exists perm_safety boolean default true;
+alter table public.app_users add column if not exists perm_admin boolean default false;
+alter table public.app_users add column if not exists created_at timestamptz default now();
+alter table public.app_users add column if not exists updated_at timestamptz default now();
 
-        // 4. Center "GP" Monogram
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("GP", 256, 235);
+update public.app_users set
+  active = coalesce(active, true),
+  perm_time = coalesce(perm_time, true),
+  perm_quotes = coalesce(perm_quotes, true),
+  perm_commission = coalesce(perm_commission, true),
+  perm_vehicle_submit = coalesce(perm_vehicle_submit, false),
+  perm_vehicle_view = coalesce(perm_vehicle_view, false),
+  perm_safety = coalesce(perm_safety, true),
+  perm_admin = coalesce(perm_admin, false);
 
-        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
-        ctx.fillStyle = "#DC2626";
-        ctx.beginPath();
-        ctx.roundRect(76, 365, 360, 74, 16);
-        ctx.fill();
+-- This migration intentionally does NOT create a default administrator or PIN.
+-- It upgrades the employee/admin profiles that already exist in this portal.
+-- The preflight below stops if there is no active administrator profile, avoiding
+-- a known bootstrap credential being introduced by migration SQL.
 
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.fillText("GLASSPRO", 256, 404);
+-- --------------------------------------------------------------------------
+-- 2) COMPLETED TIME LOGS
+-- --------------------------------------------------------------------------
+create table if not exists public.time_logs (
+  id bigint generated by default as identity primary key,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  employee_name text not null,
+  department text,
+  work_date date not null,
+  clock_in text not null,
+  clock_out text not null,
+  break_minutes integer not null default 0,
+  decimal_hours numeric(10,2) not null default 0,
+  clock_in_location text,
+  clock_out_location text,
+  clock_in_coords text,
+  clock_out_coords text,
+  notes text,
+  created_at timestamptz not null default now()
+);
+alter table public.time_logs add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table public.time_logs add column if not exists employee_name text;
+alter table public.time_logs add column if not exists department text;
+alter table public.time_logs add column if not exists work_date date;
+alter table public.time_logs add column if not exists clock_in text;
+alter table public.time_logs add column if not exists clock_out text;
+alter table public.time_logs add column if not exists break_minutes integer default 0;
+alter table public.time_logs add column if not exists decimal_hours numeric(10,2) default 0;
+alter table public.time_logs add column if not exists clock_in_location text;
+alter table public.time_logs add column if not exists clock_out_location text;
+alter table public.time_logs add column if not exists clock_in_coords text;
+alter table public.time_logs add column if not exists clock_out_coords text;
+alter table public.time_logs add column if not exists notes text;
+alter table public.time_logs add column if not exists created_at timestamptz default now();
 
-        const pngDataUrl = canvas.toDataURL("image/png");
-        const appleLink = document.getElementById("gpAppleIcon");
-        if (appleLink) appleLink.href = pngDataUrl;
+-- --------------------------------------------------------------------------
+-- 3) LIVE TIME SESSIONS
+-- --------------------------------------------------------------------------
+create table if not exists public.active_time_sessions (
+  employee_pin text primary key,
+  auth_user_id uuid references auth.users(id) on delete cascade,
+  employee_name text not null,
+  department text,
+  started_at_ms bigint not null,
+  started_at timestamptz not null,
+  clock_in_location text,
+  clock_in_coords text,
+  break_minutes integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+alter table public.active_time_sessions add column if not exists auth_user_id uuid references auth.users(id) on delete cascade;
+alter table public.active_time_sessions add column if not exists employee_pin text;
+alter table public.active_time_sessions add column if not exists employee_name text;
+alter table public.active_time_sessions add column if not exists department text;
+alter table public.active_time_sessions add column if not exists started_at_ms bigint;
+alter table public.active_time_sessions add column if not exists started_at timestamptz;
+alter table public.active_time_sessions add column if not exists clock_in_location text;
+alter table public.active_time_sessions add column if not exists clock_in_coords text;
+alter table public.active_time_sessions add column if not exists break_minutes integer default 0;
+alter table public.active_time_sessions add column if not exists updated_at timestamptz default now();
 
-        // 6. Inject Web App Manifest for Android/Desktop "Install App"
-        const manifest = {
-          name: "GLASSPRO Operations Portal",
-          short_name: "GLASSPRO",
-          start_url: "./index.html",
-          display: "standalone",
-          background_color: "#06101E",
-          theme_color: "#06101E",
-          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
-        const manifestLink = document.createElement("link");
-        manifestLink.rel = "manifest";
-        manifestLink.href = URL.createObjectURL(manifestBlob);
-        document.head.appendChild(manifestLink);
-      } catch (e) {}
-    })();
-  </script>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --obsidian: #06101E; --navy: #0B1F3A; --navy-light: #16325B; --red: #DC2626;
-      --green: #059669; --green-bg: #ECFDF5; --amber: #D97706; --amber-bg: #FFFBEB;
-      --mos-indigo: #4F46E5; --mos-purple: #6D28D9; --white: #FFFFFF; --bg: #F4F7FB;
-      --border: #E2E8F0; --border-strong: #CBD5E1; --text: #0F172A; --text-secondary: #334155;
-      --muted: #64748B; --shadow-md: 0 4px 20px -2px rgba(6,16,30,0.06), 0 2px 6px -1px rgba(6,16,30,0.04);
-      --radius-md: 10px; --radius-lg: 14px;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; min-height: 100vh; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
-    .hidden { display: none !important; }
+-- --------------------------------------------------------------------------
+-- 4) COMMISSION / WORK ORDER LOG
+-- --------------------------------------------------------------------------
+create table if not exists public.commission_logs (
+  id bigint generated by default as identity primary key,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  employee_name text not null,
+  department text,
+  work_date date not null,
+  wo_number text not null,
+  job_type text,
+  job_amount numeric(14,2) not null default 0,
+  service_type text,
+  glass_spec text,
+  materials_used text,
+  helper_tech text,
+  spec_notes text,
+  status text not null default 'Pending',
+  created_at timestamptz not null default now()
+);
+alter table public.commission_logs add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table public.commission_logs add column if not exists employee_name text;
+alter table public.commission_logs add column if not exists department text;
+alter table public.commission_logs add column if not exists work_date date;
+alter table public.commission_logs add column if not exists wo_number text;
+alter table public.commission_logs add column if not exists job_type text;
+alter table public.commission_logs add column if not exists job_amount numeric(14,2) default 0;
+alter table public.commission_logs add column if not exists service_type text;
+alter table public.commission_logs add column if not exists glass_spec text;
+alter table public.commission_logs add column if not exists materials_used text;
+alter table public.commission_logs add column if not exists helper_tech text;
+alter table public.commission_logs add column if not exists spec_notes text;
+alter table public.commission_logs add column if not exists status text default 'Pending';
+alter table public.commission_logs add column if not exists created_at timestamptz default now();
 
-    header {
-      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
-      color: var(--white); border-bottom: 3px solid var(--red); padding: 14px 24px;
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
-      box-shadow: 0 4px 20px rgba(6,16,30,0.25);
-    }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-badge { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); font-weight: 900; font-size: 14px; padding: 7px 12px; border-radius: 7px; letter-spacing: 1.2px; }
-    .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.4px; color: #F8FAFC; }
-    .brand-text p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
-    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .status-pill { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.14); color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981; }
-    .mos-launch-pill { font-size: 11px; font-weight: 700; background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%); color: var(--white); padding: 6px 12px; border-radius: 6px; text-decoration: none; }
-    .user-pill { font-size: 12px; font-weight: 700; background: var(--white); color: var(--obsidian); padding: 6px 12px; border-radius: 6px; }
-    .logout-btn { background: var(--red); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+-- --------------------------------------------------------------------------
+-- 5) VEHICLE INSPECTIONS
+-- --------------------------------------------------------------------------
+create table if not exists public.vehicle_inspections (
+  id bigint generated by default as identity primary key,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  company_name text,
+  employee_name text not null,
+  department text,
+  inspection_date date not null,
+  make text,
+  model text,
+  vin_number text,
+  license_plate text,
+  mileage text,
+  odometer_reading text,
+  fleet_unit_name text,
+  fleet_assigned_employee text,
+  checklist_data jsonb not null default '{}'::jsonb,
+  discrepancies text,
+  additional_comments text,
+  issues_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.vehicle_inspections add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table public.vehicle_inspections add column if not exists company_name text;
+alter table public.vehicle_inspections add column if not exists employee_name text;
+alter table public.vehicle_inspections add column if not exists department text;
+alter table public.vehicle_inspections add column if not exists inspection_date date;
+alter table public.vehicle_inspections add column if not exists make text;
+alter table public.vehicle_inspections add column if not exists model text;
+alter table public.vehicle_inspections add column if not exists vin_number text;
+alter table public.vehicle_inspections add column if not exists license_plate text;
+alter table public.vehicle_inspections add column if not exists mileage text;
+alter table public.vehicle_inspections add column if not exists odometer_reading text;
+alter table public.vehicle_inspections add column if not exists fleet_unit_name text;
+alter table public.vehicle_inspections add column if not exists fleet_assigned_employee text;
+alter table public.vehicle_inspections add column if not exists checklist_data jsonb default '{}'::jsonb;
+alter table public.vehicle_inspections add column if not exists discrepancies text;
+alter table public.vehicle_inspections add column if not exists additional_comments text;
+alter table public.vehicle_inspections add column if not exists issues_count integer default 0;
+alter table public.vehicle_inspections add column if not exists created_at timestamptz default now();
 
-    .nav-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; overflow-x: auto; padding: 0 16px; }
-    .nav-btn { flex: 1; min-width: 125px; padding: 15px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.6px; text-align: center; text-decoration: none; display: inline-block; }
-    .nav-btn.active { color: var(--obsidian); border-bottom-color: var(--red); font-weight: 800; background: rgba(220,38,38,0.03); }
+-- --------------------------------------------------------------------------
+-- 6) FLEET GARAGE
+-- --------------------------------------------------------------------------
+create table if not exists public.fleet_vehicles (
+  id bigint generated by default as identity primary key,
+  unit_name text not null,
+  assigned_employee text default 'Unassigned',
+  make text,
+  model text,
+  license_plate text,
+  vin_number text,
+  current_mileage text,
+  last_inspected_date text,
+  status text not null default 'Pending',
+  updated_by_user_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.fleet_vehicles add column if not exists unit_name text;
+alter table public.fleet_vehicles add column if not exists assigned_employee text default 'Unassigned';
+alter table public.fleet_vehicles add column if not exists make text;
+alter table public.fleet_vehicles add column if not exists model text;
+alter table public.fleet_vehicles add column if not exists license_plate text;
+alter table public.fleet_vehicles add column if not exists vin_number text;
+alter table public.fleet_vehicles add column if not exists current_mileage text;
+alter table public.fleet_vehicles add column if not exists last_inspected_date text;
+alter table public.fleet_vehicles add column if not exists status text default 'Pending';
+alter table public.fleet_vehicles add column if not exists updated_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.fleet_vehicles add column if not exists created_at timestamptz default now();
+alter table public.fleet_vehicles add column if not exists updated_at timestamptz default now();
 
-    .mos-bar { background: linear-gradient(90deg, #EEF2FF 0%, #F5F3FF 100%); border: 1px solid #C7D2FE; border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .mos-tag { background: var(--mos-indigo); color: var(--white); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
-    .mos-sop-chip { background: var(--white); color: var(--mos-indigo); border: 1px solid #A5B4FC; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+-- --------------------------------------------------------------------------
+-- 7) QUOTE CALLBACK BOARD
+-- --------------------------------------------------------------------------
+create table if not exists public.outstanding_quotes (
+  quote_number bigint primary key,
+  normalized_customer_name text,
+  customer_name text not null,
+  quote_date text,
+  module text,
+  phone text,
+  has_cell boolean not null default false,
+  subtotal numeric(14,2) not null default 0,
+  tax numeric(14,2) not null default 0,
+  total numeric(14,2) not null default 0,
+  original_csr text,
+  parts jsonb not null default '[]'::jsonb,
+  status text not null default 'open',
+  contact_attempts integer not null default 0,
+  call_data jsonb not null default '{}'::jsonb,
+  admin_coaching_note text not null default '',
+  created_by_user_id uuid references auth.users(id) on delete set null,
+  updated_by_user_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.outstanding_quotes add column if not exists normalized_customer_name text;
+alter table public.outstanding_quotes add column if not exists customer_name text;
+alter table public.outstanding_quotes add column if not exists quote_date text;
+alter table public.outstanding_quotes add column if not exists module text;
+alter table public.outstanding_quotes add column if not exists phone text;
+alter table public.outstanding_quotes add column if not exists has_cell boolean default false;
+alter table public.outstanding_quotes add column if not exists subtotal numeric(14,2) default 0;
+alter table public.outstanding_quotes add column if not exists tax numeric(14,2) default 0;
+alter table public.outstanding_quotes add column if not exists total numeric(14,2) default 0;
+alter table public.outstanding_quotes add column if not exists original_csr text;
+alter table public.outstanding_quotes add column if not exists parts jsonb default '[]'::jsonb;
+alter table public.outstanding_quotes add column if not exists status text default 'open';
+alter table public.outstanding_quotes add column if not exists contact_attempts integer default 0;
+alter table public.outstanding_quotes add column if not exists call_data jsonb default '{}'::jsonb;
+alter table public.outstanding_quotes add column if not exists admin_coaching_note text default '';
+alter table public.outstanding_quotes add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.outstanding_quotes add column if not exists updated_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.outstanding_quotes add column if not exists created_at timestamptz default now();
+alter table public.outstanding_quotes add column if not exists updated_at timestamptz default now();
 
-    .container { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
-    .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid rgba(15,23,42,0.08); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow-md); }
-    .card-title { font-size: 14px; font-weight: 800; color: var(--obsidian); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px; }
+-- --------------------------------------------------------------------------
+-- 8) QUOTE COMPETITOR REGISTRY
+-- --------------------------------------------------------------------------
+create table if not exists public.quote_competitors (
+  id bigint generated by default as identity primary key,
+  name text not null,
+  specialty text not null default 'Auto & Flat',
+  active boolean not null default true,
+  created_by_user_id uuid references auth.users(id) on delete set null,
+  updated_by_user_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.quote_competitors add column if not exists name text;
+alter table public.quote_competitors add column if not exists specialty text default 'Auto & Flat';
+alter table public.quote_competitors add column if not exists active boolean default true;
+alter table public.quote_competitors add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.quote_competitors add column if not exists updated_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.quote_competitors add column if not exists created_at timestamptz default now();
+alter table public.quote_competitors add column if not exists updated_at timestamptz default now();
 
-    @media (min-width: 920px) { .desktop-split { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 20px; align-items: start; } }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 700px) { .brand-text p { display: none; } .grid-2 { grid-template-columns: 1fr; gap: 10px; } }
+-- --------------------------------------------------------------------------
+-- 9) QUOTE CUSTOMER RE-UPLOAD EXEMPTIONS
+-- --------------------------------------------------------------------------
+create table if not exists public.quote_customer_exemptions (
+  normalized_customer_name text primary key,
+  created_by text,
+  created_by_user_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table public.quote_customer_exemptions add column if not exists normalized_customer_name text;
+alter table public.quote_customer_exemptions add column if not exists created_by text;
+alter table public.quote_customer_exemptions add column if not exists created_by_user_id uuid references auth.users(id) on delete set null;
+alter table public.quote_customer_exemptions add column if not exists created_at timestamptz default now();
 
-    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
-    input, select, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--white); color: var(--text); }
-    .btn { display: inline-block; width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 800; text-align: center; border: none; border-radius: 9px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.6px; }
-    .btn-navy { background: linear-gradient(135deg, var(--navy) 0%, var(--obsidian) 100%); color: var(--white); }
-    .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 8px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+-- --------------------------------------------------------------------------
+-- 10) AUDIT LOG
+-- --------------------------------------------------------------------------
+create table if not exists public.audit_logs (
+  id bigint generated by default as identity primary key,
+  actor_user_id uuid references auth.users(id) on delete set null,
+  supervisor_name text,
+  action_type text not null,
+  details text,
+  "timestamp" timestamptz not null default now()
+);
+alter table public.audit_logs add column if not exists actor_user_id uuid references auth.users(id) on delete set null;
+alter table public.audit_logs add column if not exists supervisor_name text;
+alter table public.audit_logs add column if not exists action_type text;
+alter table public.audit_logs add column if not exists details text;
+alter table public.audit_logs add column if not exists "timestamp" timestamptz default now();
 
-    .spec-drawer { background: #F8FAFC; border: 1.5px dashed var(--navy-light); border-radius: 10px; padding: 16px; margin-top: 12px; margin-bottom: 14px; }
-    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
-    th { background: #F8FAFC; color: var(--text-secondary); text-align: left; padding: 11px 12px; text-transform: uppercase; font-size: 10px; font-weight: 800; border-bottom: 1.5px solid var(--border-strong); }
-    td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
-    .badge { display: inline-block; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-    .badge-ok { background: #D1FAE5; color: #065F46; }
-    .badge-issue { background: #FEE2E2; color: #991B1B; }
-    .badge-warn { background: #FEF3C7; color: #92400E; }
-    .badge-navy { background: #E0E7FF; color: #1E3A8A; }
-    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+-- --------------------------------------------------------------------------
+-- 11) MANAGER DASHBOARD PREFERENCES
+-- --------------------------------------------------------------------------
+create table if not exists public.portal_preferences (
+  user_pin text primary key,
+  auth_user_id uuid references auth.users(id) on delete cascade,
+  dashboard_prefs jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.portal_preferences add column if not exists user_pin text;
+alter table public.portal_preferences add column if not exists auth_user_id uuid references auth.users(id) on delete cascade;
+alter table public.portal_preferences add column if not exists dashboard_prefs jsonb default '{}'::jsonb;
+alter table public.portal_preferences add column if not exists updated_at timestamptz default now();
 
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(6,16,30,0.65); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
-    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
-  </style>
-</head>
-<body>
+-- --------------------------------------------------------------------------
+-- 12) DATA INTEGRITY PREFLIGHT
+-- --------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from public.app_users) then
+    raise exception 'GLASSPRO Auth migration stopped: app_users is empty. Restore/seed the existing employee directory before running the Auth migration.';
+  end if;
+  if not exists (select 1 from public.app_users where coalesce(active, true) = true and coalesce(perm_admin, false) = true) then
+    raise exception 'GLASSPRO Auth migration stopped: at least one active Management/admin employee profile is required for the first Auth claim.';
+  end if;
+  if exists (select 1 from public.app_users where pin_code is not null group by pin_code having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate app_users.pin_code values exist.';
+  end if;
+  if exists (select 1 from public.app_users where pin_code is null or pin_code !~ '^[0-9]{4}$') then
+    raise exception 'GLASSPRO Auth migration stopped: every employee profile must have a unique 4-digit pin_code before Auth migration.';
+  end if;
+  if exists (select 1 from public.app_users where auth_user_id is not null group by auth_user_id having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: one Supabase Auth UUID is linked to multiple employee profiles.';
+  end if;
+  if exists (select 1 from public.app_users where auth_email is not null and btrim(auth_email) <> '' group by lower(btrim(auth_email)) having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate app_users.auth_email values exist.';
+  end if;
+  if exists (select 1 from public.commission_logs where wo_number is not null group by wo_number having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate commission_logs.wo_number values exist.';
+  end if;
+  if exists (select 1 from public.fleet_vehicles where license_plate is not null and btrim(license_plate) <> '' group by upper(btrim(license_plate)) having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate fleet license plates exist.';
+  end if;
+  if exists (select 1 from public.outstanding_quotes where quote_number is not null group by quote_number having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate outstanding_quotes.quote_number values exist.';
+  end if;
+  if exists (select 1 from public.quote_competitors where name is not null and btrim(name) <> '' group by lower(btrim(name)) having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate quote competitor names exist.';
+  end if;
+  if exists (select 1 from public.quote_customer_exemptions where normalized_customer_name is not null and btrim(normalized_customer_name) <> '' group by normalized_customer_name having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: duplicate quote customer exemptions exist.';
+  end if;
+  if exists (select 1 from public.active_time_sessions where auth_user_id is not null group by auth_user_id having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: an Auth user has multiple active time sessions.';
+  end if;
+  if exists (select 1 from public.portal_preferences where auth_user_id is not null group by auth_user_id having count(*) > 1) then
+    raise exception 'GLASSPRO Auth migration stopped: an Auth user has multiple portal preference rows.';
+  end if;
+end $$;
 
-  <header>
-    <div class="brand">
-      <div class="brand-badge">GLASSPRO</div>
-      <div class="brand-text">
-        <h1>GLASS PRO BY AMERICAN GLASS</h1>
-        <p>Commission, Work Order & Specification Portal</p>
-      </div>
-    </div>
-    <div class="header-right">
-      <div id="dbStatus" class="hidden"></div>
-      <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
-        <span id="activeUserName" class="user-pill"></span>
-        <span id="activeUserTypeBadge" class="hidden"></span>
-        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
-      </div>
-    </div>
-  </header>
+create unique index if not exists gp_app_users_pin_uq on public.app_users(pin_code);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'gp_app_users_pin_format_ck'
+      and conrelid = 'public.app_users'::regclass
+  ) then
+    alter table public.app_users
+      add constraint gp_app_users_pin_format_ck check (pin_code ~ '^[0-9]{4}$');
+  end if;
+end $$;
+create unique index if not exists gp_app_users_auth_user_uq on public.app_users(auth_user_id);
+create unique index if not exists gp_app_users_auth_email_ci_uq on public.app_users(lower(btrim(auth_email))) where auth_email is not null and btrim(auth_email) <> '';
+create unique index if not exists gp_commission_logs_wo_uq on public.commission_logs(wo_number);
+create unique index if not exists gp_fleet_vehicles_plate_ci_uq on public.fleet_vehicles(upper(btrim(license_plate))) where license_plate is not null and btrim(license_plate) <> '';
+create unique index if not exists gp_quote_competitors_name_ci_uq on public.quote_competitors(lower(btrim(name)));
+create unique index if not exists gp_outstanding_quotes_number_uq on public.outstanding_quotes(quote_number);
+create unique index if not exists gp_quote_competitors_name_exact_uq on public.quote_competitors(name);
+create unique index if not exists gp_quote_customer_exemptions_name_uq on public.quote_customer_exemptions(normalized_customer_name);
+create unique index if not exists gp_active_time_auth_uq on public.active_time_sessions(auth_user_id);
+create unique index if not exists gp_portal_preferences_auth_uq on public.portal_preferences(auth_user_id);
 
-  <nav id="mainNavBar" class="nav-bar">
-    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
-    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
-    <a href="commissions.html" id="navLinkComm" class="nav-btn active">3. Commission & WOs</a>
-    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
-    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
-  </nav>
+create index if not exists gp_time_auth_date_idx on public.time_logs(auth_user_id, work_date desc);
+create index if not exists gp_time_employee_date_idx on public.time_logs(employee_name, work_date desc);
+create index if not exists gp_commission_auth_date_idx on public.commission_logs(auth_user_id, work_date desc);
+create index if not exists gp_commission_employee_date_idx on public.commission_logs(employee_name, work_date desc);
+create index if not exists gp_vehicle_inspection_auth_date_idx on public.vehicle_inspections(auth_user_id, inspection_date desc);
+create index if not exists gp_vehicle_inspection_plate_date_idx on public.vehicle_inspections(license_plate, inspection_date desc);
+create index if not exists gp_quotes_status_idx on public.outstanding_quotes(status);
+create index if not exists gp_quotes_customer_idx on public.outstanding_quotes(normalized_customer_name);
+create index if not exists gp_audit_actor_time_idx on public.audit_logs(actor_user_id, "timestamp" desc);
+create index if not exists gp_audit_action_time_idx on public.audit_logs(action_type, "timestamp" desc);
 
-  <div class="container">
+-- --------------------------------------------------------------------------
+-- 13) PRIVATE AUTHORIZATION HELPERS USED BY RLS
+-- --------------------------------------------------------------------------
+create or replace function private.gp_is_active_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.app_users u
+    where u.auth_user_id = (select auth.uid()) and u.active = true
+  );
+$$;
 
-    <div id="mosQuickBar" class="mos-bar hidden">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span class="mos-tag">MultiplyOS Playbooks</span>
-        <span id="mosDivisionLabel" style="font-size:12px; font-weight:700;">Division SOPs:</span>
-        <div id="mosSopChipsContainer" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-      </div>
-      <div style="font-size:11px; font-weight:700; color:var(--mos-indigo);">MOS Sync: Active</div>
-    </div>
+create or replace function private.gp_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.app_users u
+    where u.auth_user_id = (select auth.uid()) and u.active = true and u.perm_admin = true
+  );
+$$;
 
-    <div class="desktop-split">
-      <div>
-        <div class="card">
-          <div class="card-title">
-            <span>Log Work Order & Commission</span>
-            
-          </div>
+create or replace function private.gp_has_permission(p_permission text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((
+    select case lower(p_permission)
+      when 'time' then u.perm_admin or u.perm_time
+      when 'quotes' then u.perm_admin or u.perm_quotes
+      when 'commission' then u.perm_admin or u.perm_commission
+      when 'vehicle_submit' then u.perm_admin or u.perm_vehicle_submit
+      when 'vehicle_view' then u.perm_admin or u.perm_vehicle_view
+      when 'safety' then u.perm_admin or u.perm_safety
+      when 'fleet' then u.perm_admin or u.perm_vehicle_submit or u.perm_vehicle_view or u.perm_safety
+      when 'admin' then u.perm_admin
+      else false
+    end
+    from public.app_users u
+    where u.auth_user_id = (select auth.uid()) and u.active = true
+    limit 1
+  ), false);
+$$;
 
-          <div class="grid-2" style="margin-bottom:12px;">
-            <div>
-              <label>Work Order # (WO#) *</label>
-              <input type="text" id="commWoNumber" placeholder="e.g. WO-10485" />
-            </div>
-            <div>
-              <label>Completion Date *</label>
-              <input type="date" id="commDate" />
-            </div>
-          </div>
+revoke all on function private.gp_is_active_user() from public;
+revoke all on function private.gp_is_admin() from public;
+revoke all on function private.gp_has_permission(text) from public;
+grant execute on function private.gp_is_active_user() to authenticated;
+grant execute on function private.gp_is_admin() to authenticated;
+grant execute on function private.gp_has_permission(text) to authenticated;
 
-          <div class="grid-2" style="margin-bottom:12px;">
-            <div>
-              <label>Job Type / Division Category *</label>
-              <select id="commJobType">
-                <option value="Auto - Windshield Replacement">Auto - Windshield Replacement</option>
-                <option value="Auto - Windshield + ADAS Calibration">Auto - Windshield + ADAS Calibration</option>
-                <option value="Auto - Static / Dynamic ADAS Only">Auto - Static / Dynamic ADAS Only</option>
-                <option value="Auto - Tempered Door / Back Glass">Auto - Tempered Door / Back Glass</option>
-                <option value="Auto - Rock Chip Repair">Auto - Rock Chip Repair</option>
-                <option value="Residential - Insulated Glass Unit (IGU)">Residential - Insulated Glass Unit (IGU)</option>
-                <option value="Residential - Custom Shower Enclosure">Residential - Custom Shower Enclosure</option>
-                <option value="Residential - Mirror / Tabletop / Shelving">Residential - Mirror / Tabletop / Shelving</option>
-                <option value="Commercial - Storefront / Door Service">Commercial - Storefront / Door Service</option>
-                <option value="Commercial - Heavy Glass / Curtain Wall">Commercial - Heavy Glass / Curtain Wall</option>
-                <option value="Sales - Quote Follow-Up Conversion">Sales - Quote Follow-Up Conversion</option>
-              </select>
-            </div>
-            <div>
-              <label>Commission / Job Value ($) (Optional)</label>
-              <input type="number" id="commAmount" placeholder="0.00" step="0.01" />
-            </div>
-          </div>
+-- --------------------------------------------------------------------------
+-- 14) SAFE EMPLOYEE DIRECTORY + ONE-TIME LEGACY PROFILE CLAIM
+-- --------------------------------------------------------------------------
+create or replace function public.gp_employee_directory()
+returns table(id bigint, employee_name text, department text, employment_type text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select u.id, u.employee_name, u.department, u.employment_type
+  from public.app_users u
+  where u.active = true
+    and (
+      private.gp_is_admin()
+      or private.gp_has_permission('commission')
+      or private.gp_has_permission('vehicle_submit')
+      or private.gp_has_permission('vehicle_view')
+    )
+  order by u.employee_name;
+$$;
 
-          <div style="margin-bottom:12px;">
-            <button type="button" id="btnToggleSpecDrawer" class="btn-outline" style="width:100%; padding:10px;" onclick="toggleSpecDrawer()">
-              + Open Optional Job Specification Tab (Parts, Location, Split Tech)
-            </button>
-          </div>
+revoke all on function public.gp_employee_directory() from public, anon;
+grant execute on function public.gp_employee_directory() to authenticated;
 
-          <div id="commSpecDrawer" class="spec-drawer hidden">
-            <div class="card-title" style="font-size:12px; margin-bottom:10px;">
-              <span>Job Specifications & Technical Details</span>
-              <span class="badge badge-navy">Optional</span>
-            </div>
+create or replace function public.gp_claim_profile(p_pin text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_email text;
+  v_profile public.app_users%rowtype;
+  v_attempts integer := 0;
+  v_window timestamptz;
+  v_locked timestamptz;
+  v_bootstrap_allowed boolean := false;
+begin
+  if v_uid is null then
+    return jsonb_build_object('ok', false, 'message', 'Authentication required before claiming an employee profile.');
+  end if;
 
-            <div class="grid-2" style="margin-bottom:10px;">
-              <div>
-                <label>Service Location</label>
-                <select id="commServiceType">
-                  <option value="In-Shop">In-Shop (Valdosta Bay)</option>
-                  <option value="Mobile Route">Mobile Field Route</option>
-                  <option value="Commercial Job Site">Commercial Job Site</option>
-                </select>
-              </div>
-              <div>
-                <label>Glass / Part Specification</label>
-                <select id="commGlassSpec">
-                  <option value="N/A">Standard / N/A</option>
-                  <option value="OEE / Aftermarket">OEE / Aftermarket</option>
-                  <option value="OEM Dealer Glass">OEM Dealer Glass</option>
-                  <option value="Acoustic / Heated / HUD">Acoustic / Heated / HUD</option>
-                  <option value="Custom Tempered / Laminated">Custom Tempered / Laminated</option>
-                  <option value="Low-E Double Pane IGU">Low-E Double Pane IGU</option>
-                </select>
-              </div>
-            </div>
+  select lower(btrim(u.email)) into v_email from auth.users u where u.id = v_uid;
+  if v_email is null or v_email = '' then
+    return jsonb_build_object('ok', false, 'message', 'The authenticated account does not have an email address.');
+  end if;
 
-            <div class="grid-2" style="margin-bottom:10px;">
-              <div>
-                <label>Molding / Hardware / Urethane Used</label>
-                <input type="text" id="commMaterials" placeholder="e.g. Universal molding, 2 tubes Dow, clips" />
-              </div>
-              <div>
-                <label>Helper / Split Commission Tech</label>
-                <select id="commHelperTech">
-                  <option value="Solo (100%)">Solo Job (100%)</option>
-                </select>
-              </div>
-            </div>
+  select attempts, window_started_at, locked_until
+    into v_attempts, v_window, v_locked
+  from private.profile_claim_attempts
+  where auth_user_id = v_uid;
 
-            <div>
-              <label>Additional Specification Notes / Customer Details</label>
-              <textarea id="commSpecNotes" rows="2" placeholder="Pinchweld notes, recalibration target details, custom measurements..."></textarea>
-            </div>
-          </div>
+  if v_locked is not null and v_locked > now() then
+    return jsonb_build_object('ok', false, 'message', 'Too many claim attempts. Try again after the temporary lock expires.', 'locked_until', v_locked);
+  end if;
 
-          <button type="button" class="btn btn-navy" onclick="submitCommissionLog()">Submit Work Order to MultiplyOS Queue</button>
-        </div>
-      </div>
+  if v_window is null or v_window < now() - interval '15 minutes' then
+    v_attempts := 0;
+    v_window := now();
+  end if;
 
-      <div>
-        <div class="card">
-          <div class="card-title">
-            <span>My Logged Work Orders</span>
-            <span id="myCommCountBadge" class="badge badge-navy">0 Logged</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>WO#</th>
-                  <th>Job Type & Specs</th>
-                  <th>Value</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="myCommissionTable"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  select * into v_profile from public.app_users p where p.auth_user_id = v_uid limit 1;
+  if found then
+    delete from private.profile_claim_attempts where auth_user_id = v_uid;
+    if v_profile.active is not true then
+      return jsonb_build_object('ok', false, 'message', 'This employee profile is inactive. Contact a manager.');
+    end if;
+    return jsonb_build_object('ok', true, 'message', 'Profile already linked.', 'profile', to_jsonb(v_profile));
+  end if;
 
-  <div id="mosSopModal" class="modal-backdrop hidden" onclick="if(event.target === this) this.classList.add('hidden')">
-    <div class="modal-card">
-      <div class="card-title">
-        <span id="mosModalTitle">MultiplyOS Standard Operating Procedure</span>
-        <span class="badge badge-purple">MOS Playbook</span>
-      </div>
-      <div id="mosModalBody" style="font-size:13px; line-height:1.65; color:var(--text-secondary); margin-bottom:18px;"></div>
-      <div style="text-align:right;">
-        <button type="button" class="btn btn-navy" style="width:auto; padding:10px 22px;" onclick="document.getElementById('mosSopModal').classList.add('hidden')">Acknowledge & Close</button>
-      </div>
-    </div>
-  </div>
+  if p_pin is null or p_pin !~ '^[0-9]{4}$' then
+    v_attempts := coalesce(v_attempts, 0) + 1;
+    insert into private.profile_claim_attempts(auth_user_id, attempts, window_started_at, locked_until, updated_at)
+    values (v_uid, v_attempts, coalesce(v_window, now()), case when v_attempts >= 5 then now() + interval '15 minutes' end, now())
+    on conflict (auth_user_id) do update set attempts = excluded.attempts, window_started_at = excluded.window_started_at,
+      locked_until = excluded.locked_until, updated_at = now();
+    return jsonb_build_object('ok', false, 'message', 'Enter your 4-digit employee PIN.');
+  end if;
 
-  <div id="toast">Saved</div>
+  select * into v_profile
+  from public.app_users p
+  where p.pin_code = p_pin and p.active = true and p.auth_user_id is null
+  for update
+  limit 1;
 
-  <script>
-    const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+  if not found then
+    v_attempts := coalesce(v_attempts, 0) + 1;
+    insert into private.profile_claim_attempts(auth_user_id, attempts, window_started_at, locked_until, updated_at)
+    values (v_uid, v_attempts, coalesce(v_window, now()), case when v_attempts >= 5 then now() + interval '15 minutes' end, now())
+    on conflict (auth_user_id) do update set attempts = excluded.attempts, window_started_at = excluded.window_started_at,
+      locked_until = excluded.locked_until, updated_at = now();
+    return jsonb_build_object('ok', false, 'message', case when v_attempts >= 5 then 'Too many claim attempts. Account claim is temporarily locked.' else 'No unclaimed active employee profile matches that PIN.' end);
+  end if;
 
-    let supabaseClient = null;
-    let isCloudConnected = false;
-    try {
-      if (typeof window.supabase !== "undefined" && SUPABASE_URL.startsWith("https://")) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        isCloudConnected = true;
-        document.getElementById("dbStatus").innerHTML = `<span class="status-dot"></span><span>Supabase configured (not verified)</span>`;
-      }
-    } catch (e) {}
+  v_bootstrap_allowed := v_profile.perm_admin = true and not exists (
+    select 1 from public.app_users x where x.active = true and x.perm_admin = true and x.auth_user_id is not null
+  );
 
-    const MOS_SOPS = {
-      "Operations": [{ title: "SOP-OP1: Daily Dispatch & Queue Audit", body: "1. Verify all morning technicians have clocked in by 8:00 AM.<br>2. Audit MultiplyOS Work Order queue and confirm glass parts are inspected." }],
-      "Front Office / Sales": [{ title: "SOP-SL3: Windshield Quote Follow-Up Script", body: "1. Contact unbooked auto and residential glass quotes within 24 hours.<br>2. Log converted Work Order # (WO#) upon scheduling." }],
-      "Auto Glass": [{ title: "SOP-AG1: Pre-Install Walk-Around & ADAS", body: "1. Inspect vehicle for pre-existing dash lights or scratches before removal.<br>2. Log OEM/OEE glass spec and urethane batch in the WO Specification drawer." }],
-      "Residential": [{ title: "SOP-RES1: Custom Shower & IGU Install", body: "1. Verify out-of-square tolerances and hardware finish.<br>2. Log Low-E / Tempered spec and helper split tech." }],
-      "Commercial": [{ title: "SOP-COM1: Storefront & Job Site Safety", body: "1. Verify PPE, setting blocks, and commercial door closer tension before sign-off." }]
-    };
+  if v_profile.auth_email is null or btrim(v_profile.auth_email) = '' then
+    if not v_bootstrap_allowed then
+      v_attempts := coalesce(v_attempts, 0) + 1;
+      insert into private.profile_claim_attempts(auth_user_id, attempts, window_started_at, locked_until, updated_at)
+      values (v_uid, v_attempts, coalesce(v_window, now()), case when v_attempts >= 5 then now() + interval '15 minutes' end, now())
+      on conflict (auth_user_id) do update set attempts = excluded.attempts, window_started_at = excluded.window_started_at,
+        locked_until = excluded.locked_until, updated_at = now();
+      return jsonb_build_object('ok', false, 'message', case when v_attempts >= 5 then 'Too many claim attempts. Account claim is temporarily locked.' else 'This employee profile is not yet provisioned for Auth. Ask a manager to assign your login email.' end);
+    end if;
+  elsif lower(btrim(v_profile.auth_email)) <> v_email then
+    v_attempts := coalesce(v_attempts, 0) + 1;
+    insert into private.profile_claim_attempts(auth_user_id, attempts, window_started_at, locked_until, updated_at)
+    values (v_uid, v_attempts, coalesce(v_window, now()), case when v_attempts >= 5 then now() + interval '15 minutes' end, now())
+    on conflict (auth_user_id) do update set attempts = excluded.attempts, window_started_at = excluded.window_started_at,
+      locked_until = excluded.locked_until, updated_at = now();
+    return jsonb_build_object('ok', false, 'message', case when v_attempts >= 5 then 'Too many claim attempts. Account claim is temporarily locked.' else 'The signed-in email does not match the email assigned to that employee profile.' end);
+  end if;
 
-    let activeUser = null;
-    let usersList = [];
-    let commissionLogs = [];
+  update public.app_users
+  set auth_user_id = v_uid,
+      auth_email = coalesce(nullif(btrim(auth_email), ''), v_email),
+      claimed_at = now(),
+      updated_at = now()
+  where id = v_profile.id
+  returning * into v_profile;
 
-    function formatCurrency(num) { return "$" + Math.max(0, parseFloat(num) || 0).toFixed(2); }
-    function showToast(msg) {
-      const t = document.getElementById("toast");
-      t.textContent = msg; t.style.display = "block";
-      setTimeout(() => { t.style.display = "none"; }, 3000);
-    }
+  update public.time_logs
+    set auth_user_id = v_uid
+    where auth_user_id is null and lower(btrim(employee_name)) = lower(btrim(v_profile.employee_name));
+  update public.commission_logs
+    set auth_user_id = v_uid
+    where auth_user_id is null and lower(btrim(employee_name)) = lower(btrim(v_profile.employee_name));
+  update public.vehicle_inspections
+    set auth_user_id = v_uid
+    where auth_user_id is null and lower(btrim(employee_name)) = lower(btrim(v_profile.employee_name));
+  update public.active_time_sessions
+    set auth_user_id = v_uid
+    where auth_user_id is null and employee_pin = v_profile.pin_code;
+  update public.portal_preferences
+    set auth_user_id = v_uid
+    where auth_user_id is null and user_pin = v_profile.pin_code;
 
-    window.logoutPortal = function() {
-      localStorage.removeItem("gp_session_user");
-      sessionStorage.removeItem("gp_session_user");
-      window.location.href = "index.html";
-    };
+  delete from private.profile_claim_attempts where auth_user_id = v_uid;
+  return jsonb_build_object('ok', true, 'message', 'Employee profile claimed.', 'profile', to_jsonb(v_profile));
+end;
+$$;
 
-    window.toggleSpecDrawer = function() {
-      const d = document.getElementById("commSpecDrawer");
-      const btn = document.getElementById("btnToggleSpecDrawer");
-      const isHidden = d.classList.contains("hidden");
-      d.classList.toggle("hidden", !isHidden);
-      btn.textContent = isHidden ? "- Hide Optional Job Specification Tab" : "+ Open Optional Job Specification Tab (Parts, Location, Split Tech)";
-    };
+revoke all on function public.gp_claim_profile(text) from public, anon;
+grant execute on function public.gp_claim_profile(text) to authenticated;
 
-    window.showSopModal = function(dept, idx) {
-      const sops = MOS_SOPS[dept] || MOS_SOPS["Operations"];
-      const sop = sops[idx];
-      if (!sop) return;
-      document.getElementById("mosModalTitle").textContent = sop.title;
-      document.getElementById("mosModalBody").innerHTML = sop.body;
-      document.getElementById("mosSopModal").classList.remove("hidden");
-    };
 
-    window.submitCommissionLog = async function() {
-      const wo = document.getElementById("commWoNumber").value.trim();
-      const date = document.getElementById("commDate").value;
-      const jobType = document.getElementById("commJobType").value;
-      const amount = parseFloat(document.getElementById("commAmount").value) || 0;
-      const serviceType = document.getElementById("commServiceType").value;
-      const glassSpec = document.getElementById("commGlassSpec").value;
-      const materials = document.getElementById("commMaterials").value.trim();
-      const helperTech = document.getElementById("commHelperTech").value;
-      const specNotes = document.getElementById("commSpecNotes").value.trim();
+-- Secure bridge used when a quote callback becomes a won/scheduled job. Quote-
+-- only employees cannot insert arbitrary commission records directly; this RPC
+-- derives amount and job details from the protected quote row.
+create or replace function public.gp_bridge_won_quote(
+  p_quote_number bigint,
+  p_target_employee_name text default null,
+  p_work_date date default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_caller public.app_users%rowtype;
+  v_target public.app_users%rowtype;
+  v_quote public.outstanding_quotes%rowtype;
+  v_work_date date := coalesce(p_work_date, (now() at time zone 'America/New_York')::date);
+  v_glass_spec text;
+begin
+  select * into v_caller
+  from public.app_users u
+  where u.auth_user_id = v_uid and u.active = true
+  limit 1;
 
-      if (!wo || !date) return alert("Please enter the Work Order # (WO#) and Completion Date.");
-      if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) return alert("Enter a valid nonnegative job amount.");
-      if (commissionLogs.some(c => c.wo_number === wo.toUpperCase() && c.employee_name === activeUser.employee_name && c.work_date === date)) return alert("This work order is already logged for this date.");
+  if not found or not (v_caller.perm_quotes or v_caller.perm_admin) then
+    raise exception 'Quote Call-Back permission required.';
+  end if;
 
-      const rec = {
-        employee_name: activeUser.employee_name,
-        department: activeUser.department,
-        work_date: date,
-        wo_number: wo.toUpperCase(),
-        job_type: jobType,
-        job_amount: amount,
-        service_type: serviceType,
-        glass_spec: glassSpec,
-        materials_used: materials,
-        helper_tech: helperTech,
-        spec_notes: specNotes,
-        status: "Pending Review"
-      };
+  select * into v_quote
+  from public.outstanding_quotes q
+  where q.quote_number = p_quote_number
+  for update;
+  if not found then raise exception 'Quote % was not found.', p_quote_number; end if;
 
-      let cloudSaved = false;
-      if (isCloudConnected) {
-        try {
-          const { error } = await supabaseClient.from("commission_logs").insert([rec]);
-          cloudSaved = !error;
-        } catch (e) { console.warn("Commission cloud sync failed", e); }
-      }
-      rec.id = Date.now();
-      commissionLogs.unshift(rec);
-      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+  if v_caller.perm_admin and nullif(btrim(coalesce(p_target_employee_name, '')), '') is not null then
+    select * into v_target
+    from public.app_users u
+    where u.active = true
+      and lower(btrim(u.employee_name)) = lower(btrim(p_target_employee_name))
+    limit 1;
+  end if;
+  if v_target.id is null then v_target := v_caller; end if;
 
-      document.getElementById("commWoNumber").value = "";
-      document.getElementById("commAmount").value = "";
-      document.getElementById("commMaterials").value = "";
-      document.getElementById("commSpecNotes").value = "";
-      showToast(`Work Order ${rec.wo_number} saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
-      await loadCommissionsData();
-    };
+  v_glass_spec := coalesce(
+    nullif(v_quote.parts -> 0 ->> 'desc', ''),
+    nullif(v_quote.parts -> 0 ->> 'part', ''),
+    'Quote callback conversion'
+  );
 
-    async function loadCommissionsData() {
-      commissionLogs = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
-      usersList = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
-      if (isCloudConnected) {
-        try {
-          const cRes = await supabaseClient.from("commission_logs").select("*").order("id", { ascending: false });
-          if (cRes.data) {
-            const keys = new Set(cRes.data.map(c => `${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`));
-            commissionLogs = [...cRes.data, ...commissionLogs.filter(c => !keys.has(`${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`))];
-            localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
-          }
-          const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
-          if (uRes.data && uRes.data.length > 0) usersList = uRes.data;
-        } catch (e) {}
-      }
+  -- Mark this transaction as the trusted quote->commission bridge. The quote
+  -- update trigger uses this local setting to prevent a quote-only client from
+  -- forging a WON transition through a direct REST update.
+  perform set_config('gp.bridge_won_quote', '1', true);
 
-      const helperSelect = document.getElementById("commHelperTech");
-      let hHtml = `<option value="Solo (100%)">Solo Job (100%)</option>`;
-      usersList.forEach(u => {
-        if (u.employee_name !== activeUser.employee_name) {
-          hHtml += `<option value="Split w/ ${GP.escapeHtml(u.employee_name)}">Split w/ ${GP.escapeHtml(u.employee_name)}</option>`;
-        }
-      });
-      helperSelect.innerHTML = hHtml;
+  update public.outstanding_quotes
+  set status = 'won', updated_by_user_id = v_uid, updated_at = now()
+  where quote_number = p_quote_number;
 
-      const myComm = commissionLogs.filter(c => (c.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase());
-      document.getElementById("myCommCountBadge").textContent = `${myComm.length} Logged`;
+  insert into public.commission_logs (
+    auth_user_id, employee_name, department, work_date, wo_number,
+    job_type, job_amount, service_type, glass_spec, materials_used,
+    helper_tech, spec_notes, status
+  ) values (
+    v_target.auth_user_id, v_target.employee_name, v_target.department,
+    v_work_date, 'Q-' || p_quote_number::text,
+    'Sales - Quote Follow-Up Conversion', coalesce(v_quote.total, 0),
+    case when lower(coalesce(v_quote.module, '')) = 'flat' then 'Commercial / Residential' else 'In-Shop' end,
+    v_glass_spec, 'Mainstreet Quote #' || p_quote_number::text,
+    'Solo (100%)', 'Customer: ' || coalesce(v_quote.customer_name, '') || ' (' || coalesce(v_quote.phone, '') || ')',
+    'Approved'
+  )
+  on conflict (wo_number) do nothing;
 
-      const tbody = document.getElementById("myCommissionTable");
-      if (myComm.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = myComm.map(c => {
-        const specs = [c.service_type, c.glass_spec !== "N/A" ? c.glass_spec : "", c.materials_used, c.helper_tech !== "Solo (100%)" ? c.helper_tech : "", c.spec_notes].filter(Boolean).join(" | ");
-        const badgeClass = c.status === "Approved" ? "badge-ok" : (c.status === "Flagged" ? "badge-issue" : "badge-warn");
-        return `
-          <tr>
-            <td>${GP.escapeHtml(c.work_date)}</td>
-            <td class="mono" style="font-weight:700;">${GP.escapeHtml(c.wo_number)}</td>
-            <td><b>${GP.escapeHtml(c.job_type)}</b><br><small style="color:var(--muted);">${GP.escapeHtml(specs || "Standard")}</small></td>
-            <td class="mono" style="font-weight:700;">${c.job_amount > 0 ? formatCurrency(c.job_amount) : "-"}</td>
-            <td><span class="badge ${badgeClass}">${GP.escapeHtml(c.status || "Pending")}</span></td>
-          </tr>
-        `;
-      }).join("");
-    }
+  return jsonb_build_object(
+    'ok', true,
+    'quote_number', p_quote_number,
+    'wo_number', 'Q-' || p_quote_number::text,
+    'employee_name', v_target.employee_name
+  );
+end;
+$$;
+revoke all on function public.gp_bridge_won_quote(bigint, text, date) from public, anon;
+grant execute on function public.gp_bridge_won_quote(bigint, text, date) to authenticated;
 
-    window.addEventListener("DOMContentLoaded", function() {
-      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
-      if (!saved) { window.location.href = "index.html"; return; }
-      activeUser = JSON.parse(saved);
+-- Admin can unlink a mistaken claim without needing a browser service key.
+-- The underlying auth.users account is intentionally NOT deleted.
+create or replace function public.gp_admin_reset_profile_claim(p_profile_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_target uuid;
+begin
+  if not private.gp_is_admin() then raise exception 'Admin permission required.'; end if;
+  select auth_user_id into v_target from public.app_users where id = p_profile_id;
+  if v_target is null then return; end if;
+  if v_target = auth.uid() then raise exception 'You cannot reset the Auth link for your own active admin profile.'; end if;
 
-      document.getElementById("commDate").value = new Date().toISOString().split("T")[0];
-      document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
-      document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+  -- Clear the assigned Auth email as well so the old account cannot simply
+  -- reclaim the profile. Management must explicitly provision the intended
+  -- email again before the next claim.
+  update public.app_users
+  set auth_user_id = null, auth_email = null, claimed_at = null, updated_at = now()
+  where id = p_profile_id;
+  update public.time_logs set auth_user_id = null where auth_user_id = v_target;
+  update public.commission_logs set auth_user_id = null where auth_user_id = v_target;
+  update public.vehicle_inspections set auth_user_id = null where auth_user_id = v_target;
+  delete from public.active_time_sessions where auth_user_id = v_target;
+  delete from public.portal_preferences where auth_user_id = v_target;
+end;
+$$;
+revoke all on function public.gp_admin_reset_profile_claim(bigint) from public, anon;
+grant execute on function public.gp_admin_reset_profile_claim(bigint) to authenticated;
 
-      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
-      document.getElementById("navLinkFleet").classList.toggle("hidden", !activeUser.perm_vehicle_submit && !activeUser.perm_vehicle_view);
-      document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
+-- --------------------------------------------------------------------------
+-- 15) NORMALIZATION / OWNERSHIP TRIGGERS
+-- --------------------------------------------------------------------------
+create or replace function public.gp_set_updated_at()
+returns trigger language plpgsql set search_path = '' as $$
+begin new.updated_at = now(); return new; end;
+$$;
 
-      const sops = MOS_SOPS[activeUser.department] || MOS_SOPS["Operations"];
-      document.getElementById("mosDivisionLabel").textContent = `${activeUser.department} Playbooks:`;
-      document.getElementById("mosSopChipsContainer").innerHTML = sops.map((s, idx) =>
-        `<button type="button" class="mos-sop-chip" onclick="showSopModal('${activeUser.department}', ${idx})">${s.title}</button>`
-      ).join("");
+create or replace function public.gp_normalize_quote_customer()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  new.normalized_customer_name := upper(regexp_replace(btrim(coalesce(new.customer_name, '')), '\s+', ' ', 'g'));
+  return new;
+end;
+$$;
 
-      loadCommissionsData();
-    });
-  </script>
-</body>
-</html>
+create or replace function public.gp_set_time_owner()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  if private.gp_is_admin() then
+    if new.auth_user_id is null and new.employee_name is not null then
+      select * into p from public.app_users u where u.active and lower(btrim(u.employee_name)) = lower(btrim(new.employee_name)) limit 1;
+      if found then new.auth_user_id := p.auth_user_id; new.department := coalesce(new.department, p.department); end if;
+    end if;
+  else
+    if tg_op = 'UPDATE' and old.auth_user_id is null and new.auth_user_id = auth.uid() then return new; end if;
+    select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+    if not found or p.perm_time is not true then raise exception 'Time permission required.'; end if;
+    new.auth_user_id := auth.uid(); new.employee_name := p.employee_name; new.department := p.department;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_active_time_owner()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  if private.gp_is_admin() then
+    if new.auth_user_id is not null then
+      select * into p from public.app_users u where u.auth_user_id = new.auth_user_id and u.active limit 1;
+    elsif new.employee_pin is not null then
+      select * into p from public.app_users u where u.pin_code = new.employee_pin and u.active limit 1;
+    end if;
+    if found then
+      new.auth_user_id := p.auth_user_id; new.employee_pin := p.pin_code; new.employee_name := p.employee_name; new.department := p.department;
+      return new;
+    end if;
+  end if;
+
+  if tg_op = 'UPDATE' and old.auth_user_id is null and new.auth_user_id = auth.uid() then
+    return new;
+  end if;
+
+  select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+  if not found then raise exception 'Active employee profile required.'; end if;
+  if not (p.perm_time or p.perm_admin) then raise exception 'Time permission required.'; end if;
+  new.auth_user_id := auth.uid(); new.employee_pin := p.pin_code; new.employee_name := p.employee_name; new.department := p.department;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_commission_owner()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  if private.gp_is_admin() then
+    if new.auth_user_id is null and new.employee_name is not null then
+      select * into p from public.app_users u where u.active and lower(btrim(u.employee_name)) = lower(btrim(new.employee_name)) limit 1;
+      if found then new.auth_user_id := p.auth_user_id; new.department := coalesce(new.department, p.department); end if;
+    end if;
+  else
+    if tg_op = 'UPDATE' and old.auth_user_id is null and new.auth_user_id = auth.uid() then return new; end if;
+    select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+    if not found or not (p.perm_commission or p.perm_quotes) then raise exception 'Commission or Quote permission required.'; end if;
+    new.auth_user_id := auth.uid(); new.employee_name := p.employee_name; new.department := p.department;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_vehicle_inspection_owner()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  -- Admin maintenance/backfill/reset may intentionally preserve or clear the
+  -- row owner. RLS already limits those UPDATEs to admins.
+  if private.gp_is_admin() then
+    if new.auth_user_id is not null then
+      select * into p from public.app_users u where u.auth_user_id = new.auth_user_id limit 1;
+      if found then
+        new.employee_name := coalesce(nullif(btrim(new.employee_name), ''), p.employee_name);
+        new.department := coalesce(nullif(btrim(new.department), ''), p.department);
+      end if;
+    end if;
+    return new;
+  end if;
+
+  -- One-time claim backfill of a legacy row. The security-definer claim RPC is
+  -- the only practical caller because ordinary users cannot UPDATE these rows.
+  if tg_op = 'UPDATE' and old.auth_user_id is null and new.auth_user_id = auth.uid() then return new; end if;
+
+  select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+  if not found or p.perm_vehicle_submit is not true then raise exception 'Vehicle inspection submission permission required.'; end if;
+  new.auth_user_id := auth.uid(); new.employee_name := p.employee_name; new.department := p.department;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_sync_fleet_from_inspection()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_status text := case when coalesce(new.issues_count, 0) > 0 then 'Flagged' else 'Passed' end;
+begin
+  update public.fleet_vehicles
+  set current_mileage = coalesce(new.mileage, current_mileage),
+      last_inspected_date = new.inspection_date::text,
+      status = v_status,
+      updated_by_user_id = new.auth_user_id,
+      updated_at = now()
+  where upper(btrim(license_plate)) = upper(btrim(coalesce(new.license_plate, '')))
+    and btrim(coalesce(new.license_plate, '')) <> '';
+
+  if not found and btrim(coalesce(new.license_plate, '')) <> '' then
+    insert into public.fleet_vehicles (
+      unit_name, assigned_employee, make, model, license_plate, vin_number,
+      current_mileage, last_inspected_date, status, updated_by_user_id
+    ) values (
+      coalesce(nullif(btrim(new.fleet_unit_name), ''), nullif(btrim(concat_ws(' ', new.make, new.model)), ''), 'Fleet Vehicle'),
+      coalesce(nullif(btrim(new.fleet_assigned_employee), ''), new.employee_name, 'Unassigned'),
+      new.make, new.model, new.license_plate, new.vin_number,
+      new.mileage, new.inspection_date::text, v_status, new.auth_user_id
+    )
+    on conflict do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_audit_actor()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+  if not found then raise exception 'Active employee profile required.'; end if;
+  new.actor_user_id := auth.uid(); new.supervisor_name := p.employee_name;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_portal_pref_owner()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  if tg_op = 'UPDATE' and old.auth_user_id is null and new.auth_user_id = auth.uid() then return new; end if;
+  select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+  if not found or p.perm_admin is not true then raise exception 'Admin permission required.'; end if;
+  new.auth_user_id := auth.uid(); new.user_pin := p.pin_code;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_quote_actor()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if tg_op = 'INSERT' then new.created_by_user_id := coalesce(new.created_by_user_id, auth.uid()); end if;
+  new.updated_by_user_id := auth.uid();
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_competitor_actor()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if tg_op = 'INSERT' then new.created_by_user_id := coalesce(new.created_by_user_id, auth.uid()); end if;
+  new.updated_by_user_id := auth.uid();
+  return new;
+end;
+$$;
+
+create or replace function public.gp_set_exemption_actor()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare p public.app_users%rowtype;
+begin
+  if auth.uid() is null then return new; end if;
+  select * into p from public.app_users u where u.auth_user_id = auth.uid() and u.active limit 1;
+  if not found or p.perm_admin is not true then raise exception 'Admin permission required.'; end if;
+  new.created_by_user_id := auth.uid(); new.created_by := p.employee_name;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_protect_last_admin()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_removes_linked_admin boolean := false;
+begin
+  if tg_op = 'DELETE' then
+    v_removes_linked_admin := old.active and old.perm_admin and old.auth_user_id is not null;
+  else
+    v_removes_linked_admin := old.active and old.perm_admin and old.auth_user_id is not null
+      and not (new.active and new.perm_admin and new.auth_user_id is not null);
+  end if;
+
+  if v_removes_linked_admin and not exists (
+    select 1 from public.app_users u
+    where u.id <> old.id and u.active = true and u.perm_admin = true and u.auth_user_id is not null
+  ) then
+    raise exception 'At least one active Auth-linked administrator must remain.';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+create or replace function public.gp_guard_quote_update()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if not private.gp_is_admin() then
+    if new.quote_number is distinct from old.quote_number
+       or new.normalized_customer_name is distinct from old.normalized_customer_name
+       or new.customer_name is distinct from old.customer_name
+       or new.quote_date is distinct from old.quote_date
+       or new.module is distinct from old.module
+       or new.phone is distinct from old.phone
+       or new.has_cell is distinct from old.has_cell
+       or new.subtotal is distinct from old.subtotal
+       or new.tax is distinct from old.tax
+       or new.total is distinct from old.total
+       or new.original_csr is distinct from old.original_csr
+       or new.parts is distinct from old.parts
+       or new.admin_coaching_note is distinct from old.admin_coaching_note
+       or new.created_by_user_id is distinct from old.created_by_user_id
+       or new.created_at is distinct from old.created_at then
+      raise exception 'Quote callback users may update callback status/details only.';
+    end if;
+
+    if new.status = 'won' and old.status is distinct from 'won'
+       and coalesce(current_setting('gp.bridge_won_quote', true), '') <> '1' then
+      raise exception 'Won quotes must use the secured quote conversion workflow.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+-- Ensure identity IDs exist on upgraded legacy tables.
+alter table public.app_users add column if not exists id bigint generated by default as identity;
+alter table public.time_logs add column if not exists id bigint generated by default as identity;
+alter table public.commission_logs add column if not exists id bigint generated by default as identity;
+alter table public.vehicle_inspections add column if not exists id bigint generated by default as identity;
+alter table public.fleet_vehicles add column if not exists id bigint generated by default as identity;
+alter table public.quote_competitors add column if not exists id bigint generated by default as identity;
+alter table public.audit_logs add column if not exists id bigint generated by default as identity;
+
+-- Updated-at and normalization triggers
+drop trigger if exists gp_app_users_updated_at on public.app_users;
+create trigger gp_app_users_updated_at before update on public.app_users
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_app_users_protect_last_admin on public.app_users;
+create trigger gp_app_users_protect_last_admin before update or delete on public.app_users
+for each row execute function public.gp_protect_last_admin();
+
+drop trigger if exists gp_fleet_vehicles_updated_at on public.fleet_vehicles;
+create trigger gp_fleet_vehicles_updated_at before update on public.fleet_vehicles
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_quotes_updated_at on public.outstanding_quotes;
+create trigger gp_quotes_updated_at before update on public.outstanding_quotes
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_quote_competitors_updated_at on public.quote_competitors;
+create trigger gp_quote_competitors_updated_at before update on public.quote_competitors
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_active_time_updated_at on public.active_time_sessions;
+create trigger gp_active_time_updated_at before update on public.active_time_sessions
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_portal_preferences_updated_at on public.portal_preferences;
+create trigger gp_portal_preferences_updated_at before update on public.portal_preferences
+for each row execute function public.gp_set_updated_at();
+
+drop trigger if exists gp_quotes_normalize_customer on public.outstanding_quotes;
+create trigger gp_quotes_normalize_customer before insert or update of customer_name on public.outstanding_quotes
+for each row execute function public.gp_normalize_quote_customer();
+
+-- Ownership / actor triggers
+drop trigger if exists gp_time_owner on public.time_logs;
+create trigger gp_time_owner before insert or update of employee_name, department, auth_user_id on public.time_logs
+for each row execute function public.gp_set_time_owner();
+
+drop trigger if exists gp_active_time_owner on public.active_time_sessions;
+create trigger gp_active_time_owner before insert or update on public.active_time_sessions
+for each row execute function public.gp_set_active_time_owner();
+
+drop trigger if exists gp_commission_owner on public.commission_logs;
+create trigger gp_commission_owner before insert or update of employee_name, department, auth_user_id on public.commission_logs
+for each row execute function public.gp_set_commission_owner();
+
+drop trigger if exists gp_vehicle_inspection_owner on public.vehicle_inspections;
+create trigger gp_vehicle_inspection_owner before insert or update of employee_name, department, auth_user_id on public.vehicle_inspections
+for each row execute function public.gp_set_vehicle_inspection_owner();
+
+drop trigger if exists gp_vehicle_inspection_sync_fleet on public.vehicle_inspections;
+create trigger gp_vehicle_inspection_sync_fleet after insert on public.vehicle_inspections
+for each row execute function public.gp_sync_fleet_from_inspection();
+
+drop trigger if exists gp_audit_actor on public.audit_logs;
+create trigger gp_audit_actor before insert on public.audit_logs
+for each row execute function public.gp_set_audit_actor();
+
+drop trigger if exists gp_portal_pref_owner on public.portal_preferences;
+create trigger gp_portal_pref_owner before insert or update on public.portal_preferences
+for each row execute function public.gp_set_portal_pref_owner();
+
+drop trigger if exists gp_quotes_guard_update on public.outstanding_quotes;
+create trigger gp_quotes_guard_update before update on public.outstanding_quotes
+for each row execute function public.gp_guard_quote_update();
+
+drop trigger if exists gp_quote_actor on public.outstanding_quotes;
+create trigger gp_quote_actor before insert or update on public.outstanding_quotes
+for each row execute function public.gp_set_quote_actor();
+
+drop trigger if exists gp_competitor_actor on public.quote_competitors;
+create trigger gp_competitor_actor before insert or update on public.quote_competitors
+for each row execute function public.gp_set_competitor_actor();
+
+drop trigger if exists gp_exemption_actor on public.quote_customer_exemptions;
+create trigger gp_exemption_actor before insert on public.quote_customer_exemptions
+for each row execute function public.gp_set_exemption_actor();
+
+update public.outstanding_quotes
+set normalized_customer_name = upper(regexp_replace(btrim(coalesce(customer_name, '')), '\\s+', ' ', 'g'))
+where normalized_customer_name is null
+   or normalized_customer_name is distinct from upper(regexp_replace(btrim(coalesce(customer_name, '')), '\\s+', ' ', 'g'));
+
+update public.outstanding_quotes
+set parts = coalesce(parts, '[]'::jsonb),
+    call_data = coalesce(call_data, '{}'::jsonb),
+    admin_coaching_note = coalesce(admin_coaching_note, ''),
+    original_csr = coalesce(nullif(btrim(original_csr), ''), 'Unassigned'),
+    status = coalesce(nullif(btrim(status), ''), 'open'),
+    contact_attempts = coalesce(contact_attempts, 0),
+    has_cell = coalesce(has_cell, false),
+    subtotal = coalesce(subtotal, 0),
+    tax = coalesce(tax, 0),
+    total = coalesce(total, 0);
+
+
+-- Legacy profiles are NOT auto-linked by email alone. Every unlinked profile
+-- must complete the one-time PIN claim, which also verifies the assigned email.
+
+-- Backfill personal ownership for profiles that are already linked.
+update public.time_logs t set auth_user_id = u.auth_user_id
+from public.app_users u
+where t.auth_user_id is null and u.auth_user_id is not null
+  and lower(btrim(t.employee_name)) = lower(btrim(u.employee_name));
+update public.commission_logs c set auth_user_id = u.auth_user_id
+from public.app_users u
+where c.auth_user_id is null and u.auth_user_id is not null
+  and lower(btrim(c.employee_name)) = lower(btrim(u.employee_name));
+update public.vehicle_inspections v set auth_user_id = u.auth_user_id
+from public.app_users u
+where v.auth_user_id is null and u.auth_user_id is not null
+  and lower(btrim(v.employee_name)) = lower(btrim(u.employee_name));
+update public.active_time_sessions s set auth_user_id = u.auth_user_id
+from public.app_users u
+where s.auth_user_id is null and u.auth_user_id is not null and s.employee_pin = u.pin_code;
+update public.portal_preferences p set auth_user_id = u.auth_user_id
+from public.app_users u
+where p.auth_user_id is null and u.auth_user_id is not null and p.user_pin = u.pin_code;
+
+-- --------------------------------------------------------------------------
+-- 16) GRANTS + ROW LEVEL SECURITY
+-- --------------------------------------------------------------------------
+grant usage on schema public to authenticated;
+revoke all on table
+  public.app_users, public.time_logs, public.active_time_sessions,
+  public.commission_logs, public.vehicle_inspections, public.fleet_vehicles,
+  public.outstanding_quotes, public.quote_competitors,
+  public.quote_customer_exemptions, public.audit_logs, public.portal_preferences
+  from anon, public;
+
+grant select, insert, update, delete on table
+  public.app_users, public.time_logs, public.active_time_sessions,
+  public.commission_logs, public.vehicle_inspections, public.fleet_vehicles,
+  public.outstanding_quotes, public.quote_competitors,
+  public.quote_customer_exemptions, public.audit_logs, public.portal_preferences
+  to authenticated;
+do $$
+declare seq_name text;
+begin
+  foreach seq_name in array array[
+    pg_get_serial_sequence('public.app_users','id'),
+    pg_get_serial_sequence('public.time_logs','id'),
+    pg_get_serial_sequence('public.commission_logs','id'),
+    pg_get_serial_sequence('public.vehicle_inspections','id'),
+    pg_get_serial_sequence('public.fleet_vehicles','id'),
+    pg_get_serial_sequence('public.quote_competitors','id'),
+    pg_get_serial_sequence('public.audit_logs','id')
+  ] loop
+    if seq_name is not null then
+      execute format('grant usage, select on sequence %s to authenticated', seq_name);
+    end if;
+  end loop;
+end $$;
+
+alter table public.app_users enable row level security;
+alter table public.time_logs enable row level security;
+alter table public.active_time_sessions enable row level security;
+alter table public.commission_logs enable row level security;
+alter table public.vehicle_inspections enable row level security;
+alter table public.fleet_vehicles enable row level security;
+alter table public.outstanding_quotes enable row level security;
+alter table public.quote_competitors enable row level security;
+alter table public.quote_customer_exemptions enable row level security;
+alter table public.audit_logs enable row level security;
+alter table public.portal_preferences enable row level security;
+
+-- Remove every legacy policy on the protected portal tables before installing
+-- this release's authoritative policy set. PostgreSQL ORs permissive policies,
+-- so leaving an older broad policy in place could silently weaken RLS.
+do $$
+declare r record;
+begin
+  for r in
+    select schemaname, tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = any (array[
+        'app_users','time_logs','active_time_sessions','commission_logs',
+        'vehicle_inspections','fleet_vehicles','outstanding_quotes',
+        'quote_competitors','quote_customer_exemptions','audit_logs',
+        'portal_preferences'
+      ])
+  loop
+    execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
+  end loop;
+end $$;
+
+-- APP USERS
+drop policy if exists gp_app_users_select on public.app_users;
+create policy gp_app_users_select on public.app_users for select to authenticated
+using (((select auth.uid()) = auth_user_id) or (select private.gp_is_admin()));
+drop policy if exists gp_app_users_insert on public.app_users;
+create policy gp_app_users_insert on public.app_users for insert to authenticated
+with check ((select private.gp_is_admin()));
+drop policy if exists gp_app_users_update on public.app_users;
+create policy gp_app_users_update on public.app_users for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_app_users_delete on public.app_users;
+create policy gp_app_users_delete on public.app_users for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- TIME LOGS
+drop policy if exists gp_time_select on public.time_logs;
+create policy gp_time_select on public.time_logs for select to authenticated
+using ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_time_insert on public.time_logs;
+create policy gp_time_insert on public.time_logs for insert to authenticated
+with check ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_time_update on public.time_logs;
+create policy gp_time_update on public.time_logs for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_time_delete on public.time_logs;
+create policy gp_time_delete on public.time_logs for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- ACTIVE TIME SESSIONS
+drop policy if exists gp_active_time_select on public.active_time_sessions;
+create policy gp_active_time_select on public.active_time_sessions for select to authenticated
+using ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_active_time_insert on public.active_time_sessions;
+create policy gp_active_time_insert on public.active_time_sessions for insert to authenticated
+with check ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_active_time_update on public.active_time_sessions;
+create policy gp_active_time_update on public.active_time_sessions for update to authenticated
+using ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())))
+with check ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_active_time_delete on public.active_time_sessions;
+create policy gp_active_time_delete on public.active_time_sessions for delete to authenticated
+using ((select private.gp_is_admin()) or ((select private.gp_has_permission('time')) and auth_user_id = (select auth.uid())));
+
+-- COMMISSIONS
+drop policy if exists gp_comm_select on public.commission_logs;
+create policy gp_comm_select on public.commission_logs for select to authenticated
+using ((select private.gp_is_admin()) or ((select private.gp_has_permission('commission')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_comm_insert on public.commission_logs;
+create policy gp_comm_insert on public.commission_logs for insert to authenticated
+with check ((select private.gp_is_admin()) or ((select private.gp_has_permission('commission')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_comm_update on public.commission_logs;
+create policy gp_comm_update on public.commission_logs for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_comm_delete on public.commission_logs;
+create policy gp_comm_delete on public.commission_logs for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- VEHICLE INSPECTIONS
+drop policy if exists gp_vehicle_inspection_select on public.vehicle_inspections;
+create policy gp_vehicle_inspection_select on public.vehicle_inspections for select to authenticated
+using ((select private.gp_is_admin()) or (select private.gp_has_permission('vehicle_view')) or ((select private.gp_has_permission('vehicle_submit')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_vehicle_inspection_insert on public.vehicle_inspections;
+create policy gp_vehicle_inspection_insert on public.vehicle_inspections for insert to authenticated
+with check ((select private.gp_is_admin()) or ((select private.gp_has_permission('vehicle_submit')) and auth_user_id = (select auth.uid())));
+drop policy if exists gp_vehicle_inspection_update on public.vehicle_inspections;
+create policy gp_vehicle_inspection_update on public.vehicle_inspections for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_vehicle_inspection_delete on public.vehicle_inspections;
+create policy gp_vehicle_inspection_delete on public.vehicle_inspections for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- FLEET VEHICLES
+drop policy if exists gp_fleet_select on public.fleet_vehicles;
+create policy gp_fleet_select on public.fleet_vehicles for select to authenticated
+using ((select private.gp_is_admin()) or (select private.gp_has_permission('vehicle_submit')) or (select private.gp_has_permission('vehicle_view')));
+drop policy if exists gp_fleet_insert on public.fleet_vehicles;
+create policy gp_fleet_insert on public.fleet_vehicles for insert to authenticated
+with check ((select private.gp_is_admin()));
+drop policy if exists gp_fleet_update on public.fleet_vehicles;
+create policy gp_fleet_update on public.fleet_vehicles for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_fleet_delete on public.fleet_vehicles;
+create policy gp_fleet_delete on public.fleet_vehicles for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- OUTSTANDING QUOTES
+drop policy if exists gp_quotes_select on public.outstanding_quotes;
+create policy gp_quotes_select on public.outstanding_quotes for select to authenticated
+using ((select private.gp_has_permission('quotes')));
+drop policy if exists gp_quotes_insert on public.outstanding_quotes;
+create policy gp_quotes_insert on public.outstanding_quotes for insert to authenticated
+with check ((select private.gp_is_admin()));
+drop policy if exists gp_quotes_update on public.outstanding_quotes;
+create policy gp_quotes_update on public.outstanding_quotes for update to authenticated
+using ((select private.gp_has_permission('quotes'))) with check ((select private.gp_has_permission('quotes')));
+drop policy if exists gp_quotes_delete on public.outstanding_quotes;
+create policy gp_quotes_delete on public.outstanding_quotes for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- QUOTE COMPETITORS
+drop policy if exists gp_competitors_select on public.quote_competitors;
+create policy gp_competitors_select on public.quote_competitors for select to authenticated
+using ((select private.gp_has_permission('quotes')));
+drop policy if exists gp_competitors_insert on public.quote_competitors;
+create policy gp_competitors_insert on public.quote_competitors for insert to authenticated
+with check ((select private.gp_is_admin()));
+drop policy if exists gp_competitors_update on public.quote_competitors;
+create policy gp_competitors_update on public.quote_competitors for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_competitors_delete on public.quote_competitors;
+create policy gp_competitors_delete on public.quote_competitors for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- QUOTE EXEMPTIONS
+drop policy if exists gp_exemptions_select on public.quote_customer_exemptions;
+create policy gp_exemptions_select on public.quote_customer_exemptions for select to authenticated
+using ((select private.gp_has_permission('quotes')));
+drop policy if exists gp_exemptions_insert on public.quote_customer_exemptions;
+create policy gp_exemptions_insert on public.quote_customer_exemptions for insert to authenticated
+with check ((select private.gp_is_admin()));
+drop policy if exists gp_exemptions_delete on public.quote_customer_exemptions;
+create policy gp_exemptions_delete on public.quote_customer_exemptions for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- AUDIT LOGS
+drop policy if exists gp_audit_select on public.audit_logs;
+create policy gp_audit_select on public.audit_logs for select to authenticated
+using ((select private.gp_is_admin()));
+drop policy if exists gp_audit_insert on public.audit_logs;
+create policy gp_audit_insert on public.audit_logs for insert to authenticated
+with check ((select private.gp_is_active_user()) and actor_user_id = (select auth.uid()));
+drop policy if exists gp_audit_update on public.audit_logs;
+create policy gp_audit_update on public.audit_logs for update to authenticated
+using ((select private.gp_is_admin())) with check ((select private.gp_is_admin()));
+drop policy if exists gp_audit_delete on public.audit_logs;
+create policy gp_audit_delete on public.audit_logs for delete to authenticated
+using ((select private.gp_is_admin()));
+
+-- PORTAL PREFERENCES
+drop policy if exists gp_prefs_select on public.portal_preferences;
+create policy gp_prefs_select on public.portal_preferences for select to authenticated
+using (auth_user_id = (select auth.uid()));
+drop policy if exists gp_prefs_insert on public.portal_preferences;
+create policy gp_prefs_insert on public.portal_preferences for insert to authenticated
+with check ((select private.gp_is_admin()) and auth_user_id = (select auth.uid()));
+drop policy if exists gp_prefs_update on public.portal_preferences;
+create policy gp_prefs_update on public.portal_preferences for update to authenticated
+using ((select private.gp_is_admin()) and auth_user_id = (select auth.uid()))
+with check ((select private.gp_is_admin()) and auth_user_id = (select auth.uid()));
+drop policy if exists gp_prefs_delete on public.portal_preferences;
+create policy gp_prefs_delete on public.portal_preferences for delete to authenticated
+using (auth_user_id = (select auth.uid()));
+
+-- --------------------------------------------------------------------------
+-- 17) SUPABASE REALTIME
+-- --------------------------------------------------------------------------
+alter table public.app_users replica identity full;
+alter table public.time_logs replica identity full;
+alter table public.audit_logs replica identity full;
+alter table public.active_time_sessions replica identity full;
+alter table public.outstanding_quotes replica identity full;
+alter table public.quote_competitors replica identity full;
+alter table public.quote_customer_exemptions replica identity full;
+
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['app_users','time_logs','audit_logs','active_time_sessions','outstanding_quotes','quote_competitors','quote_customer_exemptions']
+    loop
+      if not exists (
+        select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+      ) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
+
+commit;
+
+-- Verification output
+select c.relname as table_name, c.relrowsecurity as rls_enabled
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in (
+    'app_users','time_logs','active_time_sessions','commission_logs',
+    'vehicle_inspections','fleet_vehicles','outstanding_quotes','quote_competitors',
+    'quote_customer_exemptions','audit_logs','portal_preferences'
+  )
+order by c.relname;
