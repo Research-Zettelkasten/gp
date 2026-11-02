@@ -722,6 +722,14 @@
       z-index: 9999;
       display: none;
     }
+
+    /* MANAGEMENT DASHBOARD PREFERENCES + LIVE TIME GROUPING */
+    .dashboard-pref-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:10px;background:#F8FAFC}
+    .dashboard-pref-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.dashboard-pref-panel{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-top:10px;border-top:1px solid var(--border)}.dashboard-pref-panel.hidden{display:none!important}.dashboard-pref-panel label{margin-bottom:4px}.dashboard-widget-hidden{display:none!important}
+    #dashboardLowerGrid.layout-one{grid-template-columns:1fr}#dashboardLowerGrid.layout-two{grid-template-columns:repeat(2,minmax(0,1fr))}.live-sync-card{border-left:4px solid var(--green)}.live-sync-dot{width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block;box-shadow:0 0 0 4px rgba(5,150,105,.12);margin-right:6px}
+    .time-group{border:1px solid var(--border-strong);border-radius:10px;background:#FFF;margin-bottom:10px;overflow:hidden}.time-group summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#F8FAFC;font-weight:800;user-select:none}.time-group summary::-webkit-details-marker{display:none}.time-group summary::after{content:"▾";color:var(--muted);font-size:15px}.time-group[open] summary::after{content:"▴"}.time-group-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-weight:600;font-size:11px;color:var(--muted)}.time-group .table-wrap{border:0;border-radius:0}
+    @media(max-width:850px){.dashboard-pref-panel{grid-template-columns:1fr 1fr}#dashboardLowerGrid.layout-two{grid-template-columns:1fr}}@media(max-width:560px){.dashboard-pref-panel{grid-template-columns:1fr}.time-group summary{align-items:flex-start;flex-direction:column}}
+
   </style>
 </head>
 <body>
@@ -764,15 +772,24 @@
       <button type="button" id="adminSubBtnUsers" class="sub-btn" onclick="showAdminSubTab('adminUsersPane', this)">3. Users & Roles</button>
       <button type="button" id="adminSubBtnComm" class="sub-btn" onclick="showAdminSubTab('adminCommissionsPane', this)">4. Commissions & WOs</button>
       <button type="button" id="adminSubBtnTime" class="sub-btn" onclick="showAdminSubTab('adminTimePane', this)">5. Time & Geotags</button>
-      <button type="button" id="adminSubBtnGarage" class="sub-btn" onclick="showAdminSubTab('adminGaragePane', this)">6. Fleet Garage</button>
-      <button type="button" id="adminSubBtnAudits" class="sub-btn" onclick="showAdminSubTab('adminFleetPane', this)">7. Audit Trail</button>
+      <button type="button" id="adminSubBtnAudits" class="sub-btn" onclick="showAdminSubTab('adminFleetPane', this)">6. Audit Trail</button>
+    </div>
+
+    <div class="dashboard-pref-bar">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><strong style="font-size:12px;">Management Dashboard</strong><span id="dashboardLockStatus" class="badge badge-ok">Locked</span><span style="font-size:11px;color:var(--muted);">Saved layout and default view persist until you change them.</span></div>
+      <div class="dashboard-pref-controls"><button type="button" id="dashboardCustomizeBtn" class="btn-outline" onclick="toggleDashboardCustomization()">Customize Dashboard</button><button type="button" id="dashboardSaveLockBtn" class="btn-outline hidden" onclick="saveAndLockDashboard()">Save & Lock</button></div>
+      <div id="dashboardPrefPanel" class="dashboard-pref-panel hidden">
+        <div><label>Default Management View</label><select id="dashboardDefaultPane"><option value="adminOverviewPane">Command Center</option><option value="adminMOSPane">MultiplyOS Hub</option><option value="adminUsersPane">Users & Roles</option><option value="adminCommissionsPane">Commissions & WOs</option><option value="adminTimePane">Time & Geotags</option><option value="adminFleetPane">Audit Trail</option></select></div>
+        <div><label>Command Center Layout</label><select id="dashboardColumnMode"><option value="two">Two-column widgets</option><option value="one">Single-column widgets</option></select></div>
+        <label class="perm-label"><input type="checkbox" id="dashShowKpis" checked /> Show KPI Summary</label><label class="perm-label"><input type="checkbox" id="dashShowOvertime" checked /> Show Overtime Watchlist</label><label class="perm-label"><input type="checkbox" id="dashShowDivision" checked /> Show Division Scoreboard</label>
+      </div>
     </div>
 
     <!-- ====================================================================
          PANE 1: EXECUTIVE COMMAND CENTER
          ==================================================================== -->
     <div id="adminOverviewPane">
-      <div class="grid-4" style="margin-bottom:18px;">
+      <div id="dashWidgetKpis" class="grid-4" style="margin-bottom:18px;">
         <div class="kpi-card">
           <label>Total Logged Hours</label>
           <div id="statTotalHours" class="kpi-value">00.00</div>
@@ -795,8 +812,8 @@
         </div>
       </div>
 
-      <div class="desktop-split">
-        <div class="card">
+      <div id="dashboardLowerGrid" class="desktop-split layout-two">
+        <div id="dashWidgetOvertime" class="card">
           <div class="card-title">
             <span>Overtime & Hour Cap Compliance Watchlist</span>
             <span class="badge badge-warn">Click Any Name for Weekly Popup</span>
@@ -819,7 +836,7 @@
           </div>
         </div>
 
-        <div>
+        <div id="dashWidgetDivision">
           <div class="card">
             <div class="card-title">
               <span>6-Division Labor & WO Scoreboard</span>
@@ -957,6 +974,7 @@
         <label>Assign Workspace Permissions:</label>
         <div class="perm-grid">
           <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
+          <label class="perm-label"><input type="checkbox" id="permQuotes" checked /> Quote Call-Backs</label>
           <label class="perm-label"><input type="checkbox" id="permCommission" checked /> Commission / WO Log</label>
           <label class="perm-label"><input type="checkbox" id="permVehSubmit" /> Submit Vehicle Check</label>
           <label class="perm-label"><input type="checkbox" id="permVehView" /> View Fleet History</label>
@@ -1152,111 +1170,12 @@
         </div>
       </div>
 
-      <!-- ALL TIME LOGS TABLE -->
-      <div class="card">
-        <div class="card-title">
-          <span>All Time Logs & High-Precision Street Geotags</span>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button type="button" class="btn-outline" style="border-color:var(--green); color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button>
-            <button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button>
-          </div>
-        </div>
-        <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">
-          Click <b>Edit Punch</b> on any row below to adjust Clock-In, Clock-Out, Break Minutes, or Work Date. Every change automatically logs a Before → After record in the Audit Trail.
-        </p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Employee</th>
-                <th>In / Out</th>
-                <th>Break</th>
-                <th>Total Hours</th>
-                <th>High-Precision Geotag & Map Link</th>
-                <th>Notes / Audit Status</th>
-                <th>Admin Actions</th>
-              </tr>
-            </thead>
-            <tbody id="adminTimeTable"></tbody>
-          </table>
-        </div>
-      </div>
+      <div class="card live-sync-card"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Live Elapsed</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
+      <div class="card"><div class="card-title"><span>Time Logs & High-Precision Street Geotags — Grouped by Employee</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select an employee to drop down every registered shift. Use <b>Edit Punch</b> to adjust a record; every change is recorded in the Audit Trail.</p><div id="adminTimeGroups"></div></div>
     </div>
 
     <!-- ====================================================================
-         PANE 6: FLEET GARAGE
-         ==================================================================== -->
-    <div id="adminGaragePane" class="hidden">
-      <div class="card">
-        <div class="card-title">
-          <span id="vehicleFormTitle">Add or Update Garage Vehicle</span>
-          <button type="button" class="btn-outline" onclick="resetVehicleForm()">Clear</button>
-        </div>
-        <input type="hidden" id="editingVehicleId" />
-
-        <div class="grid-2" style="margin-bottom:10px;">
-          <div>
-            <label>Unit / Truck Name *</label>
-            <input type="text" id="garageUnitName" placeholder="e.g. Truck 1 - Auto" />
-          </div>
-          <div>
-            <label>Assigned Driver</label>
-            <select id="garageAssignedEmp">
-              <option value="Unassigned">Unassigned (Shop Spare)</option>
-            </select>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-bottom:10px;">
-          <div>
-            <label>Make *</label>
-            <input type="text" id="garageMake" placeholder="e.g. Ford" />
-          </div>
-          <div>
-            <label>Model *</label>
-            <input type="text" id="garageModel" placeholder="e.g. Transit" />
-          </div>
-        </div>
-        <div class="grid-3" style="margin-bottom:10px;">
-          <div>
-            <label>License Plate *</label>
-            <input type="text" id="garagePlate" placeholder="Tag Number" />
-          </div>
-          <div>
-            <label>VIN Number</label>
-            <input type="text" id="garageVin" placeholder="17-Digit VIN" />
-          </div>
-          <div>
-            <label>Current Mileage</label>
-            <input type="number" id="garageMileage" placeholder="e.g. 45000" />
-          </div>
-        </div>
-        <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveGarageVehicle()">Save Vehicle to Garage</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Company Fleet Garage Directory</div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Truck / Unit</th>
-                <th>Vehicle Info</th>
-                <th>Driver</th>
-                <th>Mileage</th>
-                <th>Last Inspected</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="adminGarageTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ====================================================================
-         PANE 7: IMMUTABLE SUPERVISOR AUDIT LOGS
+         PANE 6: IMMUTABLE SUPERVISOR AUDIT LOGS
          ==================================================================== -->
     <div id="adminFleetPane" class="hidden">
       <div class="card">
@@ -1396,26 +1315,22 @@
     };
 
     const DEFAULT_USERS = [
-      { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
-      { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
-      { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
+      { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
+      { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
+      { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
     ];
 
-    const DEFAULT_GARAGE = [
-      { id: 1, unit_name: "Truck 1 - Auto", make: "Ford", model: "Transit", license_plate: "TAG-101", vin_number: "1FTNE3Y85GK10001", assigned_employee: "Lead Tech Employee", current_mileage: "45200", last_inspected_date: "Never", status: "Pending" },
-      { id: 2, unit_name: "Truck 2 - Residential", make: "Chevrolet", model: "Express", license_plate: "TAG-102", vin_number: "1GBGG31K3E110002", assigned_employee: "Brandon Faircloth", current_mileage: "62100", last_inspected_date: "Never", status: "Pending" },
-      { id: 3, unit_name: "Van 3 - Commercial", make: "Ram", model: "ProMaster", license_plate: "TAG-103", vin_number: "3C6TRVFG7GE10003", assigned_employee: "Unassigned", current_mileage: "28400", last_inspected_date: "Never", status: "Pending" }
-    ];
 
     let activeUser = null;
     let usersList = [...DEFAULT_USERS];
-    let garageList = [...DEFAULT_GARAGE];
     let timeLogs = [];
     let commissionLogs = [];
     let vehicleLogs = [];
     let auditLogs = [];
     let auditLimit = 10;
     let currentModalEmployeeName = "";
+    let dashboardPrefs={locked:true,defaultPane:"adminOverviewPane",columns:"two",showKpis:true,showOvertime:true,showDivision:true};
+    let adminRealtimeChannel=null,adminRefreshTimer=null,liveClockRenderTimer=null;
 
     function format00(num) {
       const parts = Math.max(0, parseFloat(num) || 0).toFixed(2).split(".");
@@ -1511,13 +1426,46 @@
     };
 
     window.showAdminSubTab = function(paneId, btn) {
-      ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminGaragePane", "adminFleetPane"].forEach(id => {
+      ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminFleetPane"].forEach(id => {
         document.getElementById(id).classList.add("hidden");
       });
       document.getElementById(paneId).classList.remove("hidden");
       document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
       if (btn) btn.classList.add("active");
     };
+
+    function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.pin_code || "default"}`;}
+    function loadDashboardPreferences(){
+      try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}")};}catch(e){} applyDashboardPreferences();
+    }
+    function applyDashboardPreferences(){
+      const ids=[["dashWidgetKpis","showKpis"],["dashWidgetOvertime","showOvertime"],["dashWidgetDivision","showDivision"]];
+      ids.forEach(([id,key])=>document.getElementById(id)?.classList.toggle("dashboard-widget-hidden",!dashboardPrefs[key]));
+      const lower=document.getElementById("dashboardLowerGrid"); if(lower){lower.classList.toggle("layout-one",dashboardPrefs.columns==="one");lower.classList.toggle("layout-two",dashboardPrefs.columns!=="one");}
+      const panel=document.getElementById("dashboardPrefPanel"),badge=document.getElementById("dashboardLockStatus"),custom=document.getElementById("dashboardCustomizeBtn"),save=document.getElementById("dashboardSaveLockBtn");
+      panel?.classList.toggle("hidden",dashboardPrefs.locked); if(badge){badge.textContent=dashboardPrefs.locked?"Locked":"Editing";badge.className=`badge ${dashboardPrefs.locked?"badge-ok":"badge-warn"}`;} if(custom)custom.textContent=dashboardPrefs.locked?"Customize Dashboard":"Cancel Changes";save?.classList.toggle("hidden",dashboardPrefs.locked);
+      if(document.getElementById("dashboardDefaultPane"))document.getElementById("dashboardDefaultPane").value=dashboardPrefs.defaultPane||"adminOverviewPane"; if(document.getElementById("dashboardColumnMode"))document.getElementById("dashboardColumnMode").value=dashboardPrefs.columns||"two";
+      if(document.getElementById("dashShowKpis"))document.getElementById("dashShowKpis").checked=dashboardPrefs.showKpis!==false;if(document.getElementById("dashShowOvertime"))document.getElementById("dashShowOvertime").checked=dashboardPrefs.showOvertime!==false;if(document.getElementById("dashShowDivision"))document.getElementById("dashShowDivision").checked=dashboardPrefs.showDivision!==false;
+    }
+    window.toggleDashboardCustomization=function(){if(dashboardPrefs.locked){dashboardPrefs.locked=false;}else{try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}"),locked:true};}catch(e){dashboardPrefs.locked=true;}}applyDashboardPreferences();};
+    window.saveAndLockDashboard=function(){dashboardPrefs={locked:true,defaultPane:document.getElementById("dashboardDefaultPane").value,columns:document.getElementById("dashboardColumnMode").value,showKpis:document.getElementById("dashShowKpis").checked,showOvertime:document.getElementById("dashShowOvertime").checked,showDivision:document.getElementById("dashShowDivision").checked};localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));applyDashboardPreferences();showToast("Dashboard preferences saved and locked");};
+    function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
+    function getOpenTimeGroups(){try{return JSON.parse(localStorage.getItem("gp_admin_time_groups_open")||"[]");}catch(e){return[];}}
+    window.rememberTimeGroupState=function(el){const open=new Set(getOpenTimeGroups()),key=el.dataset.employee||"";if(!key)return;if(el.open)open.add(key);else open.delete(key);localStorage.setItem("gp_admin_time_groups_open",JSON.stringify([...open]));};
+    window.setAllTimeGroups=function(openState){const keys=[];document.querySelectorAll(".time-group").forEach(el=>{el.open=openState;if(openState&&el.dataset.employee)keys.push(el.dataset.employee);});localStorage.setItem("gp_admin_time_groups_open",JSON.stringify(keys));};
+    function renderGroupedTimeLogs(){
+      const host=document.getElementById("adminTimeGroups");if(!host)return;const openGroups=new Set(getOpenTimeGroups()),grouped=new Map();
+      timeLogs.forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
+      const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No time logs recorded yet.</div>`;return;}
+      host.innerHTML=names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
+        const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.break_minutes||0}m</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
+        return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
+    }
+    function parseClockAudit(a){if(!a||!["TIME_CLOCK_IN","TIME_CLOCK_OUT"].includes(a.action_type))return null;try{return {...JSON.parse(a.details||"{}"),action_type:a.action_type,fallbackName:a.supervisor_name};}catch(e){return{action_type:a.action_type,employee_name:a.supervisor_name||"Unknown"};}}
+    function getActiveClockRows(){const latest=new Map(),ordered=auditLogs.slice().sort((a,b)=>{const bt=Date.parse(b.timestamp)||Number(b.id)||0,at=Date.parse(a.timestamp)||Number(a.id)||0;return bt-at;});ordered.forEach(a=>{const e=parseClockAudit(a);if(!e)return;const name=e.employee_name||e.fallbackName||a.supervisor_name||"Unknown",key=normalizeName(name);if(!latest.has(key))latest.set(key,{...e,employee_name:name});});return[...latest.values()].filter(e=>e.action_type==="TIME_CLOCK_IN");}
+    function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),elapsed=Math.max(0,(Date.now()-ms)/3600000),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
+    function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
+    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
 
     async function logAudit(actionType, detailsText) {
       const entry = {
@@ -1537,9 +1485,7 @@
     async function loadAdminData() {
       const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
       if (localUsers.length > 0) usersList = localUsers;
-
-      const localGarage = JSON.parse(localStorage.getItem("gp_fleet_garage") || "[]");
-      if (localGarage.length > 0) garageList = localGarage;
+      usersList = usersList.map(u => ({ ...u, perm_quotes: u.perm_quotes !== false }));
 
       const localTime = JSON.parse(localStorage.getItem("gp_time_logs") || "[]");
       const localComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
@@ -1555,14 +1501,11 @@
         try {
           const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
           if (uRes.data && uRes.data.length > 0) {
-            usersList = mergeRecordLists(uRes.data, localUsers, u => String(u.pin_code || u.employee_name).trim());
+            usersList = mergeRecordLists(uRes.data, localUsers, u => String(u.pin_code || u.employee_name).trim()).map(u => {
+              const localMatch = localUsers.find(l => String(l.pin_code || l.employee_name).trim() === String(u.pin_code || u.employee_name).trim());
+              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
+            });
             localStorage.setItem("gp_app_users", JSON.stringify(usersList));
-          }
-
-          const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
-          if (gRes.data && gRes.data.length > 0) {
-            garageList = gRes.data;
-            localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
           }
 
           const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
@@ -1600,6 +1543,7 @@
             employment_type: "Full-Time",
             pin_code: "----",
             perm_time: true,
+            perm_quotes: true,
             perm_commission: true
           });
         }
@@ -1655,13 +1599,8 @@
       document.getElementById("statTotalCommVolume").textContent = `${formatCurrency(totalVol)} logged volume`;
       document.getElementById("statFlaggedVehicles").textContent = flaggedVeh;
 
-      let empHtml = `<option value="Unassigned">Unassigned (Shop Spare)</option>`;
       let shiftEmpHtml = "";
-      usersList.forEach(u => {
-        empHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`;
-        shiftEmpHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`;
-      });
-      document.getElementById("garageAssignedEmp").innerHTML = empHtml;
+      usersList.forEach(u => { shiftEmpHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`; });
       document.getElementById("addShiftEmpSelect").innerHTML = shiftEmpHtml;
 
       let otAlerts = 0;
@@ -1772,6 +1711,7 @@
       document.getElementById("adminUsersTable").innerHTML = usersList.map(u => {
         let perms = [];
         if (u.perm_time) perms.push("Time");
+        if (u.perm_quotes !== false) perms.push("Quotes");
         if (u.perm_commission !== false) perms.push("Comm");
         if (u.perm_vehicle_submit) perms.push("SubVeh");
         if (u.perm_admin) perms.push("Admin");
@@ -1814,49 +1754,8 @@
         `;
       }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`;
 
-      document.getElementById("adminTimeTable").innerHTML = timeLogs.map(r => {
-        const mapPin = r.clock_in_coords ? `<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>` : "";
-        const isEdited = (r.notes || "").includes("[ADMIN EDIT") || (r.notes || "").includes("[ADMIN ADDED");
-        const safeName = GP.escapeHtml(JSON.stringify(String(r.employee_name || "")));
-        const hrs = getShiftHours(r);
-
-        return `
-          <tr>
-            <td>${GP.escapeHtml(r.work_date)}</td>
-            <td>
-              <span class="emp-trigger" onclick="openEmployeeBreakdownModal(${safeName})">${GP.escapeHtml(r.employee_name)}</span>
-              <br><small style="color:var(--muted);">${GP.escapeHtml(r.department || "")}</small>
-            </td>
-            <td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td>
-            <td class="mono">${r.break_minutes || 0}m</td>
-            <td class="mono" style="font-weight:800; font-size:14px;">${format00(hrs)}</td>
-            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || "Standard")} ${mapPin}</td>
-            <td style="font-size:12px;">
-              ${isEdited ? `<span class="badge badge-warn" style="margin-bottom:3px;">Audited Edit</span><br>` : ""}
-              ${GP.escapeHtml(r.notes || "")}
-            </td>
-            <td style="white-space:nowrap;">
-              <button type="button" class="btn-outline" style="padding:5px 9px; border-color:var(--navy); color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button>
-              <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button>
-            </td>
-          </tr>
-        `;
-      }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No time logs recorded yet.</td></tr>`;
-
-      document.getElementById("adminGarageTable").innerHTML = garageList.map(v => `
-        <tr>
-          <td><b>${GP.escapeHtml(v.unit_name)}</b></td>
-          <td>${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})</td>
-          <td><span class="badge badge-navy">${GP.escapeHtml(v.assigned_employee || 'Unassigned')}</span></td>
-          <td class="mono">${GP.escapeHtml(v.current_mileage || '0')} mi</td>
-          <td>${GP.escapeHtml(v.last_inspected_date || 'Never')}</td>
-          <td><span class="badge ${v.status === 'Flagged' ? 'badge-issue' : 'badge-ok'}">${GP.escapeHtml(v.status || 'Pending')}</span></td>
-          <td>
-            <button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadVehicleEditor('${v.id}')">Edit</button>
-            <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:4px 7px;" onclick="deleteVehicle('${v.id}')">Del</button>
-          </td>
-        </tr>
-      `).join("");
+      renderGroupedTimeLogs();
+      renderActiveTimeMonitor();
 
       document.getElementById("adminAuditTable").innerHTML = auditLogs.slice(0, auditLimit).map(a => `
         <tr>
@@ -2154,6 +2053,13 @@
       document.getElementById("editingUserId").value = "";
       document.getElementById("newEmpName").value = "";
       document.getElementById("newEmpPin").value = "";
+      document.getElementById("permTime").checked = true;
+      document.getElementById("permQuotes").checked = true;
+      document.getElementById("permCommission").checked = true;
+      document.getElementById("permVehSubmit").checked = false;
+      document.getElementById("permVehView").checked = false;
+      document.getElementById("permSafety").checked = true;
+      document.getElementById("permAdmin").checked = false;
       document.getElementById("userFormTitle").textContent = "Add or Update Employee Account";
     };
 
@@ -2166,6 +2072,7 @@
       document.getElementById("newEmpType").value = u.employment_type || "Full-Time";
       document.getElementById("newEmpPin").value = u.pin_code;
       document.getElementById("permTime").checked = !!u.perm_time;
+      document.getElementById("permQuotes").checked = u.perm_quotes !== false;
       document.getElementById("permCommission").checked = u.perm_commission !== false;
       document.getElementById("permVehSubmit").checked = !!u.perm_vehicle_submit;
       document.getElementById("permVehView").checked = !!u.perm_vehicle_view;
@@ -2193,6 +2100,7 @@
         employment_type: empType,
         pin_code: pin,
         perm_time: document.getElementById("permTime").checked,
+        perm_quotes: document.getElementById("permQuotes").checked,
         perm_commission: document.getElementById("permCommission").checked,
         perm_vehicle_submit: document.getElementById("permVehSubmit").checked,
         perm_vehicle_view: document.getElementById("permVehView").checked,
@@ -2202,8 +2110,14 @@
 
       if (isCloudConnected) {
         try {
-          if (editId) await supabaseClient.from("app_users").update(obj).eq("id", editId);
-          else await supabaseClient.from("app_users").insert([obj]);
+          const cloudResult = editId
+            ? await supabaseClient.from("app_users").update(obj).eq("id", editId)
+            : await supabaseClient.from("app_users").insert([obj]);
+          if (cloudResult?.error) {
+            const { perm_quotes, ...legacyObj } = obj;
+            if (editId) await supabaseClient.from("app_users").update(legacyObj).eq("id", editId);
+            else await supabaseClient.from("app_users").insert([legacyObj]);
+          }
         } catch (e) {}
       }
       if (editId) {
@@ -2231,77 +2145,6 @@
     };
 
     // ========================================================================
-    // FLEET GARAGE CRUD
-    // ========================================================================
-    window.resetVehicleForm = function() {
-      document.getElementById("editingVehicleId").value = "";
-      document.getElementById("garageUnitName").value = "";
-      document.getElementById("garageMake").value = "";
-      document.getElementById("garageModel").value = "";
-      document.getElementById("garagePlate").value = "";
-      document.getElementById("garageVin").value = "";
-      document.getElementById("garageMileage").value = "";
-    };
-
-    window.loadVehicleEditor = function(id) {
-      const v = garageList.find(x => String(x.id) === String(id));
-      if (!v) return;
-      document.getElementById("editingVehicleId").value = v.id;
-      document.getElementById("garageUnitName").value = v.unit_name;
-      document.getElementById("garageAssignedEmp").value = v.assigned_employee || "Unassigned";
-      document.getElementById("garageMake").value = v.make;
-      document.getElementById("garageModel").value = v.model;
-      document.getElementById("garagePlate").value = v.license_plate;
-      document.getElementById("garageVin").value = v.vin_number || "";
-      document.getElementById("garageMileage").value = v.current_mileage || "";
-      showAdminSubTab('adminGaragePane', document.getElementById('adminSubBtnGarage'));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    window.saveGarageVehicle = async function() {
-      const editId = document.getElementById("editingVehicleId").value;
-      const obj = {
-        unit_name: document.getElementById("garageUnitName").value.trim(),
-        assigned_employee: document.getElementById("garageAssignedEmp").value,
-        make: document.getElementById("garageMake").value.trim(),
-        model: document.getElementById("garageModel").value.trim(),
-        license_plate: document.getElementById("garagePlate").value.trim(),
-        vin_number: document.getElementById("garageVin").value.trim(),
-        current_mileage: document.getElementById("garageMileage").value.trim() || "0",
-        last_inspected_date: "Never",
-        status: "Pending"
-      };
-      if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
-      if (isCloudConnected) {
-        try {
-          if (editId) await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId);
-          else await supabaseClient.from("fleet_vehicles").insert([obj]);
-        } catch (e) {}
-      }
-      if (editId) {
-        const idx = garageList.findIndex(v => String(v.id) === String(editId));
-        if (idx >= 0) { obj.id = garageList[idx].id; garageList[idx] = obj; }
-      } else {
-        obj.id = Date.now();
-        garageList.push(obj);
-      }
-      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
-      resetVehicleForm();
-      showToast("Vehicle saved");
-      await loadAdminData();
-    };
-
-    window.deleteVehicle = async function(id) {
-      if (!confirm("Remove vehicle from garage?")) return;
-      if (isCloudConnected) {
-        try { await supabaseClient.from("fleet_vehicles").delete().eq("id", id); } catch (e) {}
-      }
-      garageList = garageList.filter(v => String(v.id) !== String(id));
-      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
-      await loadAdminData();
-    };
-
-    // ========================================================================
     // COMMISSIONS, SETTINGS & EXPORTS
     // ========================================================================
     window.setCommStatus = async function(id, st) {
@@ -2325,13 +2168,6 @@
       localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
       if (c) await logAudit("DELETE_WO", `Deleted WO ${c.wo_number}`);
       await loadAdminData();
-    };
-
-    window.saveTaxSettings = function() {
-      const fed = parseFloat(document.getElementById("settingFedTax").value) || 15.0;
-      const state = parseFloat(document.getElementById("settingStateTax").value) || 5.3;
-      localStorage.setItem("gp_tax_settings", JSON.stringify({ fedTax: fed, stateTax: state }));
-      showToast("Tax calculator defaults saved");
     };
 
     window.copyMOSScoreboardSnapshot = function() {
@@ -2391,6 +2227,8 @@
       if (!activeUser.perm_admin) { window.location.href = "index.html"; return; }
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
+      loadDashboardPreferences();
 
       window.handleAdminCsvUpload = function(event) {
         const file = event.target.files[0];
@@ -2466,7 +2304,11 @@
         });
       };
 
-      loadAdminData();
+      loadAdminData().then(() => {
+        const pane = dashboardPrefs.defaultPane || "adminOverviewPane";
+        showAdminSubTab(pane, getDashboardButtonForPane(pane));
+        startAdminLiveSync();
+      });
     });
   </script>
 </body>
