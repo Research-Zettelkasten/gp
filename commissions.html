@@ -501,6 +501,7 @@
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
 
+      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
       document.getElementById("navLinkFleet").classList.toggle("hidden", !activeUser.perm_vehicle_submit && !activeUser.perm_vehicle_view);
       document.getElementById("navLinkAdmin").classList.toggle("hidden", !activeUser.perm_admin);
 
