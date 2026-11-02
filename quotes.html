@@ -181,14 +181,11 @@
       <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-1.5 text-xs">
         <span class="text-emerald-400 font-mono font-bold mr-2">CSR STAMP:</span>
         <select id="activeCsrSelect" onchange="handleCsrChange(this.value)" class="bg-transparent text-white font-semibold focus:outline-none cursor-pointer pr-1">
-          <option value="SC: CALHOUN, STEPHANIE" class="bg-slate-900 text-white">SC: CALHOUN, STEPHANIE</option>
-          <option value="TM: MULLINAX, TASHA" class="bg-slate-900 text-white">TM: MULLINAX, TASHA</option>
-          <option value="WB: BREAZEALE, WAYNE" class="bg-slate-900 text-white">WB: BREAZEALE, WAYNE</option>
-          <option value="BF: Faircloth, Brandon" class="bg-slate-900 text-white">BF: Faircloth, Brandon [ADMIN]</option>
+          <option value="">Signed-in employee</option>
         </select>
       </div>
 
-      <span id="activeUserName" style="font-size:12px; font-weight:700; background:#FFF; color:#06101E; padding:6px 12px; border-radius:6px;">BRANDON FAIRCLOTH (Operations)</span>
+      <span id="activeUserName" style="font-size:12px; font-weight:700; background:#FFF; color:#06101E; padding:6px 12px; border-radius:6px;">SIGNED-IN EMPLOYEE</span>
       <button type="button" onclick="logoutPortal()" style="background:#DC2626; color:#FFF; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; text-transform:uppercase;">Sign Out</button>
     </div>
   </header>
@@ -297,10 +294,6 @@
 
           <select id="boardCsrFilter" onchange="renderBoardTable()" class="bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-glasspro-red">
             <option value="ALL">All CSRs</option>
-            <option value="SC: CALHOUN, STEPHANIE">SC: Stephanie Calhoun</option>
-            <option value="TM: MULLINAX, TASHA">TM: Tasha Mullinax</option>
-            <option value="WB: BREAZEALE, WAYNE">WB: Wayne Breazeale</option>
-            <option value="BF: Faircloth, Brandon">BF: Brandon Faircloth</option>
           </select>
 
           <select id="boardStatusFilter" onchange="renderBoardTable()" class="bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-glasspro-red">
@@ -333,7 +326,7 @@
           </span>
         </div>
         <div class="flex items-center gap-3 text-xs font-mono text-slate-300">
-          <span>Active Stamp: <strong id="banner-active-csr" class="text-emerald-400">SC: CALHOUN, STEPHANIE</strong></span>
+          <span>Active Stamp: <strong id="banner-active-csr" class="text-emerald-400">Signed-in employee</strong></span>
         </div>
       </div>
 
@@ -973,15 +966,9 @@
       }
     } catch (e) {}
 
-    const CSR_DIRECTORY = {
-      "SC: CALHOUN, STEPHANIE": { pin: "1001", firstName: "Stephanie", fullName: "Stephanie Calhoun", dept: "Front Office / Sales", role: "CSR" },
-      "TM: MULLINAX, TASHA": { pin: "1002", firstName: "Tasha", fullName: "Tasha Mullinax", dept: "Accounting", role: "CSR" },
-      "WB: BREAZEALE, WAYNE": { pin: "1003", firstName: "Wayne", fullName: "Wayne Breazeale", dept: "Front Office / Sales", role: "CSR" },
-      "BF: Faircloth, Brandon": { pin: "1234", firstName: "Brandon", fullName: "Brandon Faircloth", dept: "Operations", role: "ADMIN" }
-    };
-
     let activePortalUser = null;
-    let activeCsr = "SC: CALHOUN, STEPHANIE";
+    let activeCsr = "";
+    let signedInCsrStamp = "";
     let currentModuleFilter = "ALL";
     let activeModalQuoteNumber = null;
     let exemptedCustomerNames = new Set();
@@ -997,134 +984,52 @@
       { id: 8, name: "Other Local Glass Shop", specialty: "Auto & Flat", active: true }
     ];
 
-    const INITIAL_QUOTES_FROM_CSV = [
-      {
-        quote_number: 496, quote_date: "10/26/2026", module: "Auto", customer_name: "ERIN BRANTLEY", phone: "(229)244-8484", has_cell: true, subtotal: 339.65, tax: 18.42, total: 358.07, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [
-          { category: "DOMESTIC WINDSHIELD", part: "DW01839GTN", desc: "Windshield Green Tint Windshield (Solar)(3rd Visor Frit)", qty: 1.0, total: 292.22 },
-          { category: "SURCHARGE AUTO", part: "ESA-DSP", desc: "Delivery and Miscellaneous Fees", qty: 1.0, total: 19.43 },
-          { category: "AUTO KITS", part: "HAH000004", desc: "Adhesive(Nags) (Urethane,Dam,Primer)(2.00)", qty: 2.0, total: 28.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 502, quote_date: "10/26/2026", module: "Auto", customer_name: "ERICA FAULK", phone: "(229)244-8484", has_cell: true, subtotal: 536.38, tax: 29.36, total: 565.74, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [
-          { category: "DOMESTIC TEMPERED", part: "DB12646GTN", desc: "Back Window Green Tint Back Window (Heated)(Solar)", qty: 1.0, total: 495.95 },
-          { category: "AUTO KITS", part: "HAH000004", desc: "Adhesive(Nags) (Urethane,Dam,Primer)(1.50)", qty: 1.5, total: 21.0 },
-          { category: "SURCHARGE AUTO", part: "ESA-DSP", desc: "Delivery and Miscellaneous Fees", qty: 1.0, total: 19.43 }
-        ],
-        status: "follow_up", contact_attempts: 1,
-        call_data: {
-          work_completed: "no", not_done_outcome: "STILL_DECIDING", date_reviewed: "2026-10-27", still_for_review: "yes", expected_answer_date: "2026-10-30",
-          notes: "Customer waiting on Friday paycheck (10/30) to confirm heated back glass installation. Follow up with Stephanie today.",
-          csr_stamp: "SC: CALHOUN, STEPHANIE • PIN #1001 • 10/27/2026"
-        }
-      },
-      {
-        quote_number: 505, quote_date: "10/26/2026", module: "Auto", customer_name: "CHARITY NEESMITH", phone: "(912)454-1272", has_cell: true, subtotal: 776.91, tax: 29.4, total: 806.31, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [
-          { category: "FOREIGN WINDSHIELD", part: "FW05463GTY", desc: "Windshield Green Tint Windshield (w/Molding attached)(Acoustic)(LDWS)", qty: 1.0, total: 429.48 },
-          { category: "SURCHARGE AUTO", part: "ESA-DSP", desc: "Delivery and Miscellaneous Fees", qty: 1.0, total: 19.43 },
-          { category: "AUTO KITS", part: "HAH000004", desc: "Adhesive(Nags) (2.00)", qty: 2.0, total: 28.0 },
-          { category: "MISC. AUTO LABOR", part: "RECALS", desc: "ADAS RECALIBRATION STATIC", qty: 1.0, total: 300.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      { quote_number: 524, quote_date: "10/29/2026", module: "Auto", customer_name: "ALEX ALVAREZ", phone: "(229)630-3345", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "SC: CALHOUN, STEPHANIE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      {
-        quote_number: 526, quote_date: "10/29/2026", module: "Auto", customer_name: "CITY OF QUITMAN", phone: "(229)263-4166", has_cell: false, subtotal: 409.29, tax: 23.19, total: 432.48, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [{ category: "DOMESTIC TEMPERED", part: "DB13109YPY", desc: "Back Window Gray Tint Privacy (Heated)", qty: 1.0, total: 368.86 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 528, quote_date: "10/29/2026", module: "Flat", customer_name: "BOBBY PATEL", phone: "(229)444-0695", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [{ category: "MISC FLAT", part: "MATFLAT", desc: "Commercial Flat Glass Measurement / Estimate Pending", qty: 1.0, total: 0.0 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 511, quote_date: "10/27/2026", module: "Flat", customer_name: "GOOD FOLKS PROPERTY", phone: "(229)300-0018", has_cell: false, subtotal: 766.64, tax: 39.73, total: 806.37, csr: "SC: CALHOUN, STEPHANIE",
-        parts: [
-          { category: "MISC FLAT", part: "MISCF", desc: "7/16 INSCLR 29 X 27 3/4 2V1H", qty: 1.0, total: 200.84 },
-          { category: "MISC FLAT", part: "MISCF", desc: "30 X 28 SCREENS WHITE MET/CHARC MESH", qty: 6.0, total: 295.8 },
-          { category: "LABOR", part: "LABORFLAT", desc: "FLAT GLASS LABOR", qty: 2.0, total: 270.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      { quote_number: 514, quote_date: "10/28/2026", module: "Auto", customer_name: "JUSTIN ROWE", phone: "(229)733-1147", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      {
-        quote_number: 517, quote_date: "10/28/2026", module: "Auto", customer_name: "JESSICA VAUGHN", phone: "(229)554-1220", has_cell: true, subtotal: 780.59, tax: 29.69, total: 810.28, csr: "WB: BREAZEALE, WAYNE",
-        parts: [
-          { category: "FOREIGN WINDSHIELD", part: "FW04915GTY", desc: "Windshield Green Tint Windshield (Acoustic)(LDWS)", qty: 1.0, total: 433.16 },
-          { category: "MISC. AUTO LABOR", part: "RECALS", desc: "ADAS RECALIBRATION STATIC", qty: 1.0, total: 300.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      { quote_number: 521, quote_date: "10/29/2026", module: "Auto", customer_name: "DRY BONES CONSTRUCTION", phone: "(229)569-1207", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      { quote_number: 500, quote_date: "10/26/2026", module: "Auto", customer_name: "BRITTANY & PARK APARTMENTS", phone: "(229)850-0626", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      {
-        quote_number: 515, quote_date: "10/28/2026", module: "Flat", customer_name: "IMAGINATION STATION", phone: "(229)977-6156", has_cell: true, subtotal: 550.63, tax: 15.25, total: 565.88, csr: "WB: BREAZEALE, WAYNE",
-        parts: [{ category: "MISC FLAT", part: "MATFLAT", desc: "105 NHO DOOR CLOSURE + COMMERCIAL LABOR", qty: 1.0, total: 550.63 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      { quote_number: 518, quote_date: "10/28/2026", module: "Auto", customer_name: "ROGER BUDD CO.", phone: "(229)244-3300", has_cell: false, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      { quote_number: 520, quote_date: "10/28/2026", module: "Auto", customer_name: "MARK MITCUM", phone: "(904)477-7833", has_cell: true, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      {
-        quote_number: 523, quote_date: "10/29/2026", module: "Flat", customer_name: "T5 T5 ENTERPRISES", phone: "(229)251-9171", has_cell: true, subtotal: 150.0, tax: 0.0, total: 150.0, csr: "WB: BREAZEALE, WAYNE",
-        parts: [{ category: "SVC", part: "SVCLABOR", desc: "TRIP CHARGE", qty: 1.0, total: 150.0 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      { quote_number: 525, quote_date: "10/29/2026", module: "Auto", customer_name: "GUESS LANDSCAPING", phone: "(229)539-0279", has_cell: false, subtotal: 0.0, tax: 0.0, total: 0.0, csr: "WB: BREAZEALE, WAYNE", parts: [], status: "open", contact_attempts: 0, call_data: null },
-      {
-        quote_number: 497, quote_date: "10/26/2026", module: "Auto", customer_name: "DERICK MENDHEIM", phone: "(904)874-7485", has_cell: false, subtotal: 399.43, tax: 17.2, total: 416.63, csr: "TM: MULLINAX, TASHA",
-        parts: [{ category: "DOMESTIC TEMPERED", part: "DB11176YPY", desc: "Back Window Gray Tint Privacy Back Window", qty: 1.0, total: 352.0 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 499, quote_date: "10/26/2026", module: "Auto", customer_name: "KIM PAYNE", phone: "(408)666-5237", has_cell: false, subtotal: 422.18, tax: 25.02, total: 447.2, csr: "TM: MULLINAX, TASHA",
-        parts: [{ category: "DOMESTIC WINDSHIELD", part: "DW01921GTY", desc: "Windshield Green Tint Windshield (Rain Sensor)", qty: 1.0, total: 374.75 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 501, quote_date: "10/26/2026", module: "Auto", customer_name: "DAPHYNE BROOKS", phone: "(229)630-3934", has_cell: false, subtotal: 365.57, tax: 20.49, total: 386.06, csr: "TM: MULLINAX, TASHA",
-        parts: [{ category: "DOMESTIC WINDSHIELD", part: "DW01953GTY", desc: "Windshield Green Tint Windshield (Acoustic)", qty: 1.0, total: 318.14 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 508, quote_date: "10/27/2026", module: "Auto", customer_name: "ACLINE MELTON", phone: "(229)300-1813", has_cell: false, subtotal: 315.22, tax: 18.02, total: 333.24, csr: "TM: MULLINAX, TASHA",
-        parts: [{ category: "FOREIGN WINDSHIELD", part: "FW04260GTN", desc: "Windshield Green Tint Windshield (Acoustic)", qty: 1.0, total: 287.22 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 510, quote_date: "10/27/2026", module: "Auto", customer_name: "TERRI HOUSE", phone: "(307)247-1075", has_cell: false, subtotal: 776.43, tax: 29.36, total: 805.79, csr: "TM: MULLINAX, TASHA",
-        parts: [
-          { category: "FOREIGN WINDSHIELD", part: "FW04361GTY", desc: "Windshield Green Tint Windshield (LDWS)", qty: 1.0, total: 429.0 },
-          { category: "MISC. AUTO LABOR", part: "RECAL STATIC", desc: "ADAS STATIC RECALIBRATION", qty: 1.0, total: 300.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 516, quote_date: "10/28/2026", module: "Flat", customer_name: "TRIP SHELL", phone: "(229)444-5389", has_cell: true, subtotal: 262.5, tax: 9.0, total: 271.5, csr: "TM: MULLINAX, TASHA",
-        parts: [{ category: "MISC FLAT", part: "MISCF", desc: "9 LITE INSERT 22 X 36 OUTSIDE GRID + LABOR", qty: 1.0, total: 262.5 }],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 503, quote_date: "10/26/2026", module: "Auto", customer_name: "TIMMOTHY ERWIN", phone: "(231)412-7032", has_cell: true, subtotal: 832.41, tax: 33.84, total: 866.25, csr: "BF: Faircloth, Brandon",
-        parts: [
-          { category: "DOMESTIC WINDSHIELD", part: "DW02795GTY", desc: "Windshield Green Tint Windshield (Camera Bracket)", qty: 1.0, total: 456.98 },
-          { category: "MISC. AUTO LABOR", part: "RECALS", desc: "ADAS RECALIBRATION STATIC", qty: 1.0, total: 300.0 }
-        ],
-        status: "open", contact_attempts: 0, call_data: null
-      },
-      {
-        quote_number: 512, quote_date: "10/28/2026", module: "Flat", customer_name: "ASHLEY GOLDSTON", phone: "(843)364-9530", has_cell: true, subtotal: 3901.52, tax: 250.12, total: 4151.64, csr: "BF: Faircloth, Brandon",
-        parts: [{ category: "MISC FLAT", part: "MATFLAT", desc: "3 Pieces of 3/8\" Clear Tempered (Guardian Shower Guard) Glass + Labor", qty: 1.0, total: 3901.52 }],
-        status: "open", contact_attempts: 0, call_data: null
-      }
-    ];
+    // Customer quote data is never embedded in the deployable frontend.
+    // Supabase is the authoritative source after Auth/RLS migration.
+    const INITIAL_QUOTES_FROM_CSV = [];
 
     let quotesState = [];
     let competitorsState = [];
+    let quoteRealtimeChannel = null;
+
+    function buildCsrStamp(employeeName) {
+      const parts = String(employeeName || "").trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return "EMP: GLASSPRO";
+      const first = parts[0];
+      const last = parts.length > 1 ? parts[parts.length - 1] : first;
+      const initials = `${first[0] || ""}${last[0] || ""}`.toUpperCase();
+      return `${initials}: ${last.toUpperCase()}, ${first.toUpperCase()}`;
+    }
+
+    function getCsrInfo(csrCode = activeCsr) {
+      const signedInName = activePortalUser?.employee_name || "GLASSPRO Team";
+      if (csrCode === signedInCsrStamp) {
+        return { firstName: signedInName.trim().split(/\s+/)[0] || "our team", fullName: signedInName, dept: activePortalUser?.department || "Front Office / Sales", role: activePortalUser?.perm_admin ? "ADMIN" : "CSR" };
+      }
+      const match = String(csrCode || "").match(/^[^:]+:\s*([^,]+),\s*(.+)$/);
+      const fullName = match ? `${match[2].trim()} ${match[1].trim()}`.replace(/\s+/g, " ") : String(csrCode || "GLASSPRO Team").replace(/^EMP:\s*/i, "");
+      return { firstName: fullName.trim().split(/\s+/)[0] || "our team", fullName, dept: "Front Office / Sales", role: "CSR" };
+    }
+
+    function refreshCsrSelectors() {
+      const stamps = new Set([activeCsr]);
+      quotesState.forEach(q => { if (q?.csr) stamps.add(String(q.csr)); });
+      const sorted = [...stamps].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+
+      const activeSelect = document.getElementById("activeCsrSelect");
+      if (activeSelect) {
+        const choices = activePortalUser?.perm_admin ? sorted : [activeCsr];
+        activeSelect.innerHTML = choices.map(v => `<option value="${escapeHtml(v)}" class="bg-slate-900 text-white">${escapeHtml(v)}</option>`).join("");
+        activeSelect.value = activeCsr;
+      }
+
+      const filter = document.getElementById("boardCsrFilter");
+      if (filter) {
+        const previous = filter.value || "ALL";
+        filter.innerHTML = `<option value="ALL">All CSRs</option>` + sorted.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+        filter.value = sorted.includes(previous) ? previous : "ALL";
+      }
+    }
 
     // =======================================================================
     // CROSS-MODULE SYNC HELPERS (Bridges Quotes -> Commissions & Audit Trail)
@@ -1135,7 +1040,7 @@
         supervisor_name: supName,
         action_type: actionType,
         details: detailsText,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toISOString()
       };
       const existingAudits = JSON.parse(localStorage.getItem("gp_audit_logs") || "[]");
       entry.id = Date.now();
@@ -1148,143 +1053,186 @@
     }
 
     async function bridgeWonQuoteToCommissionLogs(quote, csrCode) {
-      const csrMeta = CSR_DIRECTORY[csrCode] || { fullName: activePortalUser?.employee_name || "Stephanie Calhoun", dept: "Front Office / Sales" };
+      const csrMeta = getCsrInfo(csrCode);
       const woIdentifier = `Q-${quote.quote_number}`;
       const existingComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
 
-      if (existingComm.some(c => String(c.wo_number).toUpperCase() === woIdentifier)) return;
-
-      const commRecord = {
-        employee_name: csrMeta.fullName,
-        department: csrMeta.dept,
-        work_date: new Date().toISOString().split("T")[0],
-        wo_number: woIdentifier,
-        job_type: "Sales - Quote Follow-Up Conversion",
-        job_amount: Number(quote.total) || 0,
-        service_type: quote.module === "Flat" ? "Commercial / Residential" : "In-Shop",
-        glass_spec: getPrimaryPartSummary(quote),
-        materials_used: `Mainstreet Quote #${quote.quote_number}`,
-        helper_tech: "Solo (100%)",
-        spec_notes: `Customer: ${quote.customer_name} (${quote.phone})`,
-        status: "Approved"
-      };
-
       if (isCloudConnected) {
-        try { await supabaseClient.from("commission_logs").insert([commRecord]); } catch (e) {}
+        const { data, error } = await supabaseClient.rpc("gp_bridge_won_quote", {
+          p_quote_number: Number(quote.quote_number),
+          p_target_employee_name: activePortalUser?.perm_admin ? csrMeta.fullName : null,
+          p_work_date: GP.localDate()
+        });
+        if (error || !data?.ok) {
+          const message = error?.message || data?.message || "Unable to create the secured Commission WO.";
+          showToast(`Quote was not bridged to Commission WOs: ${message}`, "warning");
+          return false;
+        }
       }
-      commRecord.id = Date.now();
-      existingComm.unshift(commRecord);
-      localStorage.setItem("gp_commission_logs", JSON.stringify(existingComm));
+
+      if (!existingComm.some(c => String(c.wo_number).toUpperCase() === woIdentifier)) {
+        existingComm.unshift({
+          id: Date.now(),
+          employee_name: csrMeta.fullName,
+          department: csrMeta.dept,
+          work_date: GP.localDate(),
+          wo_number: woIdentifier,
+          job_type: "Sales - Quote Follow-Up Conversion",
+          job_amount: Number(quote.total) || 0,
+          service_type: quote.module === "Flat" ? "Commercial / Residential" : "In-Shop",
+          glass_spec: getPrimaryPartSummary(quote),
+          materials_used: `Mainstreet Quote #${quote.quote_number}`,
+          helper_tech: "Solo (100%)",
+          spec_notes: `Customer: ${quote.customer_name} (${quote.phone})`,
+          status: "Approved"
+        });
+        localStorage.setItem("gp_commission_logs", JSON.stringify(existingComm));
+      }
+      return true;
     }
 
     async function syncSingleQuoteToSupabase(q) {
-      if (!isCloudConnected) return;
+      if (!isCloudConnected) return false;
+      const row = {
+        quote_number: q.quote_number,
+        normalized_customer_name: normalizeCustomerName(q.customer_name),
+        customer_name: q.customer_name,
+        quote_date: q.quote_date,
+        module: q.module,
+        phone: q.phone,
+        has_cell: q.has_cell,
+        subtotal: q.subtotal,
+        tax: q.tax,
+        total: q.total,
+        original_csr: q.csr,
+        parts: q.parts || [],
+        status: q.status,
+        contact_attempts: q.contact_attempts || 0,
+        call_data: q.call_data || {},
+        admin_coaching_note: q.admin_coaching_note || ""
+      };
       try {
-        await supabaseClient.from("outstanding_quotes").upsert([{
-          quote_number: q.quote_number,
-          normalized_customer_name: normalizeCustomerName(q.customer_name),
-          customer_name: q.customer_name,
-          quote_date: q.quote_date,
-          module: q.module,
-          phone: q.phone,
-          has_cell: q.has_cell,
-          subtotal: q.subtotal,
-          tax: q.tax,
-          total: q.total,
-          original_csr: q.csr,
-          parts: q.parts || [],
-          status: q.status,
-          contact_attempts: q.contact_attempts || 0,
-          call_data: q.call_data || {},
-          admin_coaching_note: q.admin_coaching_note || ""
-        }], { onConflict: "quote_number" });
-      } catch (e) {}
+        const result = activePortalUser?.perm_admin
+          ? await supabaseClient.from("outstanding_quotes").upsert([row], { onConflict: "quote_number" })
+          : await supabaseClient.from("outstanding_quotes").update(row).eq("quote_number", q.quote_number).select("quote_number");
+        if (result.error) throw result.error;
+        if (!activePortalUser?.perm_admin && (!Array.isArray(result.data) || result.data.length !== 1)) {
+          throw new Error("Quote no longer exists or is no longer accessible.");
+        }
+        return true;
+      } catch (e) {
+        console.warn("Quote cloud sync failed", e);
+        showToast(`Could not save Quote #${q.quote_number} to Supabase: ${e.message || "permission or connection error"}`, "warning");
+        return false;
+      }
     }
 
-    function logoutPortal() {
-      localStorage.removeItem("gp_session_user");
-      sessionStorage.removeItem("gp_session_user");
-      window.location.href = "index.html";
-    }
+    async function logoutPortal() { await GP.signOut(supabaseClient); }
 
     // =======================================================================
     // INITIALIZATION & STATE SYNC
     // =======================================================================
-    async function initApp() {
-      const savedSession = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
-      if (!savedSession) {
-        window.location.href = "index.html";
-        return;
-      }
-      try { activePortalUser = JSON.parse(savedSession); } catch (e) { window.location.href = "index.html"; return; }
+    function quoteFromCloudRow(r){
+      return {quote_number:r.quote_number,quote_date:r.quote_date,module:r.module,customer_name:r.customer_name,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"Unassigned",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length>0?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""};
+    }
 
-      try {
-        const latestUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
-        const latestUser = latestUsers.find(u => String(u.pin_code) === String(activePortalUser.pin_code));
-        if (latestUser) activePortalUser = { ...activePortalUser, ...latestUser, perm_quotes: latestUser.perm_quotes !== false };
-      } catch (e) {}
-      if (activePortalUser.perm_quotes === false) {
-        window.location.href = "index.html";
-        return;
-      }
+    function startQuoteRealtimeSync(){
+      if(!isCloudConnected||!supabaseClient?.channel||quoteRealtimeChannel)return;
+      try{
+        quoteRealtimeChannel=supabaseClient.channel("gp-quote-callback-live")
+          .on("postgres_changes",{event:"*",schema:"public",table:"outstanding_quotes"},payload=>{
+            const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;
+            if(!row?.quote_number)return;
+            const idx=quotesState.findIndex(q=>Number(q.quote_number)===Number(row.quote_number));
+            if(payload.eventType==="DELETE"){if(idx>=0)quotesState.splice(idx,1);}
+            else{const mapped=quoteFromCloudRow(row);if(idx>=0)quotesState[idx]=mapped;else quotesState.unshift(mapped);}
+            refreshAllViews();
+          })
+          .on("postgres_changes",{event:"*",schema:"public",table:"quote_competitors"},payload=>{
+            const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;if(!row?.id)return;
+            const idx=competitorsState.findIndex(c=>String(c.id)===String(row.id));
+            if(payload.eventType==="DELETE"){if(idx>=0)competitorsState.splice(idx,1);}
+            else{const mapped={id:row.id,name:row.name,specialty:row.specialty||"Auto & Flat",active:row.active!==false};if(idx>=0)competitorsState[idx]=mapped;else competitorsState.push(mapped);}
+            refreshAllViews();
+          })
+          .on("postgres_changes",{event:"*",schema:"public",table:"quote_customer_exemptions"},payload=>{
+            const row=payload.new&&Object.keys(payload.new).length?payload.new:payload.old;const name=String(row?.normalized_customer_name||"");if(!name)return;
+            if(payload.eventType==="DELETE")exemptedCustomerNames.delete(name);else exemptedCustomerNames.add(name);
+            localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));
+            renderDeduplicationRegistry();
+          }).subscribe();
+      }catch(e){quoteRealtimeChannel=null;}
+    }
+
+    async function initApp() {
+      activePortalUser = await GP.requireAuth(supabaseClient, "perm_quotes");
+      if (!activePortalUser) return;
 
       document.getElementById("tab-btn-admin-review").classList.toggle("hidden", !activePortalUser.perm_admin);
       document.getElementById("activeUserName").textContent = `${activePortalUser.employee_name} (${activePortalUser.department})`;
-      document.getElementById("navLinkFleet").classList.toggle("hidden", !activePortalUser.perm_vehicle_submit && !activePortalUser.perm_vehicle_view);
-      document.getElementById("navLinkAdmin").classList.toggle("hidden", !activePortalUser.perm_admin);
+      GP.applyNavPermissions(activePortalUser);
 
-      // Map logged-in user to their Mainstreet CSR Stamp automatically
-      const empLower = (activePortalUser.employee_name || "").toLowerCase();
-      if (empLower.includes("stephanie")) activeCsr = "SC: CALHOUN, STEPHANIE";
-      else if (empLower.includes("tasha")) activeCsr = "TM: MULLINAX, TASHA";
-      else if (empLower.includes("wayne")) activeCsr = "WB: BREAZEALE, WAYNE";
-      else if (empLower.includes("brandon")) activeCsr = "BF: Faircloth, Brandon";
-
-      document.getElementById("activeCsrSelect").value = activeCsr;
+      // Derive the employee's Mainstreet-style CSR stamp without embedding a
+      // static staff directory in the publicly delivered HTML. Historical CSR
+      // stamps are populated from the authenticated quote dataset after load.
+      signedInCsrStamp = buildCsrStamp(activePortalUser.employee_name);
+      activeCsr = signedInCsrStamp;
+      const csrSelect=document.getElementById("activeCsrSelect");
+      csrSelect.disabled = !activePortalUser.perm_admin;
+      csrSelect.title = activePortalUser.perm_admin ? "Admin may change the CSR stamp" : "CSR stamp is locked to the signed-in employee";
       document.getElementById("banner-active-csr").textContent = activeCsr;
 
       const savedQuotes = localStorage.getItem("glasspro_quotes_v1");
       const savedCompetitors = localStorage.getItem("glasspro_competitors_v1");
+      const savedExemptions = localStorage.getItem("glasspro_quote_exemptions_v1");
+      const hadSavedQuotes = !!savedQuotes;
 
       quotesState = savedQuotes ? JSON.parse(savedQuotes) : JSON.parse(JSON.stringify(INITIAL_QUOTES_FROM_CSV));
       competitorsState = savedCompetitors ? JSON.parse(savedCompetitors) : JSON.parse(JSON.stringify(INITIAL_COMPETITORS));
+      try{exemptedCustomerNames=new Set(savedExemptions?JSON.parse(savedExemptions):[]);}catch(e){exemptedCustomerNames=new Set();}
 
       if (isCloudConnected) {
         try {
           const qRes = await supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false });
-          if (qRes.data && qRes.data.length > 0) {
-            quotesState = qRes.data.map(r => ({
-              quote_number: r.quote_number,
-              quote_date: r.quote_date,
-              module: r.module,
-              customer_name: r.customer_name,
-              phone: r.phone,
-              has_cell: r.has_cell,
-              subtotal: Number(r.subtotal || 0),
-              tax: Number(r.tax || 0),
-              total: Number(r.total || 0),
-              csr: r.original_csr || "SC: CALHOUN, STEPHANIE",
-              parts: r.parts || [],
-              status: r.status || "open",
-              contact_attempts: r.contact_attempts || 0,
-              call_data: r.call_data && Object.keys(r.call_data).length > 0 ? r.call_data : null,
-              admin_coaching_note: r.admin_coaching_note || ""
-            }));
+          if (!qRes.error && Array.isArray(qRes.data)) {
+            // Authenticated cloud state is authoritative. Never merge old
+            // browser-cached customer records back into a protected dataset.
+            quotesState = qRes.data.map(quoteFromCloudRow).sort((a, b) => Number(b.quote_number) - Number(a.quote_number));
           }
+
+          const cRes = await supabaseClient.from("quote_competitors").select("*").order("name", { ascending: true });
+          if (!cRes.error && cRes.data && cRes.data.length > 0) {
+            competitorsState = cRes.data.map(c => ({id:c.id,name:c.name,specialty:c.specialty||"Auto & Flat",active:c.active!==false}));
+          } else if (!cRes.error && competitorsState.length > 0 && activePortalUser?.perm_admin) {
+            const seedRows = competitorsState.map(c => ({name:c.name,specialty:c.specialty||"Auto & Flat",active:c.active!==false}));
+            const seeded = await supabaseClient.from("quote_competitors").upsert(seedRows,{onConflict:"name"}).select("*");
+            if(!seeded.error && seeded.data?.length) competitorsState = seeded.data.map(c => ({id:c.id,name:c.name,specialty:c.specialty||"Auto & Flat",active:c.active!==false}));
+          }
+
+          const exRes=await supabaseClient.from("quote_customer_exemptions").select("normalized_customer_name");
+          if(!exRes.error&&Array.isArray(exRes.data)){exemptedCustomerNames=new Set(exRes.data.map(r=>String(r.normalized_customer_name||"")).filter(Boolean));localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));}
         } catch (e) {}
       }
 
       refreshAllViews();
+      startQuoteRealtimeSync();
       lucide.createIcons();
+    }
+
+    async function addCompetitorCloud(name,specialty,active=true){
+      if(!isCloudConnected)return null;
+      try{const {data,error}=await supabaseClient.from("quote_competitors").upsert([{name,specialty,active}],{onConflict:"name"}).select("*").limit(1);return !error&&data?.[0]?data[0]:null;}catch(e){return null;}
     }
 
     function saveState() {
       localStorage.setItem("glasspro_quotes_v1", JSON.stringify(quotesState));
       localStorage.setItem("glasspro_competitors_v1", JSON.stringify(competitorsState));
+      localStorage.setItem("glasspro_quote_exemptions_v1", JSON.stringify([...exemptedCustomerNames]));
     }
 
     function refreshAllViews() {
       saveState();
+      refreshCsrSelectors();
       updateKpisAndBadges();
       renderBoardTable();
       renderAdminReviewTab();
@@ -1317,7 +1265,7 @@
     // KPI & TAB CONTROLS
     // =======================================================================
     function updateKpisAndBadges() {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = GP.localDate();
 
       const openQuotes = quotesState.filter(q => q.status === "open");
       const openDollars = openQuotes.reduce((sum, q) => sum + (Number(q.total) || 0), 0);
@@ -1338,7 +1286,7 @@
       const wonDollars = wonQuotes.reduce((sum, q) => sum + (Number(q.total) || 0), 0);
 
       const lostQuotes = quotesState.filter(q =>
-        q.status === "closed" ||
+        (q.status === "closed" && !q.call_data?.job_already_acquired) ||
         (q.status === "admin_review" && q.call_data && q.call_data.work_completed === "yes")
       );
       const lostDollars = lostQuotes.reduce((sum, q) => sum + (Number(q.total) || 0), 0);
@@ -1377,8 +1325,9 @@
     }
 
     function handleCsrChange(csrValue) {
+      if(!activePortalUser?.perm_admin && csrValue !== activeCsr) return;
       activeCsr = csrValue;
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { pin: "0000" };
+      const csrInfo = getCsrInfo(activeCsr);
       document.getElementById("banner-active-csr").textContent = activeCsr;
       updateModalCsrStamp();
       showToast(`Active CSR Stamp set to ${activeCsr}`, "info");
@@ -1403,7 +1352,7 @@
       const csrFilter = document.getElementById("boardCsrFilter").value;
       const statusFilter = document.getElementById("boardStatusFilter").value;
       const searchVal = (document.getElementById("boardSearchInput").value || "").trim().toLowerCase();
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = GP.localDate();
 
       const filtered = quotesState.filter(q => {
         if (currentModuleFilter !== "ALL" && q.module !== currentModuleFilter) return false;
@@ -1414,7 +1363,7 @@
         if (statusFilter === "FOLLOW_UP" && q.status !== "follow_up") return false;
 
         if (searchVal) {
-          const hay = `${q.quote_number} ${GP.escapeHtml(q.customer_name)} ${q.phone} ${GP.escapeHtml(q.module)} ${q.csr} ${JSON.stringify(q.parts)}`.toLowerCase();
+          const hay = `${q.quote_number} ${q.customer_name} ${q.phone} ${q.module} ${q.csr} ${JSON.stringify(q.parts)}`.toLowerCase();
           if (!hay.includes(searchVal)) return false;
         }
         return true;
@@ -1443,6 +1392,8 @@
           statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">In Admin Review</span>`;
         } else if (q.status === "won") {
           statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">✓ Won / Scheduled</span>`;
+        } else if (q.status === "acquired") {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-300">✓ Already Acquired</span>`;
         } else {
           statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">Archived / Closed</span>`;
         }
@@ -1523,25 +1474,25 @@
         ? `<tr><td colspan="5" class="py-2 px-3 text-center text-slate-400">No itemized parts exported in CSV for this quote.</td></tr>`
         : quote.parts.map(p => `
             <tr>
-              <td class="py-1.5 px-3 text-slate-600">${p.category || '-'}</td>
-              <td class="py-1.5 px-3 font-bold text-slate-900">${p.part || '-'}</td>
-              <td class="py-1.5 px-3 text-slate-700 font-sans">${p.desc || '-'}</td>
-              <td class="py-1.5 px-3 text-center">${p.qty}</td>
+              <td class="py-1.5 px-3 text-slate-600">${GP.escapeHtml(p.category || '-')}</td>
+              <td class="py-1.5 px-3 font-bold text-slate-900">${GP.escapeHtml(p.part || '-')}</td>
+              <td class="py-1.5 px-3 text-slate-700 font-sans">${GP.escapeHtml(p.desc || '-')}</td>
+              <td class="py-1.5 px-3 text-center">${GP.escapeHtml(p.qty)}</td>
               <td class="py-1.5 px-3 text-right font-bold">${formatCurrency(p.total)}</td>
             </tr>
           `).join("");
       document.getElementById("modalPartsDrawer").classList.add("hidden");
 
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { firstName: "our team" };
+      const csrInfo = getCsrInfo(activeCsr);
       const pricePhrase = (!quote.total || Number(quote.total) === 0)
         ? "getting your custom glass estimate finalized"
         : `a total with tax of <strong>${formatCurrency(quote.total)}</strong>`;
 
       document.getElementById("script-opening").innerHTML = `
-        "Hi <strong>${quote.customer_name}</strong>, this is <strong>${csrInfo.firstName}</strong> calling from <strong>GLASSPRO</strong> here in Valdosta. I'm following up on the ${quote.module.toLowerCase()} glass quote (<strong>#${quote.quote_number}</strong>) we put together for you on <strong>${quote.quote_date}</strong> for your <strong>${partSummary}</strong>. Have you had a chance to get that work completed yet?"
+        "Hi <strong>${GP.escapeHtml(quote.customer_name)}</strong>, this is <strong>${GP.escapeHtml(csrInfo.firstName)}</strong> calling from <strong>GLASSPRO</strong> here in Valdosta. I'm following up on the ${GP.escapeHtml(String(quote.module || "").toLowerCase())} glass quote (<strong>#${GP.escapeHtml(quote.quote_number)}</strong>) we put together for you on <strong>${GP.escapeHtml(quote.quote_date)}</strong> for your <strong>${GP.escapeHtml(partSummary)}</strong>. Have you had a chance to get that work completed yet?"
       `;
       document.getElementById("script-not-done-pitch").innerHTML = `
-        "Great! We'd love to get that taken care of for you. For your <strong>${partSummary}</strong>, we have it quoted at ${pricePhrase}. Do you have any questions about the quote, or can we go ahead and get you on our schedule for this week?"
+        "Great! We'd love to get that taken care of for you. For your <strong>${GP.escapeHtml(partSummary)}</strong>, we have it quoted at ${pricePhrase}. Do you have any questions about the quote, or can we go ahead and get you on our schedule for this week?"
       `;
 
       populateModalCompetitorDropdown();
@@ -1563,8 +1514,8 @@
       if (!quote) return;
       if (!confirm(`Mark Quote #${quote.quote_number} as already acquired/booked and remove it from the active call-back queue?`)) return;
 
-      const today = new Date().toISOString().split("T")[0];
-      quote.status = "won";
+      const today = GP.localDate();
+      quote.status = "acquired";
       quote.call_data = {
         ...(quote.call_data || {}),
         job_already_acquired: true,
@@ -1594,7 +1545,7 @@
       const select = document.getElementById("q_competitor_select");
       const activeCompetitors = competitorsState.filter(c => c.active);
       select.innerHTML = `<option value="">-- Select Competitor From Dropdown --</option>` +
-        activeCompetitors.map(c => `<option value="${c.name}" ${c.name === selectedValue ? 'selected' : ''}>${c.name} (${c.specialty})</option>`).join("");
+        activeCompetitors.map(c => `<option value="${GP.escapeHtml(c.name)}" ${c.name === selectedValue ? 'selected' : ''}>${GP.escapeHtml(c.name)} (${GP.escapeHtml(c.specialty)})</option>`).join("");
     }
 
     function resetQuestionnaireSteps() {
@@ -1605,7 +1556,7 @@
       document.getElementById("q_future_feedback").value = "";
       document.getElementById("q_find_out_how_input").value = "";
       document.getElementById("q_earnback_no_why").value = "";
-      document.getElementById("final_date_reviewed").value = new Date().toISOString().split("T")[0];
+      document.getElementById("final_date_reviewed").value = GP.localDate();
       document.getElementById("final_expected_answer_date").value = GP.addLocalDays(3);
       document.getElementById("final_csr_notes").value = "";
 
@@ -1637,12 +1588,13 @@
       document.getElementById("inlineCompetitorInput").focus();
     }
 
-    function saveInlineCompetitor() {
+    async function saveInlineCompetitor() {
       const input = document.getElementById("inlineCompetitorInput");
       const name = input.value.trim();
       if (!name) return;
       if (!competitorsState.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-        competitorsState.push({ id: Date.now(), name, specialty: "Auto & Flat", active: true });
+        const cloudRow=await addCompetitorCloud(name,"Auto & Flat",true);
+        competitorsState.push(cloudRow?{id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false}:{ id: Date.now(), name, specialty: "Auto & Flat", active: true });
         saveState();
         renderCompetitorsTable();
       }
@@ -1712,8 +1664,8 @@
     }
 
     function updateModalCsrStamp() {
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { pin: "1001" };
-      const dateRev = document.getElementById("final_date_reviewed")?.value || new Date().toISOString().split("T")[0];
+      const csrInfo = getCsrInfo(activeCsr);
+      const dateRev = document.getElementById("final_date_reviewed")?.value || GP.localDate();
       const stampEl = document.getElementById("final_csr_stamp_display");
       if (stampEl) stampEl.textContent = `${activeCsr} • ${dateRev}`;
     }
@@ -1781,12 +1733,12 @@
       const earnBackNoWhy = document.getElementById("q_earnback_no_why").value || "";
       const notDoneOutcome = document.querySelector('input[name="q_not_done_outcome"]:checked')?.value || "";
 
-      const dateReviewed = document.getElementById("final_date_reviewed").value || new Date().toISOString().split("T")[0];
+      const dateReviewed = document.getElementById("final_date_reviewed").value || GP.localDate();
       const stillForReview = document.querySelector('input[name="final_still_for_review"]:checked')?.value || "no";
       const expectedAnswerDate = document.getElementById("final_expected_answer_date").value || "";
       const notes = document.getElementById("final_csr_notes").value.trim();
 
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { pin: "1001" };
+      const csrInfo = getCsrInfo(activeCsr);
       const stamp = `${activeCsr} • ${dateReviewed}`;
 
       quote.contact_attempts = (quote.contact_attempts || 0) + 1;
@@ -1811,9 +1763,9 @@
 
       if (notDoneOutcome === "WON_BOOKED" || (earnBackPossible === "yes" && winbackStatus.includes("Won Back"))) {
         quote.status = "won";
-        await bridgeWonQuoteToCommissionLogs(quote, activeCsr);
-        await logPortalAudit("QUOTE_WON", `Converted Quote #${quote.quote_number} (${quote.customer_name} - ${formatCurrency(quote.total)}) & synced to Commission WOs`);
-        showToast(`Quote #${quote.quote_number} marked WON & synced to Commission WOs!`, "success");
+        const bridged = await bridgeWonQuoteToCommissionLogs(quote, activeCsr);
+        await logPortalAudit("QUOTE_WON", `Converted Quote #${quote.quote_number} (${quote.customer_name} - ${formatCurrency(quote.total)})${bridged ? " & synced to Commission WOs" : " (Commission WO sync failed)"}`);
+        if (bridged) showToast(`Quote #${quote.quote_number} marked WON & synced to Commission WOs!`, "success");
       } else if (stillForReview === "yes") {
         quote.status = "follow_up";
         await logPortalAudit("QUOTE_FOLLOWUP", `Scheduled Quote #${quote.quote_number} (${quote.customer_name}) for review on ${expectedAnswerDate}`);
@@ -1834,14 +1786,14 @@
       if (!quote) return;
 
       quote.contact_attempts = (quote.contact_attempts || 0) + 1;
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { pin: "1001" };
-      const stamp = `${activeCsr} • ${new Date().toISOString().split("T")[0]}`;
+      const csrInfo = getCsrInfo(activeCsr);
+      const stamp = `${activeCsr} • ${GP.localDate()}`;
 
       if (quote.contact_attempts >= 3) {
         quote.status = "admin_review";
         quote.call_data = {
           work_completed: "unknown",
-          date_reviewed: new Date().toISOString().split("T")[0],
+          date_reviewed: GP.localDate(),
           still_for_review: "no",
           notes: "Reached 3 unanswered voicemail attempts. Auto-routed to Admin Review.",
           csr_stamp: stamp
@@ -1860,7 +1812,7 @@
     function copySmsTemplate() {
       const quote = quotesState.find(q => q.quote_number === Number(activeModalQuoteNumber));
       if (!quote) return;
-      const csrInfo = CSR_DIRECTORY[activeCsr] || { firstName: "our team" };
+      const csrInfo = getCsrInfo(activeCsr);
       const partSummary = getPrimaryPartSummary(quote);
       const priceText = (!quote.total || Number(quote.total) === 0) ? "" : ` (${formatCurrency(quote.total)} total w/ tax)`;
       const smsText = `Hi ${quote.customer_name}, this is ${csrInfo.firstName} with GLASSPRO in Valdosta following up on your ${quote.module.toLowerCase()} glass quote #${quote.quote_number} for your ${partSummary}${priceText}. Have you had a chance to get that completed yet, or would you like to get on our schedule this week? Reply here or call us at (229) 244-8484!`;
@@ -1875,7 +1827,7 @@
     // ADMIN REVIEW TAB & INSPECTOR
     // =======================================================================
     function renderAdminReviewTab() {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = GP.localDate();
       const dueAlerts = quotesState.filter(q =>
         q.status === "follow_up" &&
         q.call_data &&
@@ -1911,18 +1863,20 @@
           }).join("");
 
       const filterMode = document.getElementById("adminReceiptFilter")?.value || "PENDING_ADMIN";
-      const receipts = quotesState.filter(q => filterMode === "PENDING_ADMIN" ? q.status === "admin_review" : (q.status === "admin_review" || q.status === "won" || q.status === "closed"));
+      const receipts = quotesState.filter(q => filterMode === "PENDING_ADMIN" ? q.status === "admin_review" : (q.status === "admin_review" || q.status === "won" || q.status === "closed" || q.status === "acquired"));
 
       const tbody = document.getElementById("adminReceiptsTableBody");
       tbody.innerHTML = receipts.length === 0
         ? `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-xs">No job receipts currently waiting in this view.</td></tr>`
         : receipts.map(q => {
             const cd = q.call_data || {};
-            let pathBadge = q.status === "won"
-              ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">Won / Scheduled</span>`
-              : (cd.work_completed === "yes"
+            let pathBadge = cd.job_already_acquired
+              ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-teal-100 text-teal-800">Already Acquired</span>`
+              : (q.status === "won"
+                  ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">Won / Scheduled</span>`
+                  : (cd.work_completed === "yes"
                   ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800">Lost to: ${GP.escapeHtml(cd.competitor_name || 'Competitor')}</span><div class="text-[11px] text-slate-500 mt-0.5">${GP.escapeHtml(cd.why_went_with_them || '')}</div>`
-                  : `<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-800">${GP.escapeHtml(cd.not_done_outcome || '3x Voicemail / Closed')}</span>`);
+                  : `<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-200 text-slate-800">${GP.escapeHtml(cd.not_done_outcome || '3x Voicemail / Closed')}</span>`));
 
             return `
               <tr class="hover:bg-slate-50">
@@ -1945,15 +1899,15 @@
       if (!q) return;
       const cd = q.call_data || {};
 
-      document.getElementById("inspectorTitle").textContent = `Job Receipt #${q.quote_number} — ${GP.escapeHtml(q.customer_name)}`;
-      document.getElementById("inspectorSubtitle").textContent = `Stamped by ${GP.escapeHtml(cd.csr_stamp || q.csr)}`;
+      document.getElementById("inspectorTitle").textContent = `Job Receipt #${q.quote_number} — ${q.customer_name}`;
+      document.getElementById("inspectorSubtitle").textContent = `Stamped by ${cd.csr_stamp || q.csr}`;
 
       document.getElementById("inspectorBodyContent").innerHTML = `
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-100 p-3.5 rounded-xl border border-slate-200 text-xs">
           <div><span class="text-slate-500 block">Quote #</span><strong class="font-mono text-sm">#${q.quote_number}</strong></div>
           <div><span class="text-slate-500 block">Phone</span><strong class="font-mono">${GP.escapeHtml(q.phone)}</strong></div>
           <div><span class="text-slate-500 block">Amount + Tax</span><strong class="font-mono text-glasspro-red text-sm">${formatCurrency(q.total)}</strong></div>
-          <div><span class="text-slate-500 block">Date Reviewed</span><strong class="font-mono">${GP.escapeHtml(cd.date_reviewed || '10/30/2026')}</strong></div>
+          <div><span class="text-slate-500 block">Date Reviewed</span><strong class="font-mono">${GP.escapeHtml(cd.date_reviewed || q.quote_date || GP.localDate())}</strong></div>
         </div>
         <div class="space-y-2 text-xs sm:text-sm border border-slate-200 rounded-xl p-4 bg-white">
           <div class="font-extrabold text-slate-900 uppercase text-xs tracking-wider border-b pb-1.5 mb-2">Recorded Call-Back Path Answers</div>
@@ -1998,9 +1952,9 @@
         showToast(`Quote #${q.quote_number} re-queued to active CSR Call-Back Board!`, "info");
       } else if (action === "WON") {
         q.status = "won";
-        await bridgeWonQuoteToCommissionLogs(q, q.csr || activeCsr);
-        await logPortalAudit("QUOTE_WON_ADMIN", `Admin converted Quote #${q.quote_number} (${q.customer_name}) to WON & logged Commission WO`);
-        showToast(`Quote #${q.quote_number} marked WON & synced to Commission WOs!`, "success");
+        const bridged = await bridgeWonQuoteToCommissionLogs(q, q.csr || activeCsr);
+        await logPortalAudit("QUOTE_WON_ADMIN", `Admin converted Quote #${q.quote_number} (${q.customer_name}) to WON${bridged ? " & logged Commission WO" : " (Commission WO sync failed)"}`);
+        if (bridged) showToast(`Quote #${q.quote_number} marked WON & synced to Commission WOs!`, "success");
       } else {
         q.status = "closed";
         await logPortalAudit("QUOTE_ARCHIVED", `Admin archived Quote Receipt #${q.quote_number} (${q.customer_name})`);
@@ -2036,7 +1990,7 @@
       }).join("");
     }
 
-    function handleAddCompetitor(e) {
+    async function handleAddCompetitor(e) {
       e.preventDefault();
       const nameInput = document.getElementById("newCompetitorName");
       const catSelect = document.getElementById("newCompetitorCategory");
@@ -2046,19 +2000,21 @@
         showToast(`"${name}" is already in the Competitor Manager.`, "warning");
         return;
       }
-      competitorsState.push({ id: Date.now(), name, specialty: catSelect.value, active: true });
+      const cloudRow=await addCompetitorCloud(name,catSelect.value,true);
+      competitorsState.push(cloudRow?{id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false}:{ id: Date.now(), name, specialty: catSelect.value, active: true });
       nameInput.value = "";
       refreshAllViews();
       showToast(`Added "${name}" to the active Competitor Dropdown!`, "success");
     }
 
-    function toggleCompetitorActive(id) {
-      const comp = competitorsState.find(c => c.id === id);
-      if (comp) { comp.active = !comp.active; refreshAllViews(); }
+    async function toggleCompetitorActive(id) {
+      const comp = competitorsState.find(c => String(c.id) === String(id));
+      if (comp) { comp.active = !comp.active; if(isCloudConnected && Number(comp.id)<1000000000000){try{await supabaseClient.from("quote_competitors").update({active:comp.active}).eq("id",comp.id);}catch(e){}} refreshAllViews(); }
     }
 
-    function deleteCompetitor(id) {
-      competitorsState = competitorsState.filter(c => c.id !== id);
+    async function deleteCompetitor(id) {
+      if(isCloudConnected && Number(id)<1000000000000){try{await supabaseClient.from("quote_competitors").delete().eq("id",id);}catch(e){}}
+      competitorsState = competitorsState.filter(c => String(c.id) !== String(id));
       refreshAllViews();
     }
 
@@ -2085,10 +2041,18 @@
       }).join("");
     }
 
-    function toggleCustomerDedupExemption(normName) {
-      if (exemptedCustomerNames.has(normName)) exemptedCustomerNames.delete(normName);
+    async function toggleCustomerDedupExemption(normName) {
+      const removing=exemptedCustomerNames.has(normName);
+      if (removing) exemptedCustomerNames.delete(normName);
       else exemptedCustomerNames.add(normName);
+      localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));
       renderDeduplicationRegistry();
+      if(isCloudConnected){
+        try{
+          if(removing) await supabaseClient.from("quote_customer_exemptions").delete().eq("normalized_customer_name",normName);
+          else await supabaseClient.from("quote_customer_exemptions").upsert([{normalized_customer_name:normName,created_by:activePortalUser?.employee_name||activeCsr}],{onConflict:"normalized_customer_name"});
+        }catch(e){}
+      }
     }
 
     // =======================================================================
@@ -2131,7 +2095,7 @@
           const phoneVal = String(row["Phone"] || "").trim();
           groupedByQuoteNum.set(quoteNum, {
             quote_number: quoteNum,
-            quote_date: String(row["Quote Date"] || "10/30/2026").trim(),
+            quote_date: String(row["Quote Date"] || new Date().toLocaleDateString("en-US")).trim(),
             module: String(row["Module"] || "Auto").trim(),
             customer_name: String(row["Customer"] || "UNKNOWN CUSTOMER").trim(),
             phone: cellVal || phoneVal || "N/A",
@@ -2196,24 +2160,22 @@
       const reportBox = document.getElementById("csvUploadReportBox");
       reportBox.classList.remove("hidden");
       reportBox.innerHTML = `
-        <div class="font-extrabold text-sm text-slate-900 border-b pb-2">CSV Upload Audit (${sourceLabel})</div>
+        <div class="font-extrabold text-sm text-slate-900 border-b pb-2">CSV Upload Audit (${GP.escapeHtml(sourceLabel)})</div>
         <div class="grid grid-cols-2 gap-3 text-xs">
           <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg"><div class="font-bold text-emerald-900 text-sm">+${acceptedQuotes.length} New Quotes Added</div></div>
           <div class="bg-rose-50 border border-rose-200 p-3 rounded-lg"><div class="font-bold text-rose-900 text-sm">${rejectedQuotes.length} Duplicates Thrown Out</div></div>
         </div>
-        ${rejectedQuotes.length > 0 ? `<div class="max-h-36 overflow-y-auto bg-white rounded border p-2 text-[11px] font-mono space-y-1">${rejectedQuotes.map(r => `<div class="text-rose-700">✗ #${r.quote_number} (${r.customer_name}): ${r.reason}</div>`).join("")}</div>` : ''}
+        ${rejectedQuotes.length > 0 ? `<div class="max-h-36 overflow-y-auto bg-white rounded border p-2 text-[11px] font-mono space-y-1">${rejectedQuotes.map(r => `<div class="text-rose-700">✗ #${GP.escapeHtml(r.quote_number)} (${GP.escapeHtml(r.customer_name)}): ${GP.escapeHtml(r.reason)}</div>`).join("")}</div>` : ''}
       `;
     }
 
     function simulateCsvReuploadWithDuplicates() {
       const simulatedRows = [
-        { "Quote #": "496", "Quote Date": "10/26/2026", "Module": "Auto", "Customer": "ERIN BRANTLEY", "Cell": "(229)244-8484", "Subtotal": "339.65", "Tax": "18.42", "Total": "358.07", "CSR": "SC: CALHOUN, STEPHANIE", "Part": "DW01839GTN", "Desc.": "Windshield Green Tint" },
-        { "Quote #": "599", "Quote Date": "10/30/2026", "Module": "Auto", "Customer": "CHARITY NEESMITH", "Cell": "(912)454-1272", "Subtotal": "410.00", "Tax": "28.70", "Total": "438.70", "CSR": "SC: CALHOUN, STEPHANIE", "Part": "FW05463GTY", "Desc.": "Returning Customer Test" },
-        { "Quote #": "531", "Quote Date": "10/30/2026", "Module": "Auto", "Customer": "MARCUS VANCE", "Cell": "(229)555-0194", "Subtotal": "465.00", "Tax": "32.55", "Total": "497.55", "CSR": "SC: CALHOUN, STEPHANIE", "Category": "DOMESTIC WINDSHIELD", "Part": "DW02411GTY", "Desc.": "2023 F-150 Acoustic Solar Windshield", "Qty.": "1", "Part Total": "465.00" },
-        { "Quote #": "532", "Quote Date": "10/30/2026", "Module": "Flat", "Customer": "VALDOSTA DENTAL ASSOCIATES", "Phone": "(229)555-0822", "Subtotal": "1120.00", "Tax": "78.40", "Total": "1198.40", "CSR": "WB: BREAZEALE, WAYNE", "Category": "MISC FLAT", "Part": "MATFLAT", "Desc.": "1/4\" Bronze Tempered Storefront Glass 48 x 84", "Qty.": "1", "Part Total": "1120.00" }
+        { "Quote #": "900001", "Quote Date": GP.localDate(), "Module": "Auto", "Customer": "TEST CUSTOMER ALPHA", "Cell": "(555) 010-1001", "Subtotal": "339.65", "Tax": "18.42", "Total": "358.07", "CSR": activeCsr, "Part": "TEST-PART-A", "Desc.": "Test windshield part" },
+        { "Quote #": "900002", "Quote Date": GP.localDate(), "Module": "Flat", "Customer": "TEST CUSTOMER BETA", "Phone": "(555) 010-1002", "Subtotal": "410.00", "Tax": "28.70", "Total": "438.70", "CSR": activeCsr, "Part": "TEST-PART-B", "Desc.": "Test flat glass part" }
       ];
       openCsvUploadModal();
-      processParsedMainstreetRows(simulatedRows, "Simulated Batch");
+      processParsedMainstreetRows(simulatedRows, "Simulated Test Batch");
     }
 
     function showToast(message, type = "info") {
