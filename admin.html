@@ -749,7 +749,7 @@
         <input type="file" accept=".csv" class="hidden" onchange="handleAdminCsvUpload(event)" />
       </label>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
-        <span id="activeUserName" class="user-pill">Brandon Faircloth (Operations)</span>
+        <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -971,6 +971,19 @@
           </div>
         </div>
 
+        <div class="grid-2" style="margin-bottom:12px;">
+          <div>
+            <label>Supabase Auth Email *</label>
+            <input type="email" id="newEmpEmail" placeholder="employee@company.com" autocomplete="off" />
+            <small id="authEmailHelp" style="display:block;margin-top:5px;color:var(--muted);">Required before a new employee can claim their portal profile.</small>
+          </div>
+          <div>
+            <label>Account Status</label>
+            <label class="perm-label" style="min-height:44px;"><input type="checkbox" id="userActive" checked /> Active employee account</label>
+            <small style="display:block;margin-top:5px;color:var(--muted);">Deactivating immediately blocks future RLS-authorized portal requests.</small>
+          </div>
+        </div>
+
         <label>Assign Workspace Permissions:</label>
         <div class="perm-grid">
           <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
@@ -995,6 +1008,8 @@
                 <th>MOS Division</th>
                 <th>Classification</th>
                 <th>PIN</th>
+                <th>Auth Email</th>
+                <th>Auth / Status</th>
                 <th>Permissions</th>
                 <th>Action</th>
               </tr>
@@ -1314,19 +1329,17 @@
       "Accounting": "Tasha Mullinax"
     };
 
-    const DEFAULT_USERS = [
-      { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
-      { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
-      { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
-    ];
+    const DEFAULT_USERS = [];
 
 
     let activeUser = null;
-    let usersList = [...DEFAULT_USERS];
+    let usersList = [];
     let timeLogs = [];
     let commissionLogs = [];
     let vehicleLogs = [];
     let auditLogs = [];
+    let quoteLogs = [];
+    let activeTimeSessions = [];
     let auditLimit = 10;
     let currentModalEmployeeName = "";
     let dashboardPrefs={locked:true,defaultPane:"adminOverviewPane",columns:"two",showKpis:true,showOvertime:true,showDivision:true};
@@ -1419,11 +1432,7 @@
       return Array.from(map.values());
     }
 
-    window.logoutPortal = function() {
-      localStorage.removeItem("gp_session_user");
-      sessionStorage.removeItem("gp_session_user");
-      window.location.href = "index.html";
-    };
+    window.logoutPortal = async function() { await GP.signOut(supabaseClient); };
 
     window.showAdminSubTab = function(paneId, btn) {
       ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminFleetPane"].forEach(id => {
@@ -1434,9 +1443,20 @@
       if (btn) btn.classList.add("active");
     };
 
-    function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.pin_code || "default"}`;}
-    function loadDashboardPreferences(){
-      try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}")};}catch(e){} applyDashboardPreferences();
+    function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.auth_user_id || "default"}`;}
+    async function loadDashboardPreferences(){
+      try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}")};}catch(e){}
+      applyDashboardPreferences();
+      if(isCloudConnected && activeUser?.auth_user_id){
+        try{
+          const {data,error}=await supabaseClient.from("portal_preferences").select("dashboard_prefs").eq("auth_user_id",String(activeUser.auth_user_id)).maybeSingle();
+          if(!error && data?.dashboard_prefs && typeof data.dashboard_prefs==="object"){
+            dashboardPrefs={...dashboardPrefs,...data.dashboard_prefs};
+            localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));
+            applyDashboardPreferences();
+          }
+        }catch(e){}
+      }
     }
     function applyDashboardPreferences(){
       const ids=[["dashWidgetKpis","showKpis"],["dashWidgetOvertime","showOvertime"],["dashWidgetDivision","showDivision"]];
@@ -1448,7 +1468,14 @@
       if(document.getElementById("dashShowKpis"))document.getElementById("dashShowKpis").checked=dashboardPrefs.showKpis!==false;if(document.getElementById("dashShowOvertime"))document.getElementById("dashShowOvertime").checked=dashboardPrefs.showOvertime!==false;if(document.getElementById("dashShowDivision"))document.getElementById("dashShowDivision").checked=dashboardPrefs.showDivision!==false;
     }
     window.toggleDashboardCustomization=function(){if(dashboardPrefs.locked){dashboardPrefs.locked=false;}else{try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}"),locked:true};}catch(e){dashboardPrefs.locked=true;}}applyDashboardPreferences();};
-    window.saveAndLockDashboard=function(){dashboardPrefs={locked:true,defaultPane:document.getElementById("dashboardDefaultPane").value,columns:document.getElementById("dashboardColumnMode").value,showKpis:document.getElementById("dashShowKpis").checked,showOvertime:document.getElementById("dashShowOvertime").checked,showDivision:document.getElementById("dashShowDivision").checked};localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));applyDashboardPreferences();showToast("Dashboard preferences saved and locked");};
+    window.saveAndLockDashboard=async function(){
+      dashboardPrefs={locked:true,defaultPane:document.getElementById("dashboardDefaultPane").value,columns:document.getElementById("dashboardColumnMode").value,showKpis:document.getElementById("dashShowKpis").checked,showOvertime:document.getElementById("dashShowOvertime").checked,showDivision:document.getElementById("dashShowDivision").checked};
+      localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));
+      if(isCloudConnected&&activeUser?.auth_user_id){
+        try{await supabaseClient.from("portal_preferences").upsert([{auth_user_id:String(activeUser.auth_user_id),user_pin:String(activeUser.pin_code),dashboard_prefs:dashboardPrefs,updated_at:new Date().toISOString()}],{onConflict:"auth_user_id"});}catch(e){}
+      }
+      applyDashboardPreferences();showToast("Dashboard preferences saved and locked");
+    };
     function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
     function getOpenTimeGroups(){try{return JSON.parse(localStorage.getItem("gp_admin_time_groups_open")||"[]");}catch(e){return[];}}
     window.rememberTimeGroupState=function(el){const open=new Set(getOpenTimeGroups()),key=el.dataset.employee||"";if(!key)return;if(el.open)open.add(key);else open.delete(key);localStorage.setItem("gp_admin_time_groups_open",JSON.stringify([...open]));};
@@ -1462,17 +1489,24 @@
         return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
     }
     function parseClockAudit(a){if(!a||!["TIME_CLOCK_IN","TIME_CLOCK_OUT"].includes(a.action_type))return null;try{return {...JSON.parse(a.details||"{}"),action_type:a.action_type,fallbackName:a.supervisor_name};}catch(e){return{action_type:a.action_type,employee_name:a.supervisor_name||"Unknown"};}}
-    function getActiveClockRows(){const latest=new Map(),ordered=auditLogs.slice().sort((a,b)=>{const bt=Date.parse(b.timestamp)||Number(b.id)||0,at=Date.parse(a.timestamp)||Number(a.id)||0;return bt-at;});ordered.forEach(a=>{const e=parseClockAudit(a);if(!e)return;const name=e.employee_name||e.fallbackName||a.supervisor_name||"Unknown",key=normalizeName(name);if(!latest.has(key))latest.set(key,{...e,employee_name:name});});return[...latest.values()].filter(e=>e.action_type==="TIME_CLOCK_IN");}
-    function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),elapsed=Math.max(0,(Date.now()-ms)/3600000),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
+    function getLatestClockAuditMap(){const latest=new Map(),ordered=auditLogs.slice().sort((a,b)=>{const bt=Date.parse(b.timestamp)||Number(b.id)||0,at=Date.parse(a.timestamp)||Number(a.id)||0;return bt-at;});ordered.forEach(a=>{const e=parseClockAudit(a);if(!e)return;const name=e.employee_name||e.fallbackName||a.supervisor_name||"Unknown",key=normalizeName(name);if(!latest.has(key))latest.set(key,{...e,employee_name:name,audit_timestamp:a.timestamp});});return latest;}
+    function getActiveClockRows(){
+      const latest=getLatestClockAuditMap();
+      if(activeTimeSessions.length){
+        return activeTimeSessions.filter(s=>{const a=latest.get(normalizeName(s.employee_name));if(!a||a.action_type!=="TIME_CLOCK_OUT")return true;const outMs=Date.parse(a.audit_timestamp||a.ended_at||"")||Number(a.ended_at_ms)||0;const startMs=Number(s.started_at_ms)||Date.parse(s.started_at||"")||0;return !outMs||outMs<startMs;}).map(s=>({employee_name:s.employee_name,department:s.department,started_at_ms:s.started_at_ms,started_at:s.started_at,location:s.clock_in_location,coords:s.clock_in_coords,break_minutes:Number(s.break_minutes)||0,action_type:"TIME_CLOCK_IN"}));
+      }
+      return[...latest.values()].filter(e=>e.action_type==="TIME_CLOCK_IN");
+    }
+    function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),gross=Math.max(0,(Date.now()-ms)/3600000),elapsed=Math.max(0,gross-((Number(e.break_minutes)||0)/60)),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
-    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
+    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
 
     async function logAudit(actionType, detailsText) {
       const entry = {
         supervisor_name: activeUser ? activeUser.employee_name : "Admin",
         action_type: actionType,
         details: detailsText,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toISOString()
       };
       if (isCloudConnected) {
         try { await supabaseClient.from("audit_logs").insert([entry]); } catch (e) {}
@@ -1491,20 +1525,19 @@
       const localComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
       const localVeh = JSON.parse(localStorage.getItem("gp_vehicle_logs") || "[]");
       const localAudit = JSON.parse(localStorage.getItem("gp_audit_logs") || "[]");
+      const localQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
 
       timeLogs = localTime;
       commissionLogs = localComm;
       vehicleLogs = localVeh;
       auditLogs = localAudit;
+      quoteLogs = localQuotes;
 
       if (isCloudConnected) {
         try {
           const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
-          if (uRes.data && uRes.data.length > 0) {
-            usersList = mergeRecordLists(uRes.data, localUsers, u => String(u.pin_code || u.employee_name).trim()).map(u => {
-              const localMatch = localUsers.find(l => String(l.pin_code || l.employee_name).trim() === String(u.pin_code || u.employee_name).trim());
-              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
-            });
+          if (!uRes.error && Array.isArray(uRes.data)) {
+            usersList = uRes.data.map(u => ({...u,active:u.active!==false,perm_time:u.perm_time!==false,perm_quotes:u.perm_quotes!==false,perm_commission:u.perm_commission!==false,perm_safety:u.perm_safety!==false}));
             localStorage.setItem("gp_app_users", JSON.stringify(usersList));
           }
 
@@ -1523,12 +1556,26 @@
           const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
           if (vRes.data) {
             vehicleLogs = mergeRecordLists(vRes.data, localVeh, v => `${v.license_plate}|${v.inspection_date}|${v.mileage}`);
+            localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
 
           const aRes = await supabaseClient.from("audit_logs").select("*").order("id", { ascending: false });
           if (aRes.data) {
             auditLogs = mergeRecordLists(aRes.data, localAudit, a => `${a.timestamp}|${a.action_type}|${a.details}`);
             localStorage.setItem("gp_audit_logs", JSON.stringify(auditLogs));
+          }
+
+          const activeRes = await supabaseClient.from("active_time_sessions").select("*").order("started_at", { ascending: true });
+          if (!activeRes.error && Array.isArray(activeRes.data)) activeTimeSessions = activeRes.data;
+          else activeTimeSessions = [];
+
+          const qRes = await supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false });
+          if (!qRes.error && Array.isArray(qRes.data)) {
+            const cloudQuotes=qRes.data.map(r=>({quote_number:r.quote_number,quote_date:r.quote_date,module:r.module,customer_name:r.customer_name,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""}));
+            const merged=new Map(localQuotes.map(q=>[Number(q.quote_number),q]));
+            cloudQuotes.forEach(q=>merged.set(Number(q.quote_number),q));
+            quoteLogs=[...merged.values()];
+            localStorage.setItem("glasspro_quotes_v1",JSON.stringify(quoteLogs));
           }
         } catch (e) {}
       }
@@ -1556,6 +1603,7 @@
       return Object.keys(DIV_LEADS).map(div => {
         const staff = usersList.filter(u => u.department === div);
         const divTime = timeLogs.filter(t => {
+          if (!GP.isInCurrentWeek(t.work_date)) return false;
           if (t.department === div) return true;
           const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, t.employee_name));
           return matchedUser && matchedUser.department === div;
@@ -1563,6 +1611,7 @@
 
         const hrs = divTime.reduce((a, r) => a + getShiftHours(r), 0);
         const wos = commissionLogs.filter(c => {
+          if (!GP.isInCurrentWeek(c.work_date)) return false;
           if (c.department === div) return true;
           const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, c.employee_name));
           return matchedUser && matchedUser.department === div;
@@ -1571,7 +1620,7 @@
 
         let alerts = 0;
         staff.forEach(u => {
-          const eHrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name))
+          const eHrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
                                .reduce((a, r) => a + getShiftHours(r), 0);
           if ((u.employment_type === "Part-Time" && eHrs >= 25) || (u.employment_type !== "Part-Time" && eHrs >= 35)) {
             alerts++;
@@ -1633,7 +1682,7 @@
       document.getElementById("adminPayrollTable").innerHTML = usersList.map(u => {
         const hrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
                             .reduce((a, r) => a + getShiftHours(r), 0);
-        const wosCount = commissionLogs.filter(c => isSameEmployee(c.employee_name, u.employee_name)).length;
+        const wosCount = commissionLogs.filter(c => isSameEmployee(c.employee_name, u.employee_name) && GP.isInCurrentWeek(c.work_date)).length;
         const regHrs = Math.min(40.0, hrs);
         const otHrs = Math.max(0, hrs - 40.0);
         const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
@@ -1681,7 +1730,7 @@
       
       // 1. Pull in Flagged Fleet Vehicles
       vehicleLogs.filter(v => (v.issues_count || 0) > 0).slice(0, 4).forEach(v => {
-        exList.push({ cat: "FLEET DEFECT", subj: `${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})`, det: v.discrepancies });
+        exList.push({ cat: "FLEET DEFECT", subj: `${v.make || ""} ${v.model || ""} (${v.license_plate || ""})`, det: v.discrepancies });
       });
       
       // 2. Pull in Supervisor Audit Logs
@@ -1690,8 +1739,7 @@
       });
 
       // 3. THE BONUS: Pull in Quotes Due for Admin Review or CSR Follow-Up
-      const savedQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
-      savedQuotes.filter(q => q.status === "admin_review" || q.status === "follow_up").slice(0, 5).forEach(q => {
+      quoteLogs.filter(q => q.status === "admin_review" || q.status === "follow_up").slice(0, 5).forEach(q => {
         exList.push({
           cat: q.status === "admin_review" ? "QUOTE RECEIPT" : "QUOTE FOLLOW-UP",
           subj: `Quote #${q.quote_number} (${q.customer_name})`,
@@ -1713,7 +1761,9 @@
         if (u.perm_time) perms.push("Time");
         if (u.perm_quotes !== false) perms.push("Quotes");
         if (u.perm_commission !== false) perms.push("Comm");
-        if (u.perm_vehicle_submit) perms.push("SubVeh");
+        if (u.perm_vehicle_submit) perms.push("VehSubmit");
+        if (u.perm_vehicle_view) perms.push("VehView");
+        if (u.perm_safety) perms.push("Safety");
         if (u.perm_admin) perms.push("Admin");
         const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
 
@@ -1723,10 +1773,16 @@
             <td>${GP.escapeHtml(u.department)}</td>
             <td><span class="badge badge-purple">${GP.escapeHtml(u.employment_type || "Full-Time")}</span></td>
             <td class="mono" style="font-weight:800;">${GP.escapeHtml(u.pin_code)}</td>
-            <td>${perms.map(p => `<span class="badge badge-navy" style="margin:1px;">${p}</span>`).join(" ")}</td>
+            <td style="font-size:11px;">${GP.escapeHtml(u.auth_email || "Email not assigned")}</td>
             <td>
+              <span class="badge ${u.auth_user_id ? "badge-ok" : "badge-warn"}">${u.auth_user_id ? "AUTH LINKED" : "UNCLAIMED"}</span>
+              <span class="badge ${u.active !== false ? "badge-ok" : "badge-issue"}" style="margin-top:3px;">${u.active !== false ? "ACTIVE" : "INACTIVE"}</span>
+            </td>
+            <td>${perms.map(p => `<span class="badge badge-navy" style="margin:1px;">${p}</span>`).join(" ")}</td>
+            <td style="white-space:nowrap;">
               <button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>
-              <button type="button" class="btn-outline" style="color:var(--red); border-color:var(--red); padding:4px 7px;" onclick="deleteUser('${u.id}', '${GP.escapeHtml(u.pin_code)}')">Del</button>
+              ${u.auth_user_id && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="resetProfileClaim('${u.id}')">Reset Auth</button>` : ""}
+              ${String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="color:${u.active!==false ? "var(--red)" : "var(--green)"};padding:4px 7px;" onclick="toggleUserActive('${u.id}', ${u.active!==false})">${u.active!==false ? "Deactivate" : "Activate"}</button>` : ""}
             </td>
           </tr>
         `;
@@ -1966,7 +2022,7 @@
 
     window.openAddMissingShiftModal = function() {
       document.getElementById("editTimeCard").classList.add("hidden");
-      document.getElementById("addShiftDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("addShiftDate").value = GP.localDate();
       document.getElementById("addShiftReason").value = "";
       const card = document.getElementById("addMissingTimeCard");
       card.classList.remove("hidden");
@@ -2001,10 +2057,11 @@
         notes: `[ADMIN ADDED by ${supervisor}: ${reason}]`
       };
 
+      let savedCloudRow = null;
       if (isCloudConnected) {
         try {
-          let { error } = await supabaseClient.from("time_logs").insert([record]);
-          if (error) {
+          let result = await supabaseClient.from("time_logs").insert([record]).select("*").limit(1);
+          if (result.error) {
             const fallback = {
               employee_name: record.employee_name,
               department: record.department,
@@ -2015,12 +2072,14 @@
               decimal_hours: record.decimal_hours,
               notes: record.notes
             };
-            await supabaseClient.from("time_logs").insert([fallback]);
+            result = await supabaseClient.from("time_logs").insert([fallback]).select("*").limit(1);
           }
+          if (!result.error && result.data?.[0]) savedCloudRow = result.data[0];
         } catch (e) {}
       }
 
-      record.id = Date.now();
+      if(savedCloudRow) Object.assign(record,savedCloudRow);
+      if(!record.id) record.id = Date.now();
       timeLogs.unshift(record);
       localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
 
@@ -2053,6 +2112,10 @@
       document.getElementById("editingUserId").value = "";
       document.getElementById("newEmpName").value = "";
       document.getElementById("newEmpPin").value = "";
+      document.getElementById("newEmpEmail").value = "";
+      document.getElementById("newEmpEmail").disabled = false;
+      document.getElementById("authEmailHelp").textContent = "Required before a new employee can claim their portal profile.";
+      document.getElementById("userActive").checked = true;
       document.getElementById("permTime").checked = true;
       document.getElementById("permQuotes").checked = true;
       document.getElementById("permCommission").checked = true;
@@ -2071,6 +2134,10 @@
       document.getElementById("newEmpDept").value = u.department;
       document.getElementById("newEmpType").value = u.employment_type || "Full-Time";
       document.getElementById("newEmpPin").value = u.pin_code;
+      document.getElementById("newEmpEmail").value = u.auth_email || "";
+      document.getElementById("newEmpEmail").disabled = !!u.auth_user_id;
+      document.getElementById("authEmailHelp").textContent = u.auth_user_id ? "Auth is linked. Use Reset Auth before changing this employee's login email." : "This email must match the employee's Supabase Auth sign-up email.";
+      document.getElementById("userActive").checked = u.active !== false;
       document.getElementById("permTime").checked = !!u.perm_time;
       document.getElementById("permQuotes").checked = u.perm_quotes !== false;
       document.getElementById("permCommission").checked = u.perm_commission !== false;
@@ -2085,20 +2152,30 @@
 
     window.saveEmployeeUser = async function() {
       const editId = document.getElementById("editingUserId").value;
+      const existingUser = editId ? usersList.find(u => String(u.id) === String(editId)) : null;
+      const oldPin = existingUser ? String(existingUser.pin_code || "") : "";
       const name = document.getElementById("newEmpName").value.trim();
       const dept = document.getElementById("newEmpDept").value;
       const empType = document.getElementById("newEmpType").value;
       const pin = document.getElementById("newEmpPin").value.trim();
+      const emailInput = document.getElementById("newEmpEmail").value.trim().toLowerCase();
+      const authEmail = existingUser?.auth_user_id ? String(existingUser.auth_email || "").trim().toLowerCase() : emailInput;
+      const active = document.getElementById("userActive").checked;
 
-      if (!name || !/^\d{4}$/.test(pin)) return alert("Enter Employee Name and 4-digit PIN.");
-      const dup = usersList.find(u => String(u.pin_code) === pin && String(u.id) !== String(editId));
-      if (dup) return alert(`PIN "${pin}" is already assigned to ${dup.employee_name}.`);
+      if (!name || !/^\d{4}$/.test(pin)) return alert("Enter Employee Name and a unique 4-digit PIN.");
+      if (!authEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)) return alert("Enter the employee's valid Auth email. This is required before profile claiming.");
+      const dupPin = usersList.find(u => String(u.pin_code) === pin && String(u.id) !== String(editId));
+      if (dupPin) return alert(`PIN "${pin}" is already assigned to ${dupPin.employee_name}.`);
+      const dupEmail = usersList.find(u => String(u.auth_email || "").trim().toLowerCase() === authEmail && String(u.id) !== String(editId));
+      if (dupEmail) return alert(`Auth email "${authEmail}" is already assigned to ${dupEmail.employee_name}.`);
 
       const obj = {
         employee_name: name,
         department: dept,
         employment_type: empType,
         pin_code: pin,
+        auth_email: authEmail,
+        active,
         perm_time: document.getElementById("permTime").checked,
         perm_quotes: document.getElementById("permQuotes").checked,
         perm_commission: document.getElementById("permCommission").checked,
@@ -2108,39 +2185,57 @@
         perm_admin: document.getElementById("permAdmin").checked
       };
 
-      if (isCloudConnected) {
-        try {
-          const cloudResult = editId
-            ? await supabaseClient.from("app_users").update(obj).eq("id", editId)
-            : await supabaseClient.from("app_users").insert([obj]);
-          if (cloudResult?.error) {
-            const { perm_quotes, ...legacyObj } = obj;
-            if (editId) await supabaseClient.from("app_users").update(legacyObj).eq("id", editId);
-            else await supabaseClient.from("app_users").insert([legacyObj]);
-          }
-        } catch (e) {}
+      if (existingUser?.auth_user_id === activeUser?.auth_user_id && (!obj.active || !obj.perm_admin)) {
+        return alert("You cannot deactivate your own signed-in admin profile or remove your own Management permission.");
       }
-      if (editId) {
-        const idx = usersList.findIndex(u => String(u.id) === String(editId));
-        if (idx >= 0) { obj.id = usersList[idx].id; usersList[idx] = obj; }
-      } else {
-        obj.id = Date.now();
-        usersList.push(obj);
+      if (!isCloudConnected) return alert("Supabase connection is required to change employee Auth profiles.");
+
+      try {
+        const cloudResult = editId
+          ? await supabaseClient.from("app_users").update(obj).eq("id", editId).select("*").single()
+          : await supabaseClient.from("app_users").insert([obj]).select("*").single();
+        if (cloudResult.error) return alert(`Employee save failed: ${cloudResult.error.message}`);
+        const savedCloudUser = cloudResult.data;
+
+        if (editId && oldPin && oldPin !== pin) {
+          try { await supabaseClient.from("active_time_sessions").update({employee_pin:pin,employee_name:name,department:dept}).eq("employee_pin",oldPin); } catch (e) {}
+        }
+        if (editId && oldPin && oldPin !== pin && activeUser && String(activeUser.pin_code) === oldPin) {
+          ["gp_clock_in_","gp_clock_loc_","gp_clock_coords_"].forEach(prefix=>{const val=localStorage.getItem(prefix+oldPin);if(val!==null){localStorage.setItem(prefix+pin,val);localStorage.removeItem(prefix+oldPin);}});
+          activeUser=GP.storeSessionUser({...activeUser,...savedCloudUser});
+          document.getElementById("activeUserName").textContent=`${activeUser.employee_name} (${activeUser.department})`;
+        }
+        showToast(editId ? "Employee Auth profile updated" : "Employee profile created — employee can now complete First-Time Setup");
+        resetUserForm();
+        await loadAdminData();
+      } catch (e) {
+        alert(`Employee save failed: ${e.message || e}`);
       }
-      localStorage.setItem("gp_app_users", JSON.stringify(usersList));
-      resetUserForm();
-      showToast("Employee saved");
+    };
+
+    window.toggleUserActive = async function(id, currentlyActive) {
+      const target = usersList.find(u => String(u.id) === String(id));
+      if (!target) return;
+      if (String(target.auth_user_id || "") === String(activeUser?.auth_user_id || "")) return alert("You cannot deactivate your own signed-in admin account.");
+      const next = !currentlyActive;
+      if (!confirm(`${next ? "Activate" : "Deactivate"} ${target.employee_name}?${next ? "" : " Their Supabase Auth login will remain, but RLS will immediately block portal data access."}`)) return;
+      const { error } = await supabaseClient.from("app_users").update({ active: next }).eq("id", id);
+      if (error) return alert(`Status change failed: ${error.message}`);
+      if (!next && target.auth_user_id) {
+        try { await supabaseClient.from("active_time_sessions").delete().eq("auth_user_id", target.auth_user_id); } catch (e) {}
+      }
+      await logAudit("USER_STATUS", `${next ? "Activated" : "Deactivated"} ${target.employee_name}`);
       await loadAdminData();
     };
 
-    window.deleteUser = async function(id, pin) {
-      if (activeUser && String(activeUser.pin_code) === String(pin)) return alert("Cannot delete your own active account.");
-      if (!confirm("Remove this employee?")) return;
-      if (isCloudConnected) {
-        try { await supabaseClient.from("app_users").delete().eq("id", id); } catch (e) {}
-      }
-      usersList = usersList.filter(u => String(u.id) !== String(id));
-      localStorage.setItem("gp_app_users", JSON.stringify(usersList));
+    window.resetProfileClaim = async function(id) {
+      const target = usersList.find(u => String(u.id) === String(id));
+      if (!target || !target.auth_user_id) return;
+      if (!confirm(`Reset the Supabase Auth link for ${target.employee_name}? Their existing Auth account will remain in Supabase but will immediately lose portal access. You can then edit the profile email and have them claim again.`)) return;
+      const { error } = await supabaseClient.rpc("gp_admin_reset_profile_claim", { p_profile_id: Number(id) });
+      if (error) return alert(`Auth reset failed: ${error.message}`);
+      await logAudit("AUTH_RESET", `Reset Supabase Auth link for ${target.employee_name}`);
+      showToast("Auth link reset. Update the email if needed, then have the employee complete First-Time Setup again.");
       await loadAdminData();
     };
 
@@ -2217,18 +2312,13 @@
         commissionLogs.map(c => [c.work_date, c.employee_name, c.department, c.wo_number, c.job_type, c.job_amount || 0, c.service_type || "", c.glass_spec || "", c.status || ""]));
     };
 
-    window.addEventListener("DOMContentLoaded", function() {
-      const saved = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
-      if (!saved) {
-        window.location.href = "index.html";
-        return;
-      }
-      try { activeUser = JSON.parse(saved); } catch (e) { window.location.href = "index.html"; return; }
-      if (!activeUser.perm_admin) { window.location.href = "index.html"; return; }
+    window.addEventListener("DOMContentLoaded", async function() {
+      activeUser = await GP.requireAuth(supabaseClient, "admin");
+      if (!activeUser) return;
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
-      document.getElementById("navLinkQuotes").classList.toggle("hidden", activeUser.perm_quotes === false);
-      loadDashboardPreferences();
+      GP.applyNavPermissions(activeUser);
+      await loadDashboardPreferences();
 
       window.handleAdminCsvUpload = function(event) {
         const file = event.target.files[0];
@@ -2237,9 +2327,19 @@
           header: true,
           skipEmptyLines: true,
           complete: async function(results) {
-            const existingQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
+            let existingQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
+            if(isCloudConnected){
+              try{
+                const {data,error}=await supabaseClient.from("outstanding_quotes").select("quote_number,customer_name,quote_date,module,phone,has_cell,subtotal,tax,total,original_csr,parts,status,contact_attempts,call_data,admin_coaching_note");
+                if(!error&&Array.isArray(data)&&data.length){
+                  const merged=new Map(existingQuotes.map(q=>[Number(q.quote_number),q]));
+                  data.forEach(r=>merged.set(Number(r.quote_number),{quote_number:r.quote_number,customer_name:r.customer_name,quote_date:r.quote_date,module:r.module,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""}));
+                  existingQuotes=[...merged.values()];
+                }
+              }catch(e){}
+            }
             const existingNums = new Set(existingQuotes.map(q => Number(q.quote_number)));
-            const existingNames = new Set(existingQuotes.map(q => String(q.customer_name || "").trim().toUpperCase()));
+            const existingNames = new Set(existingQuotes.map(q => String(q.customer_name || "").trim().toUpperCase().replace(/\s+/g," ")));
             const grouped = new Map();
 
             results.data.forEach(row => {
@@ -2283,32 +2383,37 @@
             });
 
             let added = 0, rejected = 0;
+            const acceptedCloudRows = [];
             grouped.forEach(cand => {
-              const normName = cand.customer_name.toUpperCase();
+              const normName = cand.customer_name.trim().toUpperCase().replace(/\s+/g," ");
               if (existingNums.has(cand.quote_number) || existingNames.has(normName)) {
                 rejected++;
               } else {
                 existingQuotes.unshift(cand);
                 existingNums.add(cand.quote_number);
                 existingNames.add(normName);
+                acceptedCloudRows.push({quote_number:cand.quote_number,normalized_customer_name:normName,customer_name:cand.customer_name,quote_date:cand.quote_date,module:cand.module,phone:cand.phone,has_cell:cand.has_cell,subtotal:cand.subtotal,tax:cand.tax,total:cand.total,original_csr:cand.csr,parts:cand.parts||[],status:cand.status||"open",contact_attempts:cand.contact_attempts||0,call_data:cand.call_data||{},admin_coaching_note:cand.admin_coaching_note||""});
                 added++;
               }
             });
 
             localStorage.setItem("glasspro_quotes_v1", JSON.stringify(existingQuotes));
-            await logAudit("CSV_UPLOAD", `Uploaded ${file.name} in Tab 5: +${added} new quotes synced to Call-Back Board, ${rejected} duplicates blocked`);
-            showToast(`CSV Synced: +${added} Quotes Added, ${rejected} Duplicates Blocked`);
+            let cloudSynced = 0;
+            if(isCloudConnected && acceptedCloudRows.length){
+              try{const {error}=await supabaseClient.from("outstanding_quotes").upsert(acceptedCloudRows,{onConflict:"quote_number"});if(!error)cloudSynced=acceptedCloudRows.length;}catch(e){}
+            }
+            await logAudit("CSV_UPLOAD", `Uploaded ${file.name} in Tab 5: +${added} new quotes (${cloudSynced} cloud-synced), ${rejected} duplicates blocked`);
+            showToast(`CSV Synced: +${added} Quotes Added, ${rejected} Duplicates Blocked${isCloudConnected&&added&&!cloudSynced?" (cloud sync pending)":""}`);
             event.target.value = "";
             await loadAdminData();
           }
         });
       };
 
-      loadAdminData().then(() => {
-        const pane = dashboardPrefs.defaultPane || "adminOverviewPane";
-        showAdminSubTab(pane, getDashboardButtonForPane(pane));
-        startAdminLiveSync();
-      });
+      await loadAdminData();
+      const pane = dashboardPrefs.defaultPane || "adminOverviewPane";
+      showAdminSubTab(pane, getDashboardButtonForPane(pane));
+      startAdminLiveSync();
     });
   </script>
 </body>
