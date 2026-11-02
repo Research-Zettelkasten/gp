@@ -202,7 +202,7 @@
 
     
     .grid-2 > div, .grid-3 > div { min-width: 0; position: relative; }
-    input[type="date"], input[type="time"], input[type="text"], input[type="number"], select {
+    input[type="date"], input[type="time"], input[type="text"], input[type="number"], input[type="email"], input[type="password"], select {
       display: block;
       width: 100%;
       max-width: 100%;
@@ -222,7 +222,15 @@
     .btn-green { background: linear-gradient(135deg, #10B981 0%, var(--green) 100%); color: var(--white); }
     .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
 
-    /* SIGN-IN KEYPAD & 4-BOX PIN DISPLAY */
+    /* SUPABASE AUTH SIGN-IN */
+    .auth-tabs { display:flex; gap:8px; margin-bottom:18px; }
+    .auth-tab { flex:1; padding:9px 10px; border:1.5px solid var(--border-strong); background:#fff; border-radius:8px; font-weight:800; font-size:11px; cursor:pointer; text-transform:uppercase; }
+    .auth-tab.active { background:var(--obsidian); color:#fff; border-color:var(--obsidian); }
+    .auth-help { font-size:11px; color:var(--muted); line-height:1.5; margin:10px 0 14px; }
+    .auth-field { text-align:left; margin-bottom:12px; }
+    .auth-security-note { margin-top:14px; padding:10px 12px; border-radius:8px; background:#F8FAFC; border:1px solid var(--border); font-size:10px; color:var(--muted); line-height:1.45; }
+
+    /* LEGACY PIN STYLES RETAINED FOR CLAIM FIELD / OLDER BROWSERS */
     .login-box { max-width: 420px; margin: 36px auto; text-align: center; padding: 28px 24px; border-top: 4px solid var(--red); }
     .pin-boxes-container { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
     .pin-digit-box {
@@ -315,149 +323,51 @@
       <div style="font-size:11px; font-weight:700; color:var(--mos-indigo);">MOS Sync: Active</div>
     </div>
 
-    <!-- SIGN-IN KEYPAD CARD -->
+    <!-- SUPABASE AUTH SIGN-IN / LEGACY PROFILE CLAIM -->
     <div id="loginScreen" class="card login-box">
-      <div class="card-title" style="justify-content:center; border-bottom:none; margin-bottom:4px;">Executive Portal Sign-In</div>
+      <div class="card-title" style="justify-content:center; border-bottom:none; margin-bottom:4px;">Secure Employee Portal</div>
       <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
-        Tap the keypad or type your 4-digit PIN on your keyboard.
+        Sign in with your Supabase Auth email and password. Your 4-digit employee PIN is only used once to claim an existing profile.
       </p>
 
-      <div class="pin-boxes-container">
-        <div class="pin-digit-box" id="pinBox0">-</div>
-        <div class="pin-digit-box" id="pinBox1">-</div>
-        <div class="pin-digit-box" id="pinBox2">-</div>
-        <div class="pin-digit-box" id="pinBox3">-</div>
+      <div id="authStandardTabs" class="auth-tabs">
+        <button type="button" id="authTabSignIn" class="auth-tab active" onclick="showAuthPane('signIn')">Sign In</button>
+        <button type="button" id="authTabSetup" class="auth-tab" onclick="showAuthPane('setup')">First-Time Setup</button>
       </div>
 
-      <div id="loginErrorMsg" class="pin-feedback-msg"></div>
-
-      <div class="keypad" id="keypadGrid">
-        <button type="button" class="key-btn" data-digit="1">1</button>
-        <button type="button" class="key-btn" data-digit="2">2</button>
-        <button type="button" class="key-btn" data-digit="3">3</button>
-        <button type="button" class="key-btn" data-digit="4">4</button>
-        <button type="button" class="key-btn" data-digit="5">5</button>
-        <button type="button" class="key-btn" data-digit="6">6</button>
-        <button type="button" class="key-btn" data-digit="7">7</button>
-        <button type="button" class="key-btn" data-digit="8">8</button>
-        <button type="button" class="key-btn" data-digit="9">9</button>
-        <button type="button" class="key-btn" id="btnClearPin" style="font-size:12px; font-family:'Inter',sans-serif; color:var(--red);">CLEAR</button>
-        <button type="button" class="key-btn" data-digit="0">0</button>
-        <button type="button" class="key-btn" id="btnSubmitPin" style="background:var(--obsidian); color:var(--white); font-size:13px; font-family:'Inter',sans-serif;">ENTER</button>
+      <div id="authSignInPane">
+        <div class="auth-field"><label>Email</label><input type="email" id="authEmail" autocomplete="username" placeholder="employee@company.com" /></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password" placeholder="Your password" /></div>
+        <button type="button" class="btn btn-navy" id="btnAuthSignIn" onclick="signInPortal()">Sign In</button>
+        <button type="button" class="btn-outline" style="margin-top:10px; width:100%;" onclick="sendPasswordReset()">Email Me a Password Reset Link</button>
       </div>
 
-      <button type="button" class="btn btn-red" id="btnMainSignIn">Access Workspace</button>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
-        <button type="button" class="btn-outline" style="padding:4px 8px; font-size:10px;" id="btnTogglePinView">Reveal Digits</button>
-        <span style="font-size:11px; color:var(--muted);">Demo PINs only — replace with server authentication before production</span>
+      <div id="authSetupPane" class="hidden">
+        <div class="auth-field"><label>Work Email</label><input type="email" id="setupEmail" autocomplete="email" placeholder="employee@company.com" /></div>
+        <div class="auth-field"><label>Create Password</label><input type="password" id="setupPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+        <div class="auth-field"><label>Existing 4-Digit Employee PIN</label><input type="password" id="setupPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
+        <div class="auth-help">Management must assign your email to your employee profile before first-time setup. The first legacy admin is the only bootstrap exception.</div>
+        <button type="button" class="btn btn-red" id="btnAuthSetup" onclick="createAndClaimPortalAccount()">Create Account & Claim Profile</button>
       </div>
+
+      <div id="authClaimPane" class="hidden">
+        <div style="padding:10px 12px; background:var(--amber-bg); border:1px solid #FDE68A; border-radius:8px; margin-bottom:14px; font-size:12px; text-align:left;">
+          <b>Auth account signed in, but no employee profile is linked yet.</b><br>
+          <span id="claimSignedInEmail"></span>
+        </div>
+        <div class="auth-field"><label>Employee 4-Digit PIN</label><input type="password" id="claimPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
+        <button type="button" class="btn btn-red" onclick="claimPortalProfile()">Claim Employee Profile</button>
+        <button type="button" class="btn-outline" style="margin-top:10px; width:100%;" onclick="logoutPortal()">Sign Out</button>
+      </div>
+
+      <div id="authRecoveryPane" class="hidden">
+        <div class="auth-field"><label>New Password</label><input type="password" id="recoveryPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+        <button type="button" class="btn btn-red" onclick="completePasswordRecovery()">Save New Password</button>
+      </div>
+
+      <div id="loginErrorMsg" class="pin-feedback-msg" style="margin-top:14px;"></div>
+      <div class="auth-security-note">Authentication is verified by Supabase Auth. Database access is separately enforced by Row Level Security; browser-stored profile data is never treated as authorization.</div>
     </div>
-
-    <!-- ====================================================================
-         ISOLATED KEYPAD ENGINE (ZERO EXTERNAL DEPENDENCIES - NEVER FAILS)
-         ==================================================================== -->
-    <script>
-      (function() {
-        const STARTER_USERS = [
-          { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
-          { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
-          { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
-        ];
-
-        window.PORTAL_USERS = [...STARTER_USERS];
-        try {
-          const saved = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
-          saved.forEach(u => {
-            if (!u || !u.pin_code) return;
-            u.perm_quotes = u.perm_quotes !== false;
-            const idx = window.PORTAL_USERS.findIndex(s => String(s.pin_code) === String(u.pin_code));
-            if (idx >= 0) window.PORTAL_USERS[idx] = { ...window.PORTAL_USERS[idx], ...u };
-            else window.PORTAL_USERS.push(u);
-          });
-        } catch (e) {}
-
-        let currentPin = "";
-        let showDigits = false;
-
-        function renderPinBoxes() {
-          for (let i = 0; i < 4; i++) {
-            const box = document.getElementById("pinBox" + i);
-            if (!box) continue;
-            if (i < currentPin.length) {
-              box.textContent = showDigits ? currentPin[i] : "•";
-              box.classList.add("filled");
-            } else {
-              box.textContent = "-";
-              box.classList.remove("filled");
-            }
-          }
-        }
-
-        function addDigit(d) {
-          document.getElementById("loginErrorMsg").textContent = "";
-          if (currentPin.length < 4) {
-            currentPin += String(d);
-            renderPinBoxes();
-          }
-          if (currentPin.length === 4) {
-            setTimeout(verifyPinNow, 60);
-          }
-        }
-
-        function clearDigits() {
-          currentPin = "";
-          document.getElementById("loginErrorMsg").textContent = "";
-          renderPinBoxes();
-        }
-
-        function verifyPinNow() {
-          if (currentPin.length !== 4) {
-            document.getElementById("loginErrorMsg").textContent = "Please enter a 4-digit PIN code.";
-            return;
-          }
-          const match = window.PORTAL_USERS.find(u => String(u.pin_code).trim() === currentPin);
-          if (!match) {
-            document.getElementById("loginErrorMsg").textContent = "Invalid PIN. Please contact your supervisor for assistance.";
-            currentPin = "";
-            renderPinBoxes();
-            return;
-          }
-          localStorage.setItem("gp_session_user", JSON.stringify(match));
-          sessionStorage.setItem("gp_session_user", JSON.stringify(match));
-          currentPin = "";
-          renderPinBoxes();
-          if (typeof window.activateUserSession === "function") {
-            window.activateUserSession(match);
-          }
-        }
-
-        // Bind all number buttons directly
-        document.querySelectorAll("#keypadGrid [data-digit]").forEach(btn => {
-          btn.addEventListener("click", function() {
-            addDigit(this.getAttribute("data-digit"));
-          });
-        });
-
-        document.getElementById("btnClearPin").addEventListener("click", clearDigits);
-        document.getElementById("btnSubmitPin").addEventListener("click", verifyPinNow);
-        document.getElementById("btnMainSignIn").addEventListener("click", verifyPinNow);
-        document.getElementById("btnTogglePinView").addEventListener("click", function() {
-          showDigits = !showDigits;
-          this.textContent = showDigits ? "Hide Digits" : "Reveal Digits";
-          renderPinBoxes();
-        });
-
-        // Physical Keyboard Support
-        window.addEventListener("keydown", function(e) {
-          const loginEl = document.getElementById("loginScreen");
-          if (!loginEl || loginEl.classList.contains("hidden")) return;
-          if (/^[0-9]$/.test(e.key)) addDigit(e.key);
-          else if (e.key === "Backspace") { currentPin = currentPin.slice(0, -1); renderPinBoxes(); }
-          else if (e.key === "Enter") verifyPinNow();
-        });
-      })();
-    </script>
 
     <!-- TIME CLOCK WORKSPACE -->
     <div id="timeWorkspace" class="hidden">
@@ -497,7 +407,7 @@
 
               <div style="margin-bottom: 14px;">
                 <label>Unpaid Lunch / Break Deduction</label>
-                <select id="liveBreakMins" onchange="refreshLiveTimer()">
+                <select id="liveBreakMins" onchange="refreshLiveTimer(); syncActiveBreakMinutes()">
                   <option value="0">No Unpaid Break (0 mins)</option>
                   <option value="15">15 Minutes (00.25 hrs)</option>
                   <option value="30">30 Minutes (00.50 hrs)</option>
@@ -654,6 +564,135 @@
       }
     } catch (e) {}
 
+    function setAuthMessage(message, ok = false) {
+      const el = document.getElementById("loginErrorMsg");
+      if (!el) return;
+      el.textContent = message || "";
+      el.style.color = ok ? "var(--green)" : "var(--red)";
+    }
+
+    window.showAuthPane = function(mode) {
+      ["authSignInPane","authSetupPane","authClaimPane","authRecoveryPane"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+      document.getElementById("authStandardTabs")?.classList.toggle("hidden", mode === "claim" || mode === "recovery");
+      document.getElementById("authTabSignIn")?.classList.toggle("active", mode === "signIn");
+      document.getElementById("authTabSetup")?.classList.toggle("active", mode === "setup");
+      const map = { signIn:"authSignInPane", setup:"authSetupPane", claim:"authClaimPane", recovery:"authRecoveryPane" };
+      document.getElementById(map[mode] || "authSignInPane")?.classList.remove("hidden");
+      setAuthMessage("");
+    };
+
+    async function finishAuthenticatedEntry() {
+      const authState = await GP.getAuthProfile(supabaseClient);
+      if (!authState.user) { GP.clearSensitiveLocalCache(); showAuthPane("signIn"); return false; }
+      if (!authState.profile) {
+        document.getElementById("claimSignedInEmail").textContent = `Signed in as ${authState.user.email || "this Auth account"}.`;
+        showAuthPane("claim");
+        return false;
+      }
+      if (authState.profile.active === false) {
+        setAuthMessage("This employee profile is inactive. Contact a manager.");
+        await GP.signOut(supabaseClient, null);
+        showAuthPane("signIn");
+        return false;
+      }
+      await window.activateUserSession(authState.profile);
+      GP.watchProfileAccess(supabaseClient);
+      return true;
+    }
+
+    window.signInPortal = async function() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value;
+      if (!email || !password) return setAuthMessage("Enter your email and password.");
+      const btn = document.getElementById("btnAuthSignIn");
+      btn.disabled = true; btn.textContent = "Signing In...";
+      try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) return setAuthMessage(error.message || "Sign-in failed.");
+        await finishAuthenticatedEntry();
+      } catch (e) { setAuthMessage(e.message || "Sign-in failed."); }
+      finally { btn.disabled = false; btn.textContent = "Sign In"; }
+    };
+
+    window.createAndClaimPortalAccount = async function() {
+      const email = document.getElementById("setupEmail").value.trim();
+      const password = document.getElementById("setupPassword").value;
+      const pin = document.getElementById("setupPin").value.trim();
+      if (!email || password.length < 8 || !/^\d{4}$/.test(pin)) return setAuthMessage("Enter a valid work email, a password of at least 8 characters, and your 4-digit employee PIN.");
+      const btn = document.getElementById("btnAuthSetup");
+      btn.disabled = true; btn.textContent = "Creating Account...";
+      try {
+        const redirectTo = window.location.origin + window.location.pathname;
+        const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
+        if (error) return setAuthMessage(error.message || "Account setup failed.");
+        if (data?.session) {
+          document.getElementById("claimPin").value = pin;
+          await claimPortalProfile();
+        } else {
+          setAuthMessage("Account created. Confirm the email from Supabase, then return here, sign in, and enter the same employee PIN to finish claiming your profile.", true);
+        }
+      } catch (e) { setAuthMessage(e.message || "Account setup failed."); }
+      finally { btn.disabled = false; btn.textContent = "Create Account & Claim Profile"; }
+    };
+
+    window.claimPortalProfile = async function() {
+      const pin = document.getElementById("claimPin").value.trim();
+      if (!/^\d{4}$/.test(pin)) return setAuthMessage("Enter your 4-digit employee PIN.");
+      try {
+        const { data, error } = await supabaseClient.rpc("gp_claim_profile", { p_pin: pin });
+        if (error) return setAuthMessage(error.message || "Profile claim failed.");
+        if (!data?.ok) return setAuthMessage(data?.message || "Profile claim failed.");
+        document.getElementById("claimPin").value = "";
+        setAuthMessage(data.message || "Profile claimed.", true);
+        await finishAuthenticatedEntry();
+      } catch (e) { setAuthMessage(e.message || "Profile claim failed."); }
+    };
+
+    window.sendPasswordReset = async function() {
+      const email = document.getElementById("authEmail").value.trim();
+      if (!email) return setAuthMessage("Enter your email first, then request the reset link.");
+      try {
+        const redirectTo = window.location.origin + window.location.pathname;
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) return setAuthMessage(error.message || "Unable to send reset email.");
+        setAuthMessage("Password reset email sent. Use the link in that email to return here and choose a new password.", true);
+      } catch (e) { setAuthMessage(e.message || "Unable to send reset email."); }
+    };
+
+    window.completePasswordRecovery = async function() {
+      const password = document.getElementById("recoveryPassword").value;
+      if (password.length < 8) return setAuthMessage("New password must be at least 8 characters.");
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) return setAuthMessage(error.message || "Password update failed.");
+        document.getElementById("recoveryPassword").value = "";
+        setAuthMessage("Password updated.", true);
+        await finishAuthenticatedEntry();
+      } catch (e) { setAuthMessage(e.message || "Password update failed."); }
+    };
+
+    async function initializeAuthPortal() {
+      const carried = sessionStorage.getItem("gp_auth_error");
+      if (carried) { sessionStorage.removeItem("gp_auth_error"); setAuthMessage(carried); }
+      if (!supabaseClient?.auth) return setAuthMessage("Supabase Auth is unavailable. Check the portal connection settings.");
+
+      let recoveryMode = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.href);
+      supabaseClient.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          recoveryMode = true;
+          setTimeout(() => showAuthPane("recovery"), 0);
+        }
+      });
+
+      // A password-recovery link creates an Auth session too. Do not let the
+      // normal signed-in route hide the recovery form before the event fires.
+      if (recoveryMode) {
+        showAuthPane("recovery");
+        return;
+      }
+      await finishAuthenticatedEntry();
+    }
+
     const MOS_SOPS = {
       "Operations": [
         { title: "SOP-OP1: Daily Dispatch & Queue Audit", body: "1. Verify all morning technicians have clocked in with verified street geotags by 8:00 AM.<br>2. Audit MultiplyOS Work Order queue and confirm all glass parts are unboxed and inspected.<br>3. Review Overtime Watchlist for FT staff (>35h) and PT staff (>25h)." },
@@ -688,39 +727,65 @@
       setTimeout(() => { t.style.display = "none"; }, 3000);
     }
 
+    function redirectToFirstAllowedModule(user) {
+      if (!user) return false;
+      if (user.perm_quotes !== false) { window.location.href = "quotes.html"; return true; }
+      if (user.perm_commission !== false) { window.location.href = "commissions.html"; return true; }
+      if (GP.canAccessFleet(user)) { window.location.href = "fleet.html"; return true; }
+      if (user.perm_admin) { window.location.href = "admin.html"; return true; }
+      return false;
+    }
+
     window.activateUserSession = async function(user) {
-      activeUser = user;
+      activeUser = await GP.refreshSessionUser(supabaseClient);
+      if (!activeUser) {
+        await GP.signOut(supabaseClient, null);
+        document.getElementById("loginScreen").classList.remove("hidden");
+        showAuthPane("signIn");
+        setAuthMessage("Your authenticated employee profile could not be verified. Please sign in again.");
+        return;
+      }
+      GP.applyNavPermissions(activeUser);
+
       document.getElementById("loginScreen").classList.add("hidden");
-      document.getElementById("timeWorkspace").classList.remove("hidden");
       document.getElementById("activeUserBanner").classList.remove("hidden");
       document.getElementById("mainNavBar").classList.remove("hidden");
+
+      document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
+      document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
+
+      if (activeUser.perm_time === false) {
+        document.getElementById("timeWorkspace").classList.add("hidden");
+        if (!redirectToFirstAllowedModule(activeUser)) {
+          document.getElementById("loginErrorMsg").textContent = "Your account does not currently have access to a portal module. Contact a manager.";
+          document.getElementById("loginScreen").classList.remove("hidden");
+          document.getElementById("activeUserBanner").classList.add("hidden");
+          document.getElementById("mainNavBar").classList.add("hidden");
+        }
+        return;
+      }
+
+      document.getElementById("timeWorkspace").classList.remove("hidden");
       // mosQuickBar hidden per user preference
 
-      document.getElementById("activeUserName").textContent = `${user.employee_name} (${user.department})`;
-      document.getElementById("activeUserTypeBadge").textContent = user.employment_type || "Full-Time";
-
-      // Show/Hide Section Links Based on Permissions
-      document.getElementById("navLinkQuotes").classList.toggle("hidden", user.perm_quotes === false);
-      document.getElementById("navLinkComm").classList.toggle("hidden", user.perm_commission === false);
-      document.getElementById("navLinkFleet").classList.toggle("hidden", !user.perm_vehicle_submit && !user.perm_vehicle_view);
-      document.getElementById("navLinkAdmin").classList.toggle("hidden", !user.perm_admin);
-
       // Render MultiplyOS SOP Chips
-      const sops = MOS_SOPS[user.department] || MOS_SOPS["Operations"];
-      document.getElementById("mosDivisionLabel").textContent = `${user.department} Playbooks:`;
+      const sops = MOS_SOPS[activeUser.department] || MOS_SOPS["Operations"];
+      document.getElementById("mosDivisionLabel").textContent = `${activeUser.department} Playbooks:`;
       document.getElementById("mosSopChipsContainer").innerHTML = sops.map((s, idx) =>
-        `<button type="button" class="mos-sop-chip" onclick="showSopModal('${user.department}', ${idx})">${s.title}</button>`
+        `<button type="button" class="mos-sop-chip" onclick="showCurrentSopModal(${idx})">${s.title}</button>`
       ).join("");
 
-      if (user.department === "Front Office / Sales" || user.department === "Accounting") {
+      if (activeUser.department === "Front Office / Sales" || activeUser.department === "Accounting") {
         switchTimeTab('timeManualPane', document.getElementById('timeSubBtnManual'));
       } else {
         switchTimeTab('timeLivePane', document.getElementById('timeSubBtnLive'));
       }
 
       await fetchTimeLogs();
-      resumeClockState();
+      await resumeClockState();
     };
+
+    window.showCurrentSopModal = function(idx) { return window.showSopModal(activeUser?.department || "Operations", idx); };
 
     window.showSopModal = function(dept, idx) {
       const sops = MOS_SOPS[dept] || MOS_SOPS["Operations"];
@@ -731,16 +796,16 @@
       document.getElementById("mosSopModal").classList.remove("hidden");
     };
 
-    window.logoutPortal = function() {
-      localStorage.removeItem("gp_session_user");
-      sessionStorage.removeItem("gp_session_user");
+    window.logoutPortal = async function() {
       activeUser = null;
       if (liveInterval) clearInterval(liveInterval);
+      await GP.signOut(supabaseClient, null);
       document.getElementById("timeWorkspace").classList.add("hidden");
       document.getElementById("activeUserBanner").classList.add("hidden");
       document.getElementById("mainNavBar").classList.add("hidden");
       document.getElementById("mosQuickBar").classList.add("hidden");
       document.getElementById("loginScreen").classList.remove("hidden");
+      showAuthPane("signIn");
     };
 
     window.switchTimeTab = function(paneId, btn) {
@@ -811,8 +876,48 @@
       localStorage.setItem("gp_audit_logs", JSON.stringify(audits.slice(0, 1000)));
     }
 
+    async function syncActiveTimeSession(startedAtMs, geo) {
+      if (!isCloudConnected || !activeUser) return false;
+      try {
+        const row = {
+          employee_pin: String(activeUser.pin_code),
+          employee_name: activeUser.employee_name,
+          department: activeUser.department,
+          started_at_ms: Number(startedAtMs),
+          started_at: new Date(Number(startedAtMs)).toISOString(),
+          clock_in_location: geo?.address || localStorage.getItem(getClockLocKey()) || "Location Not Recorded",
+          clock_in_coords: geo?.coords || localStorage.getItem(getClockCoordsKey()) || "",
+          break_minutes: parseInt(document.getElementById("liveBreakMins").value, 10) || 0,
+          updated_at: new Date().toISOString()
+        };
+        row.auth_user_id = activeUser.auth_user_id;
+        const result = await supabaseClient.from("active_time_sessions").upsert([row], { onConflict: "auth_user_id" });
+        return !result.error;
+      } catch (e) { return false; }
+    }
+
+    async function restoreActiveTimeSession() {
+      if (!activeUser || localStorage.getItem(getClockKey()) || !isCloudConnected) return;
+      try {
+        const result = await supabaseClient.from("active_time_sessions").select("*").eq("auth_user_id", String(activeUser.auth_user_id)).limit(1);
+        const row = !result.error && result.data ? result.data[0] : null;
+        if (!row || !row.started_at_ms) return;
+        localStorage.setItem(getClockKey(), String(row.started_at_ms));
+        localStorage.setItem(getClockLocKey(), row.clock_in_location || "Location Not Recorded");
+        localStorage.setItem(getClockCoordsKey(), row.clock_in_coords || "");
+        document.getElementById("liveBreakMins").value = String(Math.max(0, parseInt(row.break_minutes, 10) || 0));
+      } catch (e) {}
+    }
+
+    window.syncActiveBreakMinutes = async function() {
+      const savedStart = activeUser ? localStorage.getItem(getClockKey()) : null;
+      if (!savedStart) return;
+      await syncActiveTimeSession(Number(savedStart));
+    };
+
     window.clockInNow = async function() {
       if (localStorage.getItem(getClockKey())) return showToast("Already clocked in — clock out first.");
+      document.getElementById("liveBreakMins").value = "0";
       const btn = document.getElementById("btnClockIn");
       btn.disabled = true;
       btn.textContent = "Locking Street Geotag...";
@@ -821,6 +926,7 @@
       localStorage.setItem(getClockKey(), startedAtMs.toString());
       localStorage.setItem(getClockLocKey(), geo.address);
       localStorage.setItem(getClockCoordsKey(), geo.coords);
+      await syncActiveTimeSession(startedAtMs, geo);
       await recordTimePresence("TIME_CLOCK_IN", {
         employee_name: activeUser.employee_name,
         department: activeUser.department,
@@ -831,17 +937,20 @@
       });
       btn.disabled = false;
       btn.textContent = "Clock In Now (Geotag Location)";
-      resumeClockState();
+      await resumeClockState();
       showToast("Clocked In: " + geo.address);
     };
 
-    function resumeClockState() {
+    async function resumeClockState() {
       if (!activeUser) return;
+      await restoreActiveTimeSession();
       if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
       const savedStart = localStorage.getItem(getClockKey());
       const savedLoc = localStorage.getItem(getClockLocKey()) || "Location Not Recorded";
 
       if (!savedStart) {
+        document.getElementById("liveBreakMins").value = "0";
+        document.getElementById("liveGeoText").textContent = "Clock-In Address: waiting for clock-in";
         document.getElementById("liveDecimalDisplay").textContent = "00.00";
         document.getElementById("punchStatusText").textContent = "Off Clock";
         document.getElementById("punchStatusText").className = "badge badge-navy";
@@ -851,7 +960,7 @@
         return;
       }
 
-      const startDate = new Date(parseInt(savedStart));
+      const startDate = new Date(parseInt(savedStart, 10));
       document.getElementById("punchStatusText").textContent = "On Clock Since " + startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       document.getElementById("punchStatusText").className = "badge badge-ok";
       document.getElementById("liveGeoText").textContent = "Clock-In Address: " + savedLoc;
@@ -859,7 +968,6 @@
       document.getElementById("btnClockOut").classList.remove("hidden");
 
       refreshLiveTimer();
-      if (liveInterval) clearInterval(liveInterval);
       liveInterval = setInterval(refreshLiveTimer, 10000);
     }
 
@@ -867,8 +975,8 @@
       if (!activeUser) return;
       const savedStart = localStorage.getItem(getClockKey());
       if (!savedStart) return;
-      const elapsed = (Date.now() - parseInt(savedStart)) / 3600000;
-      const brk = (parseInt(document.getElementById("liveBreakMins").value) || 0) / 60;
+      const elapsed = (Date.now() - parseInt(savedStart, 10)) / 3600000;
+      const brk = (parseInt(document.getElementById("liveBreakMins").value, 10) || 0) / 60;
       document.getElementById("liveDecimalDisplay").textContent = format00(Math.max(0, elapsed - brk));
       updateOvertimeBanner();
     };
@@ -884,9 +992,9 @@
       const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
       const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
 
-      const startObj = new Date(parseInt(savedStart));
+      const startObj = new Date(parseInt(savedStart, 10));
       const endObj = new Date();
-      const breakMins = parseInt(document.getElementById("liveBreakMins").value) || 0;
+      const breakMins = parseInt(document.getElementById("liveBreakMins").value, 10) || 0;
       const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
       const netDecimal = Math.max(0, elapsed - (breakMins / 60));
 
@@ -916,13 +1024,16 @@
         coords: outGeo.coords,
         decimal_hours: format00(netDecimal)
       });
+      if (isCloudConnected) {
+        try { await supabaseClient.from("active_time_sessions").delete().eq("auth_user_id", String(activeUser.auth_user_id)); } catch (e) {}
+      }
       btn.disabled = false;
       btn.textContent = "Clock Out & Sync Shift";
       localStorage.removeItem(getClockKey());
       localStorage.removeItem(getClockLocKey());
       localStorage.removeItem(getClockCoordsKey());
       clearInterval(liveInterval);
-      resumeClockState();
+      await resumeClockState();
     };
 
     window.calcManualHours = function() {
@@ -976,19 +1087,34 @@
 
     async function saveShiftRecord(record) {
       let cloudSaved = false;
+      let savedRecord = { ...record };
       if (isCloudConnected) {
         try {
-          const result = await supabaseClient.from("time_logs").insert([record]);
-          if (!result.error) cloudSaved = true;
-          else {
-            const fallback = { employee_name: record.employee_name, department: record.department, work_date: record.work_date, clock_in: record.clock_in, clock_out: record.clock_out, break_minutes: record.break_minutes, decimal_hours: record.decimal_hours, notes: record.notes };
-            const retry = await supabaseClient.from("time_logs").insert([fallback]);
-            cloudSaved = !retry.error;
+          let result = await supabaseClient.from("time_logs").insert([record]).select("*").limit(1);
+          if (!result.error && result.data && result.data[0]) {
+            savedRecord = { ...record, ...result.data[0] };
+            cloudSaved = true;
+          } else if (result.error) {
+            const fallback = {
+              employee_name: record.employee_name,
+              department: record.department,
+              work_date: record.work_date,
+              clock_in: record.clock_in,
+              clock_out: record.clock_out,
+              break_minutes: record.break_minutes,
+              decimal_hours: record.decimal_hours,
+              notes: record.notes
+            };
+            result = await supabaseClient.from("time_logs").insert([fallback]).select("*").limit(1);
+            if (!result.error && result.data && result.data[0]) {
+              savedRecord = { ...record, ...result.data[0] };
+              cloudSaved = true;
+            }
           }
         } catch (e) { console.warn("Shift cloud sync failed", e); }
       }
-      record.id = Date.now();
-      timeLogs.unshift(record);
+      if (!savedRecord.id) savedRecord.id = Date.now();
+      timeLogs.unshift(savedRecord);
       localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
       showToast(`${record.decimal_hours} hrs saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
       await fetchTimeLogs();
@@ -1000,17 +1126,25 @@
         try {
           const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
           if (uRes.data && uRes.data.length > 0) {
-            const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
-            const mergedUsers = uRes.data.map(u => {
-              const localMatch = localUsers.find(l => String(l.pin_code) === String(u.pin_code));
-              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
-            });
+            const mergedUsers = uRes.data.map(u => ({
+              ...u,
+              perm_quotes: u.perm_quotes !== false,
+              perm_commission: u.perm_commission !== false
+            }));
             localStorage.setItem("gp_app_users", JSON.stringify(mergedUsers));
-            mergedUsers.forEach(u => {
-              const idx = window.PORTAL_USERS.findIndex(p => String(p.pin_code) === String(u.pin_code));
-              if (idx >= 0) window.PORTAL_USERS[idx] = { ...window.PORTAL_USERS[idx], ...u };
-              else window.PORTAL_USERS.push(u);
-            });
+            window.PORTAL_USERS = mergedUsers.slice();
+            if (activeUser) {
+              const fresh = mergedUsers.find(u => String(u.auth_user_id || "") === String(activeUser.auth_user_id || ""));
+              if (fresh) {
+                activeUser = GP.storeSessionUser({ ...activeUser, ...fresh });
+                GP.applyNavPermissions(activeUser);
+                if (activeUser.perm_time === false) {
+                  document.getElementById("timeWorkspace").classList.add("hidden");
+                  redirectToFirstAllowedModule(activeUser);
+                  return;
+                }
+              }
+            }
           }
           const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
           if (tRes.data) {
@@ -1133,15 +1267,12 @@
       document.getElementById("calcDetailsTable").innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Enter your hourly rate or commission above to calculate.</td></tr>`;
     };
 
-    window.addEventListener("DOMContentLoaded", function() {
+    window.addEventListener("DOMContentLoaded", async function() {
       document.getElementById("manDate").value = GP.localDate();
       calcManualHours();
-      const savedSession = sessionStorage.getItem("gp_session_user") || localStorage.getItem("gp_session_user");
-      if (savedSession) {
-        try { window.activateUserSession(JSON.parse(savedSession)); } catch (e) {}
-      } else {
-        fetchTimeLogs();
-      }
+      document.getElementById("authPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") signInPortal(); });
+      document.getElementById("authEmail")?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("authPassword")?.focus(); });
+      await initializeAuthPortal();
     });
   </script>
 </body>
