@@ -621,6 +621,21 @@
 
       <!-- MODAL BODY: PROGRESSIVE EXPANDING QUESTIONNAIRE -->
       <div class="p-5 sm:p-6 space-y-5 max-h-[70vh] overflow-y-auto" id="modalScrollContainer">
+        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 shadow-xs">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div class="text-xs font-extrabold uppercase tracking-wider text-amber-900 mb-1">CSR Verification Required Before Calling</div>
+              <p class="text-xs sm:text-sm text-amber-950 leading-relaxed">
+                Before using the call script, verify the current job status in Mainstreet. Do not contact a customer whose job has already been acquired/booked by GLASSPRO; this prevents unnecessary repeat calls and customer annoyance.
+              </p>
+            </div>
+            <button type="button" onclick="markJobAlreadyAcquired()" class="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold transition cursor-pointer">
+              <i data-lucide="badge-check" class="w-4 h-4"></i>
+              Job Already Acquired
+            </button>
+          </div>
+        </div>
+
         <!-- STEP 1 -->
         <div class="bg-white rounded-xl border-2 border-slate-200 p-4 shadow-xs">
           <div class="bg-blue-50/90 border-l-4 border-blue-600 p-3.5 rounded-r-lg mb-4">
@@ -1202,6 +1217,17 @@
         return;
       }
       try { activePortalUser = JSON.parse(savedSession); } catch (e) { window.location.href = "index.html"; return; }
+
+      try {
+        const latestUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
+        const latestUser = latestUsers.find(u => String(u.pin_code) === String(activePortalUser.pin_code));
+        if (latestUser) activePortalUser = { ...activePortalUser, ...latestUser, perm_quotes: latestUser.perm_quotes !== false };
+      } catch (e) {}
+      if (activePortalUser.perm_quotes === false) {
+        window.location.href = "index.html";
+        return;
+      }
+
       document.getElementById("tab-btn-admin-review").classList.toggle("hidden", !activePortalUser.perm_admin);
       document.getElementById("activeUserName").textContent = `${activePortalUser.employee_name} (${activePortalUser.department})`;
       document.getElementById("navLinkFleet").classList.toggle("hidden", !activePortalUser.perm_vehicle_submit && !activePortalUser.perm_vehicle_view);
@@ -1530,6 +1556,32 @@
     function closeCallbackModal() {
       document.getElementById("callbackModal").classList.add("hidden");
       activeModalQuoteNumber = null;
+    }
+
+    async function markJobAlreadyAcquired() {
+      const quote = quotesState.find(q => q.quote_number === Number(activeModalQuoteNumber));
+      if (!quote) return;
+      if (!confirm(`Mark Quote #${quote.quote_number} as already acquired/booked and remove it from the active call-back queue?`)) return;
+
+      const today = new Date().toISOString().split("T")[0];
+      quote.status = "won";
+      quote.call_data = {
+        ...(quote.call_data || {}),
+        job_already_acquired: true,
+        outcome: "JOB_ALREADY_ACQUIRED",
+        date_reviewed: today,
+        still_for_review: "no",
+        expected_answer_date: "",
+        notes: "CSR verified the job was already acquired/booked before placing a follow-up call.",
+        csr_stamp: `${activeCsr} • ${today}`
+      };
+
+      await logPortalAudit("QUOTE_ALREADY_ACQUIRED", `Quote #${quote.quote_number} (${quote.customer_name}) verified as already acquired/booked and removed from the call-back queue`);
+      await syncSingleQuoteToSupabase(quote);
+      saveState();
+      closeCallbackModal();
+      refreshAllViews();
+      showToast(`Quote #${quote.quote_number} removed from call-backs — job already acquired.`, "success");
     }
 
     function togglePartsDrawer() {
