@@ -360,18 +360,20 @@
     <script>
       (function() {
         const STARTER_USERS = [
-          { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
-          { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
-          { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
+          { id: 1, employee_name: "Brandon Faircloth", department: "Operations", employment_type: "Full-Time", pin_code: "1234", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: true },
+          { id: 2, employee_name: "Time Clock Employee", department: "Front Office / Sales", employment_type: "Part-Time", pin_code: "1111", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: false, perm_vehicle_view: false, perm_safety: true, perm_admin: false },
+          { id: 3, employee_name: "Lead Tech Employee", department: "Auto Glass", employment_type: "FT + Commission", pin_code: "2222", perm_time: true, perm_quotes: true, perm_commission: true, perm_vehicle_submit: true, perm_vehicle_view: true, perm_safety: true, perm_admin: false }
         ];
 
         window.PORTAL_USERS = [...STARTER_USERS];
         try {
           const saved = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
           saved.forEach(u => {
-            if (u && u.pin_code && !window.PORTAL_USERS.some(s => String(s.pin_code) === String(u.pin_code))) {
-              window.PORTAL_USERS.push(u);
-            }
+            if (!u || !u.pin_code) return;
+            u.perm_quotes = u.perm_quotes !== false;
+            const idx = window.PORTAL_USERS.findIndex(s => String(s.pin_code) === String(u.pin_code));
+            if (idx >= 0) window.PORTAL_USERS[idx] = { ...window.PORTAL_USERS[idx], ...u };
+            else window.PORTAL_USERS.push(u);
           });
         } catch (e) {}
 
@@ -698,6 +700,7 @@
       document.getElementById("activeUserTypeBadge").textContent = user.employment_type || "Full-Time";
 
       // Show/Hide Section Links Based on Permissions
+      document.getElementById("navLinkQuotes").classList.toggle("hidden", user.perm_quotes === false);
       document.getElementById("navLinkComm").classList.toggle("hidden", user.perm_commission === false);
       document.getElementById("navLinkFleet").classList.toggle("hidden", !user.perm_vehicle_submit && !user.perm_vehicle_view);
       document.getElementById("navLinkAdmin").classList.toggle("hidden", !user.perm_admin);
@@ -791,15 +794,41 @@
     function getClockLocKey() { return `gp_clock_loc_${activeUser.pin_code}`; }
     function getClockCoordsKey() { return `gp_clock_coords_${activeUser.pin_code}`; }
 
+    async function recordTimePresence(actionType, payload) {
+      if (!activeUser) return;
+      const entry = {
+        supervisor_name: activeUser.employee_name,
+        action_type: actionType,
+        details: JSON.stringify(payload || {}),
+        timestamp: new Date().toISOString()
+      };
+      if (isCloudConnected) {
+        try { await supabaseClient.from("audit_logs").insert([entry]); } catch (e) {}
+      }
+      const audits = JSON.parse(localStorage.getItem("gp_audit_logs") || "[]");
+      entry.id = Date.now();
+      audits.unshift(entry);
+      localStorage.setItem("gp_audit_logs", JSON.stringify(audits.slice(0, 1000)));
+    }
+
     window.clockInNow = async function() {
       if (localStorage.getItem(getClockKey())) return showToast("Already clocked in — clock out first.");
       const btn = document.getElementById("btnClockIn");
       btn.disabled = true;
       btn.textContent = "Locking Street Geotag...";
       const geo = await captureGeotag();
-      localStorage.setItem(getClockKey(), Date.now().toString());
+      const startedAtMs = Date.now();
+      localStorage.setItem(getClockKey(), startedAtMs.toString());
       localStorage.setItem(getClockLocKey(), geo.address);
       localStorage.setItem(getClockCoordsKey(), geo.coords);
+      await recordTimePresence("TIME_CLOCK_IN", {
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        started_at_ms: startedAtMs,
+        started_at: new Date(startedAtMs).toISOString(),
+        location: geo.address,
+        coords: geo.coords
+      });
       btn.disabled = false;
       btn.textContent = "Clock In Now (Geotag Location)";
       resumeClockState();
@@ -877,6 +906,16 @@
       };
 
       await saveShiftRecord(record);
+      await recordTimePresence("TIME_CLOCK_OUT", {
+        employee_name: activeUser.employee_name,
+        department: activeUser.department,
+        started_at_ms: Number(savedStart),
+        ended_at_ms: endObj.getTime(),
+        ended_at: endObj.toISOString(),
+        location: outGeo.address,
+        coords: outGeo.coords,
+        decimal_hours: format00(netDecimal)
+      });
       btn.disabled = false;
       btn.textContent = "Clock Out & Sync Shift";
       localStorage.removeItem(getClockKey());
@@ -961,9 +1000,16 @@
         try {
           const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
           if (uRes.data && uRes.data.length > 0) {
-            localStorage.setItem("gp_app_users", JSON.stringify(uRes.data));
-            uRes.data.forEach(u => {
-              if (!window.PORTAL_USERS.some(p => String(p.pin_code) === String(u.pin_code))) window.PORTAL_USERS.push(u);
+            const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
+            const mergedUsers = uRes.data.map(u => {
+              const localMatch = localUsers.find(l => String(l.pin_code) === String(u.pin_code));
+              return { ...u, perm_quotes: localMatch ? localMatch.perm_quotes !== false : u.perm_quotes !== false };
+            });
+            localStorage.setItem("gp_app_users", JSON.stringify(mergedUsers));
+            mergedUsers.forEach(u => {
+              const idx = window.PORTAL_USERS.findIndex(p => String(p.pin_code) === String(u.pin_code));
+              if (idx >= 0) window.PORTAL_USERS[idx] = { ...window.PORTAL_USERS[idx], ...u };
+              else window.PORTAL_USERS.push(u);
             });
           }
           const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
