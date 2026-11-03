@@ -161,8 +161,9 @@
       box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
     }
   </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col gp-app">
 
   <!-- UNIFIED GLASSPRO EXECUTIVE HEADER -->
   <header class="gp-exec-header">
@@ -186,6 +187,7 @@
       </div>
 
       <span id="activeUserName" style="font-size:12px; font-weight:700; background:#FFF; color:#06101E; padding:6px 12px; border-radius:6px;">SIGNED-IN EMPLOYEE</span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
       <button type="button" onclick="logoutPortal()" style="background:#DC2626; color:#FFF; border:none; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; text-transform:uppercase;">Sign Out</button>
     </div>
   </header>
@@ -201,6 +203,10 @@
 
   <!-- MAIN CONTENT CONTAINER -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <section class="gp-page-intro" aria-label="Quote Call-Backs">
+      <div><span class="gp-page-kicker">CUSTOMER FOLLOW-UP</span><h2>Quote Call-Backs</h2><p>Stay on top of open estimates, follow-ups and customer conversions.</p></div>
+      <div class="gp-page-mark"><span class="gp-online-dot"></span>CSR workspace</div>
+    </section>
 
     <!-- MODULE SUB-NAVIGATION BAR -->
     <div class="flex items-center gap-1.5 bg-slate-200/90 p-1.5 rounded-xl mb-6 overflow-x-auto border border-slate-300">
@@ -856,7 +862,7 @@
                 <label class="block text-xs sm:text-sm font-extrabold text-amber-950">If yes, when can we expect an answer?</label>
                 <p class="text-xs text-amber-800 mt-0.5">Triggers an Admin + CSR review notification on this date.</p>
               </div>
-              <input type="date" id="final_expected_answer_date" value="2026-11-02" class="bg-white border-2 border-amber-400 rounded-xl px-3.5 py-2 text-sm font-mono font-bold text-slate-900 focus:outline-none" />
+              <input type="date" id="final_expected_answer_date" class="bg-white border-2 border-amber-400 rounded-xl px-3.5 py-2 text-sm font-mono font-bold text-slate-900 focus:outline-none" />
             </div>
           </div>
 
@@ -2199,5 +2205,6 @@
 
     window.addEventListener("DOMContentLoaded", initApp);
   </script>
+<script src="gp-pin.js?v=20261103"></script>
 </body>
 </html>
