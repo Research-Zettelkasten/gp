@@ -172,8 +172,9 @@
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
     @media print { header, .nav-bar, .sub-bar, .no-print { display: none !important; } body { background: white; padding: 0; } .container { max-width: 100%; margin: 0; padding: 0; } .print-sheet { display: block !important; } }
   </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
 </head>
-<body>
+<body class="gp-app">
 
   <header>
     <div class="brand">
@@ -187,6 +188,7 @@
       <div id="dbStatus" class="hidden"></div>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
         <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -202,6 +204,10 @@
   </nav>
 
   <div class="container">
+    <section class="gp-page-intro" aria-label="Vehicles, inspections & readiness">
+      <div><span class="gp-page-kicker">FLEET & SAFETY</span><h2>Vehicles, inspections & readiness</h2><p>A clearer view of fleet status, inspections and the safety items that need attention.</p></div>
+      <div class="gp-page-mark"><span class="gp-online-dot"></span>Operational workspace</div>
+    </section>
 
     <div class="sub-bar no-print">
       <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">1. 35-Point Vehicle Check</button>
@@ -897,5 +903,6 @@
       else if (canSafety) switchFleetTab("safetyPane", document.getElementById("subBtnSafety"));
     });
   </script>
+<script src="gp-pin.js?v=20261103"></script>
 </body>
 </html>
