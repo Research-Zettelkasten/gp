@@ -281,8 +281,9 @@
     .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
 </head>
-<body>
+<body class="gp-app gp-auth-mode">
 
   <header>
     <div class="brand">
@@ -296,6 +297,7 @@
       <div id="dbStatus" class="hidden"></div>
       <div id="activeUserBanner" class="hidden" style="display:flex; align-items:center; gap:8px;">
         <span id="activeUserName" class="user-pill"></span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -323,54 +325,90 @@
       <div style="font-size:11px; font-weight:700; color:var(--mos-indigo);">MOS Sync: Active</div>
     </div>
 
-    <!-- SUPABASE AUTH SIGN-IN / LEGACY PROFILE CLAIM -->
-    <div id="loginScreen" class="card login-box">
-      <div class="card-title" style="justify-content:center; border-bottom:none; margin-bottom:4px;">Secure Employee Portal</div>
-      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
-        Sign in with your Supabase Auth email and password. Your 4-digit employee PIN is only used once to claim an existing profile.
-      </p>
-
-      <div id="authStandardTabs" class="auth-tabs">
-        <button type="button" id="authTabSignIn" class="auth-tab active" onclick="showAuthPane('signIn')">Sign In</button>
-        <button type="button" id="authTabSetup" class="auth-tab" onclick="showAuthPane('setup')">First-Time Setup</button>
-      </div>
-
-      <div id="authSignInPane">
-        <div class="auth-field"><label>Email</label><input type="email" id="authEmail" autocomplete="username" placeholder="employee@company.com" /></div>
-        <div class="auth-field"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password" placeholder="Your password" /></div>
-        <button type="button" class="btn btn-navy" id="btnAuthSignIn" onclick="signInPortal()">Sign In</button>
-        <button type="button" class="btn-outline" style="margin-top:10px; width:100%;" onclick="sendPasswordReset()">Email Me a Password Reset Link</button>
-      </div>
-
-      <div id="authSetupPane" class="hidden">
-        <div class="auth-field"><label>Work Email</label><input type="email" id="setupEmail" autocomplete="email" placeholder="employee@company.com" /></div>
-        <div class="auth-field"><label>Create Password</label><input type="password" id="setupPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
-        <div class="auth-field"><label>Existing 4-Digit Employee PIN</label><input type="password" id="setupPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
-        <div class="auth-help">Management must assign your email to your employee profile before first-time setup. The first legacy admin is the only bootstrap exception.</div>
-        <button type="button" class="btn btn-red" id="btnAuthSetup" onclick="createAndClaimPortalAccount()">Create Account & Claim Profile</button>
-      </div>
-
-      <div id="authClaimPane" class="hidden">
-        <div style="padding:10px 12px; background:var(--amber-bg); border:1px solid #FDE68A; border-radius:8px; margin-bottom:14px; font-size:12px; text-align:left;">
-          <b>Auth account signed in, but no employee profile is linked yet.</b><br>
-          <span id="claimSignedInEmail"></span>
+    <!-- Secure account-linked sign-in: original Auth account, RLS policies intact -->
+    <section id="loginScreen" class="gp-login-shell card" aria-label="Employee sign in">
+      <div class="gp-login-hero">
+        <div>
+          <div class="gp-login-eyebrow">GlassPro Operations Suite</div>
+          <h2>Your workday,<br><em>in focus.</em></h2>
+          <p>One connected workspace for your team, your schedule and the work that moves your business forward.</p>
         </div>
-        <div class="auth-field"><label>Employee 4-Digit PIN</label><input type="password" id="claimPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
-        <button type="button" class="btn btn-red" onclick="claimPortalProfile()">Claim Employee Profile</button>
-        <button type="button" class="btn-outline" style="margin-top:10px; width:100%;" onclick="logoutPortal()">Sign Out</button>
+        <div>
+          <div class="gp-hero-metrics">
+            <div><strong>Clock in</strong><span>Timekeeping and shift history</span></div>
+            <div><strong>Stay aligned</strong><span>Quotes, orders and fleet</span></div>
+            <div><strong>Lead better</strong><span>Live team visibility</span></div>
+          </div>
+          <div class="gp-hero-foot"><span>GLASSPRO · Powered by American Glass</span><span>Secure employee access</span></div>
+        </div>
       </div>
-
-      <div id="authRecoveryPane" class="hidden">
-        <div class="auth-field"><label>New Password</label><input type="password" id="recoveryPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
-        <button type="button" class="btn btn-red" onclick="completePasswordRecovery()">Save New Password</button>
+      <div class="gp-login-panel">
+        <div class="gp-form-eyebrow">Welcome back</div>
+        <h2>Sign in to GlassPro</h2>
+        <p class="gp-form-subtitle">Choose your preferred sign-in method. Your PIN and password both unlock the same protected employee account.</p>
+        <div id="authStandardTabs" class="auth-tabs" role="tablist" aria-label="Sign-in method">
+          <button type="button" id="authTabPin" class="auth-tab active" onclick="showAuthPane('pin')" role="tab">Quick PIN</button>
+          <button type="button" id="authTabSignIn" class="auth-tab" onclick="showAuthPane('signIn')" role="tab">Email &amp; Password</button>
+          <button type="button" id="authTabSetup" class="auth-tab" onclick="showAuthPane('setup')" role="tab">First-Time Setup</button>
+        </div>
+        <div id="authPinPane">
+          <div class="auth-field"><label for="pinLoginEmail">Employee email</label><input id="pinLoginEmail" type="email" autocomplete="username" inputmode="email" placeholder="you@company.com" /></div>
+          <div class="auth-field"><label for="pinLoginCode">Your account PIN</label><div class="gp-pin-input-row"><input id="pinLoginCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="4–6 digits" aria-label="Your account PIN" /></div></div>
+          <div class="gp-pin-keypad" aria-label="PIN keypad">
+            <button type="button" onclick="pinKey('1')" aria-label="1">1</button>
+            <button type="button" onclick="pinKey('2')" aria-label="2">2</button>
+            <button type="button" onclick="pinKey('3')" aria-label="3">3</button>
+            <button type="button" onclick="pinKey('4')" aria-label="4">4</button>
+            <button type="button" onclick="pinKey('5')" aria-label="5">5</button>
+            <button type="button" onclick="pinKey('6')" aria-label="6">6</button>
+            <button type="button" onclick="pinKey('7')" aria-label="7">7</button>
+            <button type="button" onclick="pinKey('8')" aria-label="8">8</button>
+            <button type="button" onclick="pinKey('9')" aria-label="9">9</button>
+            <button type="button" class="gp-key-icon" onclick="pinKey('clear')">Clear</button>
+            <button type="button" onclick="pinKey('0')" aria-label="0">0</button>
+            <button type="button" class="gp-key-icon" onclick="pinKey('back')">⌫</button>
+          </div>
+          <button type="button" id="btnPinSignIn" class="btn btn-navy" onclick="signInWithPin()">Sign In with PIN</button>
+          <span class="gp-login-caption">First visit? Sign in with your password, then select <b>Account &amp; PIN</b> to enable quick access. 6 digits recommended.</span>
+          <button type="button" class="gp-password-link" onclick="showAuthPane('signIn')">Need to use your password instead?</button>
+        </div>
+        <div id="authSignInPane" class="hidden">
+          <div class="auth-field"><label for="authEmail">Work email</label><input type="email" id="authEmail" autocomplete="username" placeholder="you@company.com" /></div>
+          <div class="auth-field"><label for="authPassword">Password</label><input type="password" id="authPassword" autocomplete="current-password" placeholder="Your password" /></div>
+          <button type="button" class="btn btn-navy" id="btnAuthSignIn" onclick="signInPortal()">Sign In Securely</button>
+          <button type="button" class="btn-outline" style="margin-top:10px; width:100%;" onclick="sendPasswordReset()">Reset Password by Email</button>
+          <p class="auth-help">After signing in, open <b>Account &amp; PIN</b> in the top bar to create or change your quick-login PIN.</p>
+        </div>
+        <div id="authSetupPane" class="hidden">
+          <div class="auth-field"><label for="setupEmail">Assigned work email</label><input type="email" id="setupEmail" autocomplete="email" placeholder="you@company.com" /></div>
+          <div class="auth-field"><label for="setupPassword">Create password</label><input type="password" id="setupPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+          <div class="auth-field"><label for="setupPin">Original employee profile PIN (one time)</label><input type="password" id="setupPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="Original four-digit PIN" /></div>
+          <div class="auth-help">Your manager must assign your work email before you claim your employee profile. The existing four-digit employee PIN links your profile once; you can then set a separate quick-login PIN.</div>
+          <button type="button" class="btn btn-red" id="btnAuthSetup" onclick="createAndClaimPortalAccount()">Create &amp; Link Account</button>
+        </div>
+        <div id="authClaimPane" class="hidden">
+          <div style="padding:12px 14px;background:#fff8e7;border:1px solid #f6d9a0;border-radius:11px;margin-bottom:16px;font-size:12px;line-height:1.5;">
+            <strong>You're authenticated, but your employee profile is not linked yet.</strong><div id="claimSignedInEmail"></div>
+          </div>
+          <div class="auth-field"><label for="claimPin">Original four-digit employee PIN</label><input type="password" id="claimPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
+          <button type="button" class="btn btn-red" onclick="claimPortalProfile()">Link My Employee Profile</button>
+          <button type="button" class="btn-outline" style="margin-top:10px;width:100%;" onclick="logoutPortal()">Sign Out</button>
+        </div>
+        <div id="authRecoveryPane" class="hidden">
+          <div class="auth-field"><label for="recoveryPassword">Choose a new password</label><input type="password" id="recoveryPassword" autocomplete="new-password" placeholder="At least 8 characters" /></div>
+          <button type="button" class="btn btn-red" onclick="completePasswordRecovery()">Save New Password</button>
+        </div>
+        <div id="loginErrorMsg" class="pin-feedback-msg" role="alert" aria-live="polite" style="margin-top:13px;"></div>
+        <div class="auth-security-note">Protected by Supabase authentication and row-level permissions. PIN login is optional and is disabled until you enable it on your account.</div>
       </div>
-
-      <div id="loginErrorMsg" class="pin-feedback-msg" style="margin-top:14px;"></div>
-      <div class="auth-security-note">Authentication is verified by Supabase Auth. Database access is separately enforced by Row Level Security; browser-stored profile data is never treated as authorization.</div>
-    </div>
+    </section>
 
     <!-- TIME CLOCK WORKSPACE -->
     <div id="timeWorkspace" class="hidden">
+    <section class="gp-page-intro" aria-label="Your time, made simple">
+      <div><span class="gp-page-kicker">SHIFT WORKSPACE</span><h2>Your time, made simple</h2><p>Clock in, check your shift and keep your workday on track.</p></div>
+      <div class="gp-page-mark"><span class="gp-online-dot"></span>Employee workspace</div>
+    </section>
       <div id="empOvertimeAlert" class="ot-alert-banner ot-safe">
         <span id="empOvertimeText">Weekly Hours Status: 00.00 / 40.00 hrs</span>
         <span id="empOvertimeBadge" class="badge badge-ok">Within Limit</span>
@@ -572,18 +610,19 @@
     }
 
     window.showAuthPane = function(mode) {
-      ["authSignInPane","authSetupPane","authClaimPane","authRecoveryPane"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+      ["authPinPane","authSignInPane","authSetupPane","authClaimPane","authRecoveryPane"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
       document.getElementById("authStandardTabs")?.classList.toggle("hidden", mode === "claim" || mode === "recovery");
+      document.getElementById("authTabPin")?.classList.toggle("active", mode === "pin");
       document.getElementById("authTabSignIn")?.classList.toggle("active", mode === "signIn");
       document.getElementById("authTabSetup")?.classList.toggle("active", mode === "setup");
-      const map = { signIn:"authSignInPane", setup:"authSetupPane", claim:"authClaimPane", recovery:"authRecoveryPane" };
-      document.getElementById(map[mode] || "authSignInPane")?.classList.remove("hidden");
+      const map = { pin:"authPinPane", signIn:"authSignInPane", setup:"authSetupPane", claim:"authClaimPane", recovery:"authRecoveryPane" };
+      document.getElementById(map[mode] || "authPinPane")?.classList.remove("hidden");
       setAuthMessage("");
     };
 
     async function finishAuthenticatedEntry() {
       const authState = await GP.getAuthProfile(supabaseClient);
-      if (!authState.user) { GP.clearSensitiveLocalCache(); showAuthPane("signIn"); return false; }
+      if (!authState.user) { GP.clearSensitiveLocalCache(); showAuthPane("pin"); return false; }
       if (!authState.profile) {
         document.getElementById("claimSignedInEmail").textContent = `Signed in as ${authState.user.email || "this Auth account"}.`;
         showAuthPane("claim");
@@ -599,6 +638,49 @@
       GP.watchProfileAccess(supabaseClient);
       return true;
     }
+
+    window.pinKey = function(key) {
+      const input = document.getElementById('pinLoginCode');
+      if (!input) return;
+      if (key === 'clear') input.value = '';
+      else if (key === 'back') input.value = input.value.slice(0, -1);
+      else if (/^[0-9]$/.test(key) && input.value.length < 6) input.value += key;
+      input.focus();
+    };
+
+    window.signInWithPin = async function() {
+      const email = document.getElementById('pinLoginEmail').value.trim().toLowerCase();
+      const input = document.getElementById('pinLoginCode');
+      const pin = input.value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{4,6}$/.test(pin)) {
+        return setAuthMessage('Enter your linked employee email and 4–6 digit account PIN.');
+      }
+      const button = document.getElementById('btnPinSignIn');
+      button.disabled = true; button.textContent = 'Verifying PIN...';
+      input.value = '';
+      try {
+        if (!supabaseClient) throw new Error('Supabase is not available.');
+        const response = await fetch(SUPABASE_URL + '/functions/v1/gp-pin-login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
+          cache:'no-store',
+          body:JSON.stringify({email,pin})
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.token_hash) {
+          return setAuthMessage(response.status === 404 ?
+            'PIN login is not yet deployed. Sign in with your password.' :
+            (result.error || 'Invalid account or PIN. Use your password if locked out.'));
+        }
+        const { error } = await supabaseClient.auth.verifyOtp({ token_hash: result.token_hash, type:'magiclink' });
+        if (error) return setAuthMessage('PIN verified, but sign-in could not be completed. Use email and password.');
+        await finishAuthenticatedEntry();
+      } catch (e) {
+        setAuthMessage('PIN sign-in is unavailable right now. Use Email & Password.');
+      } finally {
+        button.disabled=false;button.textContent='Sign In with PIN';
+      }
+    };
 
     window.signInPortal = async function() {
       const email = document.getElementById("authEmail").value.trim();
@@ -741,12 +823,13 @@
       if (!activeUser) {
         await GP.signOut(supabaseClient, null);
         document.getElementById("loginScreen").classList.remove("hidden");
-        showAuthPane("signIn");
+        showAuthPane("pin");
         setAuthMessage("Your authenticated employee profile could not be verified. Please sign in again.");
         return;
       }
       GP.applyNavPermissions(activeUser);
 
+      document.body.classList.remove('gp-auth-mode');
       document.getElementById("loginScreen").classList.add("hidden");
       document.getElementById("activeUserBanner").classList.remove("hidden");
       document.getElementById("mainNavBar").classList.remove("hidden");
@@ -804,8 +887,9 @@
       document.getElementById("activeUserBanner").classList.add("hidden");
       document.getElementById("mainNavBar").classList.add("hidden");
       document.getElementById("mosQuickBar").classList.add("hidden");
+      document.body.classList.add('gp-auth-mode');
       document.getElementById("loginScreen").classList.remove("hidden");
-      showAuthPane("signIn");
+      showAuthPane("pin");
     };
 
     window.switchTimeTab = function(paneId, btn) {
@@ -1271,9 +1355,13 @@
       document.getElementById("manDate").value = GP.localDate();
       calcManualHours();
       document.getElementById("authPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") signInPortal(); });
+      document.getElementById("pinLoginCode")?.addEventListener("input", e => { e.target.value=e.target.value.replace(/\D/g,'').slice(0,6); });
+      document.getElementById("pinLoginCode")?.addEventListener("keydown", e => { if(e.key === 'Enter') signInWithPin(); });
+      document.getElementById("pinLoginEmail")?.addEventListener("keydown", e => { if(e.key === 'Enter') document.getElementById('pinLoginCode')?.focus(); });
       document.getElementById("authEmail")?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("authPassword")?.focus(); });
       await initializeAuthPortal();
     });
   </script>
+<script src="gp-pin.js?v=20261103"></script>
 </body>
 </html>
