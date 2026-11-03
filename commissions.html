@@ -160,8 +160,9 @@
     .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
 </head>
-<body>
+<body class="gp-app">
 
   <header>
     <div class="brand">
@@ -175,6 +176,7 @@
       <div id="dbStatus" class="hidden"></div>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
         <span id="activeUserName" class="user-pill"></span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -190,6 +192,10 @@
   </nav>
 
   <div class="container">
+    <section class="gp-page-intro" aria-label="Commissions & work orders">
+      <div><span class="gp-page-kicker">FIELD PERFORMANCE</span><h2>Commissions & work orders</h2><p>Track completed work, manage commissions and keep each job accounted for.</p></div>
+      <div class="gp-page-mark"><span class="gp-online-dot"></span>Employee workspace</div>
+    </section>
 
     <div id="mosQuickBar" class="mos-bar hidden">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -511,5 +517,6 @@
       loadCommissionsData();
     });
   </script>
+<script src="gp-pin.js?v=20261103"></script>
 </body>
 </html>
