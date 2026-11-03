@@ -731,8 +731,9 @@
     @media(max-width:850px){.dashboard-pref-panel{grid-template-columns:1fr 1fr}#dashboardLowerGrid.layout-two{grid-template-columns:1fr}}@media(max-width:560px){.dashboard-pref-panel{grid-template-columns:1fr}.time-group summary{align-items:flex-start;flex-direction:column}}
 
   </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
 </head>
-<body>
+<body class="gp-app">
 
   <header>
     <div class="brand">
@@ -750,6 +751,7 @@
       </label>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
         <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
         <span id="activeUserTypeBadge" class="hidden"></span>
         <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
       </div>
@@ -765,6 +767,10 @@
   </nav>
 
   <div class="container">
+    <section class="gp-page-intro" aria-label="Management & team operations">
+      <div><span class="gp-page-kicker">COMMAND CENTER</span><h2>Management & team operations</h2><p>Manage your people, performance, time records and daily priorities from one place.</p></div>
+      <div class="gp-page-mark"><span class="gp-online-dot"></span>Management workspace</div>
+    </section>
 
     <div class="sub-bar">
       <button type="button" id="adminSubBtnOverview" class="sub-btn active" onclick="showAdminSubTab('adminOverviewPane', this)">1. Command Center</button>
@@ -777,11 +783,12 @@
 
     <div class="dashboard-pref-bar">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><strong style="font-size:12px;">Management Dashboard</strong><span id="dashboardLockStatus" class="badge badge-ok">Locked</span><span style="font-size:11px;color:var(--muted);">Saved layout and default view persist until you change them.</span></div>
-      <div class="dashboard-pref-controls"><button type="button" id="dashboardCustomizeBtn" class="btn-outline" onclick="toggleDashboardCustomization()">Customize Dashboard</button><button type="button" id="dashboardSaveLockBtn" class="btn-outline hidden" onclick="saveAndLockDashboard()">Save & Lock</button></div>
+      <div class="dashboard-pref-controls"><span id="dashboardSaveState" style="font-size:11px;color:var(--muted);"></span><button type="button" id="dashboardCustomizeBtn" class="btn-outline" onclick="toggleDashboardCustomization()">Customize Dashboard</button><button type="button" id="dashboardResetBtn" class="btn-outline hidden" onclick="resetDashboardCustomization()">Reset Defaults</button><button type="button" id="dashboardSaveLockBtn" class="btn-outline hidden" onclick="saveAndLockDashboard()">Save & Lock</button></div>
       <div id="dashboardPrefPanel" class="dashboard-pref-panel hidden">
-        <div><label>Default Management View</label><select id="dashboardDefaultPane"><option value="adminOverviewPane">Command Center</option><option value="adminMOSPane">MultiplyOS Hub</option><option value="adminUsersPane">Users & Roles</option><option value="adminCommissionsPane">Commissions & WOs</option><option value="adminTimePane">Time & Geotags</option><option value="adminFleetPane">Audit Trail</option></select></div>
-        <div><label>Command Center Layout</label><select id="dashboardColumnMode"><option value="two">Two-column widgets</option><option value="one">Single-column widgets</option></select></div>
-        <label class="perm-label"><input type="checkbox" id="dashShowKpis" checked /> Show KPI Summary</label><label class="perm-label"><input type="checkbox" id="dashShowOvertime" checked /> Show Overtime Watchlist</label><label class="perm-label"><input type="checkbox" id="dashShowDivision" checked /> Show Division Scoreboard</label>
+        <div><label>Default Management View</label><select id="dashboardDefaultPane" onchange="previewDashboardDefaultPane()"><option value="adminOverviewPane">Command Center</option><option value="adminMOSPane">MultiplyOS Hub</option><option value="adminUsersPane">Users & Roles</option><option value="adminCommissionsPane">Commissions & WOs</option><option value="adminTimePane">Time & Geotags</option><option value="adminFleetPane">Audit Trail</option></select></div>
+        <div><label>Command Center Layout</label><select id="dashboardColumnMode" onchange="previewDashboardCustomization()"><option value="two">Two-column widgets</option><option value="one">Single-column widgets</option></select></div>
+        <label class="perm-label"><input type="checkbox" id="dashShowKpis" checked onchange="previewDashboardCustomization()" /> Show KPI Summary</label><label class="perm-label"><input type="checkbox" id="dashShowOvertime" checked onchange="previewDashboardCustomization()" /> Show Overtime Watchlist</label><label class="perm-label"><input type="checkbox" id="dashShowDivision" checked onchange="previewDashboardCustomization()" /> Show Division Scoreboard</label>
+        <div style="grid-column:1/-1;font-size:11px;color:var(--muted);">Changes preview immediately. <b>Save & Lock</b> writes them to your signed-in manager profile so they return on future logins and devices.</div>
       </div>
     </div>
 
@@ -1342,7 +1349,12 @@
     let activeTimeSessions = [];
     let auditLimit = 10;
     let currentModalEmployeeName = "";
-    let dashboardPrefs={locked:true,defaultPane:"adminOverviewPane",columns:"two",showKpis:true,showOvertime:true,showDivision:true};
+    const DASHBOARD_PREF_DEFAULTS=Object.freeze({locked:true,defaultPane:"adminOverviewPane",columns:"two",showKpis:true,showOvertime:true,showDivision:true});
+    const VALID_ADMIN_PANES=new Set(["adminOverviewPane","adminMOSPane","adminUsersPane","adminCommissionsPane","adminTimePane","adminFleetPane"]);
+    let dashboardPrefs={...DASHBOARD_PREF_DEFAULTS};
+    let dashboardSavedPrefs={...DASHBOARD_PREF_DEFAULTS};
+    let dashboardEditSnapshot=null;
+    let dashboardSaveInFlight=false;
     let adminRealtimeChannel=null,adminRefreshTimer=null,liveClockRenderTimer=null;
 
     function format00(num) {
@@ -1434,47 +1446,161 @@
 
     window.logoutPortal = async function() { await GP.signOut(supabaseClient); };
 
+    function normalizeDashboardPreferences(raw){
+      const source=(raw&&typeof raw==="object"&&!Array.isArray(raw))?raw:{};
+      return {
+        locked: source.locked !== false,
+        defaultPane: VALID_ADMIN_PANES.has(source.defaultPane)?source.defaultPane:DASHBOARD_PREF_DEFAULTS.defaultPane,
+        columns: source.columns === "one" ? "one" : "two",
+        showKpis: source.showKpis !== false,
+        showOvertime: source.showOvertime !== false,
+        showDivision: source.showDivision !== false
+      };
+    }
+
     window.showAdminSubTab = function(paneId, btn) {
+      const safePane=VALID_ADMIN_PANES.has(paneId)?paneId:"adminOverviewPane";
       ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminFleetPane"].forEach(id => {
-        document.getElementById(id).classList.add("hidden");
+        document.getElementById(id)?.classList.add("hidden");
       });
-      document.getElementById(paneId).classList.remove("hidden");
+      document.getElementById(safePane)?.classList.remove("hidden");
       document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
-      if (btn) btn.classList.add("active");
+      const safeBtn=btn||getDashboardButtonForPane(safePane);
+      if (safeBtn) safeBtn.classList.add("active");
     };
 
     function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.auth_user_id || "default"}`;}
+    function setDashboardSaveState(message,isError=false){
+      const el=document.getElementById("dashboardSaveState");
+      if(!el)return;
+      el.textContent=message||"";
+      el.style.color=isError?"var(--red)":"var(--muted)";
+    }
+    function readDashboardControls(lockState=false){
+      return normalizeDashboardPreferences({
+        locked:lockState,
+        defaultPane:document.getElementById("dashboardDefaultPane")?.value,
+        columns:document.getElementById("dashboardColumnMode")?.value,
+        showKpis:document.getElementById("dashShowKpis")?.checked,
+        showOvertime:document.getElementById("dashShowOvertime")?.checked,
+        showDivision:document.getElementById("dashShowDivision")?.checked
+      });
+    }
+    function cacheDashboardPreferences(prefs){
+      try{localStorage.setItem(getDashboardPrefsKey(),JSON.stringify({...prefs,locked:true}));}catch(e){}
+    }
     async function loadDashboardPreferences(){
-      try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}")};}catch(e){}
+      let localPrefs=null;
+      try{localPrefs=JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"null");}catch(e){}
+      dashboardPrefs=normalizeDashboardPreferences(localPrefs||DASHBOARD_PREF_DEFAULTS);
+      dashboardPrefs.locked=true;
+      dashboardSavedPrefs={...dashboardPrefs};
       applyDashboardPreferences();
+      setDashboardSaveState(localPrefs?"Loaded saved dashboard":"Using dashboard defaults");
       if(isCloudConnected && activeUser?.auth_user_id){
         try{
-          const {data,error}=await supabaseClient.from("portal_preferences").select("dashboard_prefs").eq("auth_user_id",String(activeUser.auth_user_id)).maybeSingle();
-          if(!error && data?.dashboard_prefs && typeof data.dashboard_prefs==="object"){
-            dashboardPrefs={...dashboardPrefs,...data.dashboard_prefs};
-            localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));
+          const {data,error}=await supabaseClient.from("portal_preferences").select("dashboard_prefs,updated_at").eq("auth_user_id",String(activeUser.auth_user_id)).maybeSingle();
+          if(error) throw error;
+          if(data?.dashboard_prefs && typeof data.dashboard_prefs==="object"){
+            dashboardPrefs=normalizeDashboardPreferences(data.dashboard_prefs);
+            dashboardPrefs.locked=true;
+            dashboardSavedPrefs={...dashboardPrefs};
+            cacheDashboardPreferences(dashboardPrefs);
             applyDashboardPreferences();
+            setDashboardSaveState("Synced with Supabase");
+          }else{
+            setDashboardSaveState(localPrefs?"Saved locally — not yet in Supabase":"No saved dashboard yet");
           }
-        }catch(e){}
+        }catch(e){
+          console.error("Dashboard preference load failed",e);
+          setDashboardSaveState("Supabase preference sync unavailable",true);
+        }
       }
     }
     function applyDashboardPreferences(){
       const ids=[["dashWidgetKpis","showKpis"],["dashWidgetOvertime","showOvertime"],["dashWidgetDivision","showDivision"]];
-      ids.forEach(([id,key])=>document.getElementById(id)?.classList.toggle("dashboard-widget-hidden",!dashboardPrefs[key]));
-      const lower=document.getElementById("dashboardLowerGrid"); if(lower){lower.classList.toggle("layout-one",dashboardPrefs.columns==="one");lower.classList.toggle("layout-two",dashboardPrefs.columns!=="one");}
-      const panel=document.getElementById("dashboardPrefPanel"),badge=document.getElementById("dashboardLockStatus"),custom=document.getElementById("dashboardCustomizeBtn"),save=document.getElementById("dashboardSaveLockBtn");
-      panel?.classList.toggle("hidden",dashboardPrefs.locked); if(badge){badge.textContent=dashboardPrefs.locked?"Locked":"Editing";badge.className=`badge ${dashboardPrefs.locked?"badge-ok":"badge-warn"}`;} if(custom)custom.textContent=dashboardPrefs.locked?"Customize Dashboard":"Cancel Changes";save?.classList.toggle("hidden",dashboardPrefs.locked);
-      if(document.getElementById("dashboardDefaultPane"))document.getElementById("dashboardDefaultPane").value=dashboardPrefs.defaultPane||"adminOverviewPane"; if(document.getElementById("dashboardColumnMode"))document.getElementById("dashboardColumnMode").value=dashboardPrefs.columns||"two";
-      if(document.getElementById("dashShowKpis"))document.getElementById("dashShowKpis").checked=dashboardPrefs.showKpis!==false;if(document.getElementById("dashShowOvertime"))document.getElementById("dashShowOvertime").checked=dashboardPrefs.showOvertime!==false;if(document.getElementById("dashShowDivision"))document.getElementById("dashShowDivision").checked=dashboardPrefs.showDivision!==false;
+      ids.forEach(([id,key])=>document.getElementById(id)?.classList.toggle("dashboard-widget-hidden",dashboardPrefs[key]===false));
+      const lower=document.getElementById("dashboardLowerGrid");
+      if(lower){lower.classList.toggle("layout-one",dashboardPrefs.columns==="one");lower.classList.toggle("layout-two",dashboardPrefs.columns!=="one");}
+      const panel=document.getElementById("dashboardPrefPanel"),badge=document.getElementById("dashboardLockStatus"),custom=document.getElementById("dashboardCustomizeBtn"),save=document.getElementById("dashboardSaveLockBtn"),reset=document.getElementById("dashboardResetBtn");
+      panel?.classList.toggle("hidden",dashboardPrefs.locked);
+      if(badge){badge.textContent=dashboardPrefs.locked?"Locked":"Editing";badge.className=`badge ${dashboardPrefs.locked?"badge-ok":"badge-warn"}`;}
+      if(custom)custom.textContent=dashboardPrefs.locked?"Customize Dashboard":"Cancel Changes";
+      save?.classList.toggle("hidden",dashboardPrefs.locked);
+      reset?.classList.toggle("hidden",dashboardPrefs.locked);
+      if(document.getElementById("dashboardDefaultPane"))document.getElementById("dashboardDefaultPane").value=dashboardPrefs.defaultPane;
+      if(document.getElementById("dashboardColumnMode"))document.getElementById("dashboardColumnMode").value=dashboardPrefs.columns;
+      if(document.getElementById("dashShowKpis"))document.getElementById("dashShowKpis").checked=dashboardPrefs.showKpis;
+      if(document.getElementById("dashShowOvertime"))document.getElementById("dashShowOvertime").checked=dashboardPrefs.showOvertime;
+      if(document.getElementById("dashShowDivision"))document.getElementById("dashShowDivision").checked=dashboardPrefs.showDivision;
     }
-    window.toggleDashboardCustomization=function(){if(dashboardPrefs.locked){dashboardPrefs.locked=false;}else{try{dashboardPrefs={...dashboardPrefs,...JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"{}"),locked:true};}catch(e){dashboardPrefs.locked=true;}}applyDashboardPreferences();};
-    window.saveAndLockDashboard=async function(){
-      dashboardPrefs={locked:true,defaultPane:document.getElementById("dashboardDefaultPane").value,columns:document.getElementById("dashboardColumnMode").value,showKpis:document.getElementById("dashShowKpis").checked,showOvertime:document.getElementById("dashShowOvertime").checked,showDivision:document.getElementById("dashShowDivision").checked};
-      localStorage.setItem(getDashboardPrefsKey(),JSON.stringify(dashboardPrefs));
-      if(isCloudConnected&&activeUser?.auth_user_id){
-        try{await supabaseClient.from("portal_preferences").upsert([{auth_user_id:String(activeUser.auth_user_id),user_pin:String(activeUser.pin_code),dashboard_prefs:dashboardPrefs,updated_at:new Date().toISOString()}],{onConflict:"auth_user_id"});}catch(e){}
+    window.previewDashboardCustomization=function(){
+      if(dashboardPrefs.locked||dashboardSaveInFlight)return;
+      dashboardPrefs=readDashboardControls(false);
+      applyDashboardPreferences();
+      setDashboardSaveState("Previewing unsaved changes");
+    };
+    window.previewDashboardDefaultPane=function(){
+      if(dashboardPrefs.locked||dashboardSaveInFlight)return;
+      dashboardPrefs=readDashboardControls(false);
+      applyDashboardPreferences();
+      showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));
+      setDashboardSaveState("Previewing unsaved changes");
+    };
+    window.toggleDashboardCustomization=function(){
+      if(dashboardSaveInFlight)return;
+      if(dashboardPrefs.locked){
+        dashboardEditSnapshot={...dashboardSavedPrefs};
+        dashboardPrefs={...dashboardSavedPrefs,locked:false};
+        applyDashboardPreferences();
+        setDashboardSaveState("Editing — changes are not saved yet");
+      }else{
+        dashboardPrefs={...(dashboardEditSnapshot||dashboardSavedPrefs),locked:true};
+        dashboardEditSnapshot=null;
+        applyDashboardPreferences();
+        showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));
+        setDashboardSaveState("Changes canceled");
       }
-      applyDashboardPreferences();showToast("Dashboard preferences saved and locked");
+    };
+    window.resetDashboardCustomization=function(){
+      if(dashboardPrefs.locked||dashboardSaveInFlight)return;
+      dashboardPrefs={...DASHBOARD_PREF_DEFAULTS,locked:false};
+      applyDashboardPreferences();
+      showAdminSubTab("adminOverviewPane",getDashboardButtonForPane("adminOverviewPane"));
+      setDashboardSaveState("Defaults previewed — Save & Lock to keep them");
+    };
+    window.saveAndLockDashboard=async function(){
+      if(dashboardSaveInFlight)return;
+      const nextPrefs=readDashboardControls(true);
+      dashboardSaveInFlight=true;
+      const saveBtn=document.getElementById("dashboardSaveLockBtn");
+      if(saveBtn){saveBtn.disabled=true;saveBtn.textContent="Saving…";}
+      setDashboardSaveState("Saving dashboard…");
+      let cloudSaved=false;
+      try{
+        if(isCloudConnected&&activeUser?.auth_user_id){
+          const payload={auth_user_id:String(activeUser.auth_user_id),dashboard_prefs:nextPrefs,updated_at:new Date().toISOString()};
+          const {data,error}=await supabaseClient.from("portal_preferences").upsert([payload],{onConflict:"auth_user_id"}).select("dashboard_prefs,updated_at").single();
+          if(error)throw error;
+          cloudSaved=!!data;
+        }
+        dashboardPrefs={...nextPrefs,locked:true};
+        dashboardSavedPrefs={...dashboardPrefs};
+        dashboardEditSnapshot=null;
+        cacheDashboardPreferences(dashboardPrefs);
+        applyDashboardPreferences();
+        setDashboardSaveState(cloudSaved?"Saved to Supabase":"Saved on this device");
+        showToast(cloudSaved?"Dashboard saved and locked":"Dashboard saved locally and locked");
+      }catch(e){
+        console.error("Dashboard preference save failed",e);
+        dashboardPrefs={...nextPrefs,locked:false};
+        applyDashboardPreferences();
+        setDashboardSaveState(`Save failed: ${e?.message||"Supabase rejected the preference update"}`,true);
+        alert(`Dashboard preferences were not saved to Supabase. ${e?.message||"Please try again."}`);
+      }finally{
+        dashboardSaveInFlight=false;
+        if(saveBtn){saveBtn.disabled=false;saveBtn.textContent="Save & Lock";}
+      }
     };
     function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
     function getOpenTimeGroups(){try{return JSON.parse(localStorage.getItem("gp_admin_time_groups_open")||"[]");}catch(e){return[];}}
@@ -1499,7 +1625,7 @@
     }
     function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),gross=Math.max(0,(Date.now()-ms)/3600000),elapsed=Math.max(0,gross-((Number(e.break_minutes)||0)/60)),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
-    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
+    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dashboardPrefs.locked)loadDashboardPreferences();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
 
     async function logAudit(actionType, detailsText) {
       const entry = {
@@ -2416,5 +2542,6 @@
       startAdminLiveSync();
     });
   </script>
+<script src="gp-pin.js?v=20261103"></script>
 </body>
 </html>
