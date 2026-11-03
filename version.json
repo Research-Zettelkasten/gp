@@ -1,1 +1,5 @@
-{"version":"2026.11.02.3","notes":"Single-push Supabase Auth + RLS release: email/password Auth; one-time legacy PIN profile claim; UUID-owned records; strict RLS; secure quote-to-WO conversion RPC; live permission revocation; Auth-linked user management; RLS-protected Realtime; sensitive browser-cache isolation; customer data removed from static frontend; audited management/time/fleet/quote fixes retained."}
+{
+  "version": "2026.11.03.1",
+  "notes": "Modern UI and optional account-linked secure Quick PIN authentication.",
+  "release_date": "2026-11-03"
+}
