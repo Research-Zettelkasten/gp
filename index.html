@@ -281,7 +281,7 @@
     .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
-  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -311,6 +311,7 @@
     <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
     <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
     <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="nav-btn">6. Collections</a>
   </nav>
 
   <div class="container">
@@ -961,22 +962,30 @@
     }
 
     async function syncActiveTimeSession(startedAtMs, geo) {
-      if (!isCloudConnected || !activeUser) return false;
+      if (!isCloudConnected || !activeUser || !supabaseClient) return false;
       try {
-        const row = {
-          employee_pin: String(activeUser.pin_code),
-          employee_name: activeUser.employee_name,
-          department: activeUser.department,
-          started_at_ms: Number(startedAtMs),
-          started_at: new Date(Number(startedAtMs)).toISOString(),
-          clock_in_location: geo?.address || localStorage.getItem(getClockLocKey()) || "Location Not Recorded",
-          clock_in_coords: geo?.coords || localStorage.getItem(getClockCoordsKey()) || "",
-          break_minutes: parseInt(document.getElementById("liveBreakMins").value, 10) || 0,
-          updated_at: new Date().toISOString()
-        };
-        row.auth_user_id = activeUser.auth_user_id;
-        const result = await supabaseClient.from("active_time_sessions").upsert([row], { onConflict: "auth_user_id" });
-        return !result.error;
+        const breakMinutes = Math.max(0, parseInt(document.getElementById("liveBreakMins").value, 10) || 0);
+        let result;
+        if (geo) {
+          // INSERT rather than UPSERT: opening a second device must not replace
+          // an employee's already-active punch with a new start time.
+          const row = {
+            auth_user_id: activeUser.auth_user_id,
+            employee_pin: String(activeUser.pin_code),
+            employee_name: activeUser.employee_name, department: activeUser.department,
+            started_at_ms: Number(startedAtMs), started_at: new Date(Number(startedAtMs)).toISOString(),
+            clock_in_location: geo.address || "Location Not Recorded",
+            clock_in_coords: geo.coords || "", break_minutes:breakMinutes,
+            updated_at:new Date().toISOString()
+          };
+          result = await supabaseClient.from("active_time_sessions").insert([row]).select("auth_user_id");
+        } else {
+          result = await supabaseClient.from("active_time_sessions")
+            .update({break_minutes:breakMinutes,updated_at:new Date().toISOString()})
+            .eq("auth_user_id",String(activeUser.auth_user_id))
+            .eq("started_at_ms",Number(startedAtMs)).select("auth_user_id");
+        }
+        return !result.error && !!result.data?.length;
       } catch (e) { return false; }
     }
 
@@ -1000,29 +1009,43 @@
     };
 
     window.clockInNow = async function() {
+      if (!activeUser) return showToast("Sign in before clocking in.");
       if (localStorage.getItem(getClockKey())) return showToast("Already clocked in — clock out first.");
+      if (!isCloudConnected) return alert("Supabase is unavailable. Clock-in was not recorded. Please reconnect and retry.");
       document.getElementById("liveBreakMins").value = "0";
       const btn = document.getElementById("btnClockIn");
+      if (btn.disabled) return;
       btn.disabled = true;
       btn.textContent = "Locking Street Geotag...";
-      const geo = await captureGeotag();
-      const startedAtMs = Date.now();
-      localStorage.setItem(getClockKey(), startedAtMs.toString());
-      localStorage.setItem(getClockLocKey(), geo.address);
-      localStorage.setItem(getClockCoordsKey(), geo.coords);
-      await syncActiveTimeSession(startedAtMs, geo);
-      await recordTimePresence("TIME_CLOCK_IN", {
-        employee_name: activeUser.employee_name,
-        department: activeUser.department,
-        started_at_ms: startedAtMs,
-        started_at: new Date(startedAtMs).toISOString(),
-        location: geo.address,
-        coords: geo.coords
-      });
-      btn.disabled = false;
-      btn.textContent = "Clock In Now (Geotag Location)";
-      await resumeClockState();
-      showToast("Clocked In: " + geo.address);
+      try {
+        // A previous session may already exist on another device.
+        await restoreActiveTimeSession();
+        if (localStorage.getItem(getClockKey())) {
+          await resumeClockState();
+          showToast("An existing clock-in was restored from Supabase. Clock out when your shift ends.");
+          return;
+        }
+        const geo = await captureGeotag();
+        const startedAtMs = Date.now();
+        if (!await syncActiveTimeSession(startedAtMs, geo)) {
+          throw new Error("Supabase did not confirm the active clock-in. Please reconnect and retry.");
+        }
+        localStorage.setItem(getClockKey(), String(startedAtMs));
+        localStorage.setItem(getClockLocKey(), geo.address);
+        localStorage.setItem(getClockCoordsKey(), geo.coords);
+        await recordTimePresence("TIME_CLOCK_IN", {
+          employee_name: activeUser.employee_name, department: activeUser.department,
+          started_at_ms: startedAtMs, started_at: new Date(startedAtMs).toISOString(),
+          location: geo.address, coords: geo.coords
+        });
+        await resumeClockState();
+        showToast("Clocked in and synchronized: " + geo.address);
+      } catch (e) {
+        alert(`Clock-in was not confirmed: ${e.message || e}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Clock In Now (Geotag Location)";
+      }
     };
 
     async function resumeClockState() {
@@ -1066,58 +1089,83 @@
     };
 
     window.clockOutNow = async function() {
+      if (!activeUser) return;
       const savedStart = localStorage.getItem(getClockKey());
       if (!savedStart) return;
       const btn = document.getElementById("btnClockOut");
+      if (btn.disabled) return;
       btn.disabled = true;
       btn.textContent = "Capturing Clock-Out Geotag...";
-
-      const outGeo = await captureGeotag();
-      const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
-      const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
-
-      const startObj = new Date(parseInt(savedStart, 10));
-      const endObj = new Date();
-      const breakMins = parseInt(document.getElementById("liveBreakMins").value, 10) || 0;
-      const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
-      const netDecimal = Math.max(0, elapsed - (breakMins / 60));
-
-      const record = {
-        employee_name: activeUser.employee_name,
-        department: activeUser.department,
-        work_date: GP.localDate(startObj),
-        clock_in: startObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        clock_out: endObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        break_minutes: breakMins,
-        decimal_hours: format00(netDecimal),
-        clock_in_location: inLoc,
-        clock_out_location: outGeo.address,
-        clock_in_coords: inCoords,
-        clock_out_coords: outGeo.coords,
-        notes: `In: ${inLoc} | Out: ${outGeo.address}`
-      };
-
-      await saveShiftRecord(record);
-      await recordTimePresence("TIME_CLOCK_OUT", {
-        employee_name: activeUser.employee_name,
-        department: activeUser.department,
-        started_at_ms: Number(savedStart),
-        ended_at_ms: endObj.getTime(),
-        ended_at: endObj.toISOString(),
-        location: outGeo.address,
-        coords: outGeo.coords,
-        decimal_hours: format00(netDecimal)
-      });
-      if (isCloudConnected) {
-        try { await supabaseClient.from("active_time_sessions").delete().eq("auth_user_id", String(activeUser.auth_user_id)); } catch (e) {}
+      try {
+        if (!isCloudConnected) throw new Error("Supabase is unavailable. Your active clock-in is preserved; reconnect and retry.");
+        const pendingKey = `gp_clock_out_saved_${activeUser.auth_user_id}`;
+        if (localStorage.getItem(pendingKey) === savedStart) {
+          // This shift was already saved; retry cleanup without creating
+          // another payroll row or requiring elapsed time to remain <=24h.
+          const {data,error} = await supabaseClient.from("active_time_sessions").delete()
+            .eq("auth_user_id",String(activeUser.auth_user_id))
+            .eq("started_at_ms",Number(savedStart)).select("auth_user_id");
+          if (error || !data?.length) throw new Error("Shift saved, but clock cleanup still needs attention: " + (error?.message || "active session missing or permission denied"));
+          localStorage.removeItem(pendingKey);
+          localStorage.removeItem(getClockKey());
+          localStorage.removeItem(getClockLocKey());
+          localStorage.removeItem(getClockCoordsKey());
+          if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+          await resumeClockState();
+          showToast("Saved shift finalized; clocked out successfully.");
+          return;
+        }
+        const outGeo = await captureGeotag();
+        const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
+        const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
+        const startObj = new Date(Number(savedStart));
+        const endObj = new Date();
+        const breakMins = Math.max(0, parseInt(document.getElementById("liveBreakMins").value, 10) || 0);
+        const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
+        const netDecimal = Math.max(0, elapsed - (breakMins / 60));
+        if (!Number.isFinite(elapsed) || elapsed <= 0 || elapsed > 24 || breakMins > elapsed * 60) {
+          throw new Error("Invalid shift duration or break minutes. Ask a manager to review this punch.");
+        }
+        // If a prior upload succeeded but session cleanup failed, only retry
+        // cleanup. Never submit the same completed shift a second time.
+        const pending = localStorage.getItem(pendingKey);
+        if (!pending || pending !== savedStart) {
+          const record = {
+            employee_name: activeUser.employee_name, department: activeUser.department,
+            work_date: GP.localDate(startObj),
+            clock_in: startObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+            clock_out: endObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
+            break_minutes: breakMins, decimal_hours: format00(netDecimal),
+            clock_in_location: inLoc, clock_out_location: outGeo.address,
+            clock_in_coords: inCoords, clock_out_coords: outGeo.coords,
+            notes: `In: ${inLoc} | Out: ${outGeo.address}`
+          };
+          await saveShiftRecord(record);
+          localStorage.setItem(pendingKey, savedStart);
+          await recordTimePresence("TIME_CLOCK_OUT", {
+            employee_name: activeUser.employee_name, department: activeUser.department,
+            started_at_ms: Number(savedStart), ended_at_ms: endObj.getTime(),
+            ended_at: endObj.toISOString(), location: outGeo.address,
+            coords: outGeo.coords, decimal_hours: format00(netDecimal)
+          });
+        }
+        const {data:deleted,error} = await supabaseClient.from("active_time_sessions")
+          .delete().eq("auth_user_id", String(activeUser.auth_user_id))
+          .eq("started_at_ms",Number(savedStart)).select("auth_user_id");
+        if (error || !deleted?.length) throw new Error("Shift saved, but active-clock cleanup failed: " + (error?.message || "session missing or permission denied") + ". Retry Clock Out to finish cleanup without creating another shift.");
+        localStorage.removeItem(pendingKey);
+        localStorage.removeItem(getClockKey());
+        localStorage.removeItem(getClockLocKey());
+        localStorage.removeItem(getClockCoordsKey());
+        if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+        await resumeClockState();
+        showToast("Shift saved to Supabase and clocked out.");
+      } catch (e) {
+        alert(`Clock-out not fully completed: ${e.message || e}. Your active punch remains available.`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Clock Out & Sync Shift";
       }
-      btn.disabled = false;
-      btn.textContent = "Clock Out & Sync Shift";
-      localStorage.removeItem(getClockKey());
-      localStorage.removeItem(getClockLocKey());
-      localStorage.removeItem(getClockCoordsKey());
-      clearInterval(liveInterval);
-      await resumeClockState();
     };
 
     window.calcManualHours = function() {
@@ -1136,72 +1184,44 @@
 
     window.submitManualTime = async function() {
       const btn = document.getElementById("btnManualSubmit");
+      if (btn.disabled) return;
       btn.disabled = true;
       btn.textContent = "Saving & Geotagging...";
-      const date = document.getElementById("manDate").value;
-      const dec = calcManualHours();
-      if (!date || !Number.isFinite(dec) || dec <= 0 || dec > 24) {
-        btn.disabled = false;
-        btn.textContent = "Submit Shift Hours";
-        return alert("Enter a valid date and shift with more than zero and no more than 24 hours.");
-      }
-      const geo = await captureGeotag();
-      const note = document.getElementById("manNotes").value.trim();
-
-      const record = {
-        employee_name: activeUser.employee_name,
-        department: activeUser.department,
-        work_date: document.getElementById("manDate").value,
-        clock_in: document.getElementById("manStart").value,
-        clock_out: document.getElementById("manEnd").value,
-        break_minutes: parseInt(document.getElementById("manBreak").value) || 0,
-        decimal_hours: format00(dec),
-        clock_in_location: geo.address,
-        clock_out_location: geo.address,
-        clock_in_coords: geo.coords,
-        clock_out_coords: geo.coords,
-        notes: note ? `${note} (${geo.address})` : `Manual Entry (${geo.address})`
-      };
-
-      await saveShiftRecord(record);
-      document.getElementById("manNotes").value = "";
-      btn.disabled = false;
-      btn.textContent = "Submit Shift Hours";
+      try {
+        const date = document.getElementById("manDate").value;
+        const dec = calcManualHours();
+        const brk = Number(document.getElementById("manBreak").value || 0);
+        if (!date || !document.getElementById("manStart").value || !document.getElementById("manEnd").value ||
+            !Number.isFinite(dec) || dec <= 0 || dec > 24 || !Number.isSafeInteger(brk) || brk < 0 || brk >= 1440) {
+          throw new Error("Enter a valid date, times, and break minutes, with a positive shift no longer than 24 hours.");
+        }
+        const geo = await captureGeotag();
+        const note = document.getElementById("manNotes").value.trim();
+        const record = {
+          employee_name: activeUser.employee_name, department: activeUser.department,
+          work_date: date, clock_in: document.getElementById("manStart").value,
+          clock_out: document.getElementById("manEnd").value,
+          break_minutes: brk, decimal_hours: format00(dec),
+          clock_in_location: geo.address, clock_out_location: geo.address,
+          clock_in_coords: geo.coords, clock_out_coords: geo.coords,
+          notes: note ? `${note} (${geo.address})` : `Manual Entry (${geo.address})`
+        };
+        await saveShiftRecord(record);
+        document.getElementById("manNotes").value = "";
+        showToast("Manual shift saved to Supabase.");
+      } catch (e) { alert(`Manual shift was NOT saved: ${e.message || e}`); }
+      finally { btn.disabled = false; btn.textContent = "Submit Shift Hours"; }
     };
 
     async function saveShiftRecord(record) {
-      let cloudSaved = false;
-      let savedRecord = { ...record };
-      if (isCloudConnected) {
-        try {
-          let result = await supabaseClient.from("time_logs").insert([record]).select("*").limit(1);
-          if (!result.error && result.data && result.data[0]) {
-            savedRecord = { ...record, ...result.data[0] };
-            cloudSaved = true;
-          } else if (result.error) {
-            const fallback = {
-              employee_name: record.employee_name,
-              department: record.department,
-              work_date: record.work_date,
-              clock_in: record.clock_in,
-              clock_out: record.clock_out,
-              break_minutes: record.break_minutes,
-              decimal_hours: record.decimal_hours,
-              notes: record.notes
-            };
-            result = await supabaseClient.from("time_logs").insert([fallback]).select("*").limit(1);
-            if (!result.error && result.data && result.data[0]) {
-              savedRecord = { ...record, ...result.data[0] };
-              cloudSaved = true;
-            }
-          }
-        } catch (e) { console.warn("Shift cloud sync failed", e); }
-      }
-      if (!savedRecord.id) savedRecord.id = Date.now();
-      timeLogs.unshift(savedRecord);
+      if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable; your shift has NOT been saved.");
+      const result = await supabaseClient.from("time_logs").insert([record]).select("*").single();
+      if (result.error) throw new Error(`Shift save failed: ${result.error.message}`);
+      if (!result.data?.id) throw new Error("Supabase did not confirm your saved shift.");
+      timeLogs.unshift(result.data);
       localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
-      showToast(`${record.decimal_hours} hrs saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
       await fetchTimeLogs();
+      return result.data;
     }
 
     async function fetchTimeLogs() {
@@ -1230,11 +1250,9 @@
               }
             }
           }
-          const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
+          const tRes = { data: await GP.fetchAllRows(supabaseClient.from("time_logs").select("*").order("id", { ascending: false })) };
           if (tRes.data) {
-            // Do not erase locally saved shifts if a cloud write is unavailable.
-            const keys = new Set(tRes.data.map(r => `${r.employee_name}|${r.work_date}|${r.clock_in}|${r.clock_out}`));
-            timeLogs = [...tRes.data, ...timeLogs.filter(r => !keys.has(`${r.employee_name}|${r.work_date}|${r.clock_in}|${r.clock_out}`))];
+            timeLogs = tRes.data; // A successful cloud read supersedes cached records.
             localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
           }
         } catch (e) {}
@@ -1362,6 +1380,6 @@
       await initializeAuthPortal();
     });
   </script>
-<script src="gp-pin.js?v=20261103"></script>
+<script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>
