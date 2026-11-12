@@ -160,7 +160,7 @@
     .modal-card { background: var(--white); border-radius: var(--radius-lg); max-width: 580px; width: 100%; padding: 24px; border-top: 4px solid var(--mos-indigo); }
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
-  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 </head>
 <body class="gp-app">
 
@@ -189,6 +189,7 @@
     <a href="commissions.html" id="navLinkComm" class="nav-btn active">3. Commission & WOs</a>
     <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
     <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">6. Collections</a>
   </nav>
 
   <div class="container">
@@ -429,26 +430,22 @@
         status: "Pending Review"
       };
 
-      let cloudSaved = false;
-      if (isCloudConnected) {
-        try {
-          const result = await supabaseClient.from("commission_logs").insert([rec]).select("*").limit(1);
-          if (result.error && result.error.code === "23505") return alert("That Work Order # is already logged in Supabase.");
-          if (!result.error && result.data && result.data[0]) {
-            Object.assign(rec, result.data[0]);
-            cloudSaved = true;
-          }
-        } catch (e) { console.warn("Commission cloud sync failed", e); }
-      }
-      if (!rec.id) rec.id = Date.now();
-      commissionLogs.unshift(rec);
-      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+      if (!isCloudConnected || !supabaseClient) return alert("Supabase is unavailable. Work order NOT saved; retry when connected.");
+      try {
+        const result = await supabaseClient.from("commission_logs").insert([rec]).select("*").single();
+        if (result.error?.code === "23505") return alert("That Work Order # is already logged in Supabase.");
+        if (result.error) throw result.error;
+        if (!result.data?.id) throw new Error("Supabase did not confirm the work order.");
+        Object.assign(rec, result.data);
+        commissionLogs.unshift(rec);
+        localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+      } catch (e) { return alert(`Work order NOT saved: ${e.message || e}`); }
 
       document.getElementById("commWoNumber").value = "";
       document.getElementById("commAmount").value = "";
       document.getElementById("commMaterials").value = "";
       document.getElementById("commSpecNotes").value = "";
-      showToast(`Work Order ${rec.wo_number} saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
+      showToast(`Work Order ${rec.wo_number} saved to Supabase`);
       await loadCommissionsData();
     };
 
@@ -457,10 +454,9 @@
       usersList = [];
       if (isCloudConnected) {
         try {
-          const cRes = await supabaseClient.from("commission_logs").select("*").order("id", { ascending: false });
+          const cRes = { data: await GP.fetchAllRows(supabaseClient.from("commission_logs").select("*").order("id", { ascending: false })) };
           if (cRes.data) {
-            const keys = new Set(cRes.data.map(c => `${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`));
-            commissionLogs = [...cRes.data, ...commissionLogs.filter(c => !keys.has(`${c.employee_name}|${GP.escapeHtml(c.work_date)}|${GP.escapeHtml(c.wo_number)}`))];
+            commissionLogs = cRes.data;
             localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
           }
           usersList = await GP.employeeDirectory(supabaseClient);
@@ -517,6 +513,6 @@
       loadCommissionsData();
     });
   </script>
-<script src="gp-pin.js?v=20261103"></script>
+<script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>
