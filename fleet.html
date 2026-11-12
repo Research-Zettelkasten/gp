@@ -173,6 +173,8 @@
     @media print { header, .nav-bar, .sub-bar, .no-print { display: none !important; } body { background: white; padding: 0; } .container { max-width: 100%; margin: 0; padding: 0; } .print-sheet { display: block !important; } }
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261112b">
+<script src="gp-sidebar.js?v=20261112b" defer></script>
 </head>
 <body class="gp-app">
 
@@ -196,12 +198,12 @@
   </header>
 
   <nav id="mainNavBar" class="nav-bar">
-    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
-    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
-    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
-    <a href="fleet.html" id="navLinkFleet" class="nav-btn active">4. Vehicle Check & Safety</a>
-    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
-    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">6. Collections</a>
+    <a href="index.html" id="navLinkTime" class="nav-btn">Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn active">Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">Collections</a>
   </nav>
 
   <div class="container">
@@ -211,10 +213,10 @@
     </section>
 
     <div class="sub-bar no-print">
-      <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">1. 35-Point Vehicle Check</button>
-      <button type="button" id="subBtnHistory" class="sub-btn" onclick="switchFleetTab('historyPane', this)">2. Fleet Inspection History</button>
-      <button type="button" id="subBtnSafety" class="sub-btn" onclick="switchFleetTab('safetyPane', this)">3. Safety & MultiplyOS SOPs</button>
-      <button type="button" id="subBtnGarage" class="sub-btn" onclick="switchFleetTab('garagePane', this)">4. Fleet Garage</button>
+      <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">35-Point Vehicle Check</button>
+      <button type="button" id="subBtnHistory" class="sub-btn" onclick="switchFleetTab('historyPane', this)">Fleet Inspection History</button>
+      <button type="button" id="subBtnSafety" class="sub-btn" onclick="switchFleetTab('safetyPane', this)">Safety & MultiplyOS SOPs</button>
+      <button type="button" id="subBtnGarage" class="sub-btn" onclick="switchFleetTab('garagePane', this)">Fleet Garage</button>
     </div>
 
     <!-- PANE 1: 35-POINT VEHICLE INSPECTION -->
