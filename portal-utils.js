@@ -49,7 +49,8 @@
       navLinkQuotes: user.perm_admin === true || user.perm_quotes === true,
       navLinkComm: user.perm_admin === true || user.perm_commission === true,
       navLinkFleet: canAccessFleet(user),
-      navLinkAdmin: !!user.perm_admin
+      navLinkAdmin: !!user.perm_admin,
+      navLinkCollections: user.perm_admin === true || user.perm_collections === true
     };
     Object.entries(rules).forEach(([id, allowed]) => {
       const el = document.getElementById(id);
@@ -77,6 +78,7 @@
       active: user.active === true,
       perm_time: user.perm_time === true,
       perm_quotes: user.perm_quotes === true,
+      perm_collections: user.perm_collections === true,
       perm_commission: user.perm_commission === true,
       perm_vehicle_submit: user.perm_vehicle_submit === true,
       perm_vehicle_view: user.perm_vehicle_view === true,
@@ -191,6 +193,19 @@
     return result.profile || null;
   };
 
+  // Supabase defaults to a 1,000-row response cap. Read every permitted page,
+  // and fail explicitly if the configurable safety cap is reached.
+  const fetchAllRows = async (query, pageSize = 500, maxRows = 25000) => {
+    const rows = [];
+    for (let offset = 0; offset < maxRows; offset += pageSize) {
+      const { data, error } = await query.range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) return rows;
+    }
+    throw new Error(`Too many records to load safely (${maxRows}). Narrow the date range or export from Supabase.`);
+  };
+
   const employeeDirectory = async client => {
     if (!client) return [];
     try {
@@ -224,6 +239,7 @@
     watchProfileAccess,
     refreshSessionUser,
     employeeDirectory,
+    fetchAllRows,
     signOut,
     hasPermission
   });
