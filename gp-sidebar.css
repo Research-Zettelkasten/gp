@@ -1,0 +1,65 @@
+/* GLASSPRO workspace navigation — responsive, account-aware and accessible. */
+:root { --gp-side-width: 258px; --gp-side-rail: 76px; }
+body.gp-shell-active { padding-left: var(--gp-side-width); transition: padding-left .2s ease; }
+body.gp-shell-active.gp-side-collapsed { padding-left: var(--gp-side-rail); }
+body.gp-shell-active .gp-sidebar { display: flex !important; }
+.gp-sidebar { box-sizing: border-box; position: fixed !important; inset: 0 auto 0 0 !important; z-index: 1100 !important; width:var(--gp-side-width) !important; min-width:0 !important; margin:0 !important; border:0 !important; border-radius:0 !important; padding: 18px 11px 14px !important; overflow-y:auto !important; overflow-x:hidden !important; flex-direction:column !important; gap:8px !important; background:linear-gradient(180deg,#0d2440 0%,#0a1b31 100%) !important; box-shadow: 8px 0 36px rgba(5,19,40,.16) !important; color:#e7f1fa !important; scrollbar-width:thin; scrollbar-color:#47617f transparent; }
+.gp-sidebar.hidden { display:none !important; }
+.gp-side-brand {display:flex;align-items:center;gap:10px;padding:9px 8px 18px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.13)}
+.gp-side-brand-logo {background:linear-gradient(145deg,#ec5160,#c32d42);border-radius:12px;padding:10px;color:white;font-size:16px;font-weight:900;box-shadow:0 8px 23px rgba(237,77,102,.2)}
+.gp-side-brand-copy {flex:1;min-width:0}.gp-side-brand-copy strong{display:block;font-size:14px;letter-spacing:.08em;color:#fff}.gp-side-brand-copy span {display:block;font-size:10px;letter-spacing:.035em;color:#a9bfd6;margin-top:3px}
+.gp-side-collapse,.gp-side-close {border:1px solid rgba(255,255,255,.17);border-radius:9px;background:rgba(255,255,255,.07);color:#eef6ff;padding:6px 9px;cursor:pointer;font-size:16px;flex-shrink:0}
+.gp-side-collapse:hover,.gp-side-close:hover {background:rgba(255,255,255,.16)}
+.gp-side-close {display:none}
+.gp-side-workspace {font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#a6bcd5;padding:11px 12px 5px;font-weight:800}
+.gp-side-group {margin:0 0 3px}.gp-side-group.hidden {display:none !important}
+.gp-side-group-toggle {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:transparent;color:#9eb7d0;font:inherit;font-size:10px;letter-spacing:.095em;text-transform:uppercase;font-weight:800;cursor:pointer;padding:10px 12px 7px;text-align:left}
+.gp-side-group-toggle:hover {color:#f0f7ff}.gp-side-group-toggle .gp-side-chevron {font-size:13px;transition:transform .16s}.gp-side-group.is-closed .gp-side-chevron{transform:rotate(-90deg)}
+.gp-side-group-links {display:flex;flex-direction:column;gap:4px}.gp-side-group.is-closed .gp-side-group-links{display:none}
+.gp-sidebar a.gp-side-link {box-sizing:border-box!important;display:flex!important;align-items:center!important;gap:11px!important;width:100%!important;min-width:0!important;flex:none!important;padding:11px 12px!important;border:1px solid transparent!important;border-radius:12px!important;text-align:left!important;text-decoration:none!important;text-transform:none!important;letter-spacing:0!important;font-size:12px!important;font-weight:700!important;line-height:1.3!important;white-space:normal!important;color:#c6d7e9!important;background:transparent!important;box-shadow:none!important}
+.gp-sidebar a.gp-side-link:hover {color:#fff!important;background:rgba(255,255,255,.09)!important}
+.gp-sidebar a.gp-side-link.active,.gp-sidebar a.gp-side-link[aria-current="page"] {color:#fff!important;background:linear-gradient(90deg,rgba(233,70,91,.26),rgba(255,255,255,.065))!important;border-color:rgba(249,116,134,.25)!important;box-shadow:inset 3px 0 0 #f25f72!important}
+.gp-sidebar a.gp-side-link.hidden {display:none!important}
+.gp-side-icon {display:inline-flex;width:25px;min-width:25px;justify-content:center;align-items:center;font-size:19px;line-height:1;filter:grayscale(.1)}
+.gp-side-title {flex:1;min-width:0;line-height:1.3}.gp-side-pin{font-size:14px;flex:none;line-height:1;opacity:.6;cursor:pointer;border:0;background:transparent;color:#c0d4e8;padding:5px;border-radius:7px}
+.gp-side-pin:hover,.gp-side-pin.is-pinned {opacity:1;color:#ffca70;background:rgba(255,255,255,.08)}
+.gp-side-favorites {display:flex;flex-direction:column;gap:3px}.gp-side-favorites:empty{display:none}
+.gp-side-foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.15);padding-top:12px;display:grid;gap:6px}
+.gp-side-options {display:none;padding:9px 12px;color:#dce9f7;background:rgba(255,255,255,.07);border-radius:11px;font-size:12px;line-height:1.8}.gp-side-options.is-open{display:grid;gap:10px}
+.gp-side-settings-button{display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:0;border-radius:9px;padding:10px 12px;color:#bdcee0;cursor:pointer;font-size:12px;font-weight:700;text-align:left}.gp-side-settings-button:hover{background:rgba(255,255,255,.09);color:white}
+.gp-side-settings-row{display:flex;align-items:center;gap:8px}.gp-side-settings-row input{accent-color:#ed6576}
+.gp-mobile-nav-trigger {display:none;align-items:center;gap:8px;border:1px solid #d9e5f2;border-radius:10px;background:#fff;color:#153554;font-size:12px;font-weight:800;padding:9px 13px;cursor:pointer}
+.gp-nav-scrim {position:fixed;inset:0;z-index:1095;background:rgba(4,15,28,.65);display:none}
+body.gp-density-compact .card,body.gp-density-compact .col-panel {padding-top:12px!important;padding-bottom:12px!important}
+body.gp-density-compact table td,body.gp-density-compact table th {padding-top:7px!important;padding-bottom:7px!important}
+body.gp-density-compact .gp-page-intro {margin-bottom:10px!important}
+body.gp-side-collapsed .gp-sidebar{width:var(--gp-side-rail)!important;padding-left:8px!important;padding-right:8px!important}
+body.gp-side-collapsed .gp-side-brand {justify-content:center;flex-wrap:wrap;padding-left:0;padding-right:0}
+body.gp-side-collapsed .gp-side-brand-copy,body.gp-side-collapsed .gp-side-title,body.gp-side-collapsed .gp-side-group-toggle,body.gp-side-collapsed .gp-side-workspace,body.gp-side-collapsed .gp-side-pin,body.gp-side-collapsed .gp-side-foot-label,body.gp-side-collapsed .gp-side-options {display:none!important}
+body.gp-side-collapsed .gp-side-group-links{display:flex!important}
+body.gp-side-collapsed .gp-sidebar a.gp-side-link{justify-content:center!important;padding:12px 7px!important}
+body.gp-side-collapsed .gp-side-icon{width:28px;min-width:28px}
+body.gp-side-collapsed .gp-side-settings-button{justify-content:center}
+body.gp-side-collapsed .gp-side-collapse{font-size:14px}
+@media(max-width:1000px){
+ body.gp-shell-active,body.gp-shell-active.gp-side-collapsed {padding-left:0!important}
+ .gp-mobile-nav-trigger{display:inline-flex;position:relative;z-index:4}
+ .gp-sidebar {width:min(88vw,315px)!important;max-width:315px;transform:translateX(-110%);transition:transform .2s ease;box-shadow:none!important}
+ body.gp-nav-open .gp-sidebar:not(.hidden) {transform:translateX(0)}
+ body.gp-nav-open .gp-nav-scrim {display:block}
+ .gp-side-close {display:inline-block}
+ .gp-side-collapse {display:none}
+ body.gp-side-collapsed .gp-sidebar{width:min(88vw,315px)!important;padding:18px 11px!important}
+ body.gp-side-collapsed .gp-side-brand-copy,body.gp-side-collapsed .gp-side-title,body.gp-side-collapsed .gp-side-group-toggle,body.gp-side-collapsed .gp-side-workspace,body.gp-side-collapsed .gp-side-pin,body.gp-side-collapsed .gp-side-foot-label {display:initial!important}
+ body.gp-side-collapsed .gp-side-options.is-open {display:grid!important}
+ body.gp-side-collapsed .gp-side-group-toggle {display:flex!important}
+ body.gp-side-collapsed .gp-sidebar a.gp-side-link {justify-content:flex-start!important;padding:11px 12px!important}
+}
+@media(max-width:560px){.gp-mobile-nav-trigger{font-size:0;padding:9px 10px}.gp-mobile-nav-trigger span{font-size:18px}.gp-sidebar{width:min(90vw,315px)!important}.gp-side-close{display:inline-flex}}
+@media(prefers-reduced-motion:reduce){.gp-sidebar,body.gp-shell-active{transition:none!important}}
+
+.gp-sidebar .gp-side-link-row a.gp-side-link{flex:1!important;width:auto!important;min-width:0!important}
+.gp-mobile-nav-trigger[hidden] {display:none!important}
+/* Hide the old horizontal bar before navigation initializes; avoid layout flash. */
+#mainNavBar:not(.gp-sidebar) {visibility:hidden}
+@media(max-width:1000px){body.gp-nav-open{overflow:hidden}.gp-sidebar{padding-top:calc(18px + env(safe-area-inset-top,0px))!important;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))!important}}
