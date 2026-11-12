@@ -172,7 +172,7 @@
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
     @media print { header, .nav-bar, .sub-bar, .no-print { display: none !important; } body { background: white; padding: 0; } .container { max-width: 100%; margin: 0; padding: 0; } .print-sheet { display: block !important; } }
   </style>
-  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 </head>
 <body class="gp-app">
 
@@ -201,6 +201,7 @@
     <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
     <a href="fleet.html" id="navLinkFleet" class="nav-btn active">4. Vehicle Check & Safety</a>
     <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">6. Collections</a>
   </nav>
 
   <div class="container">
@@ -600,41 +601,26 @@
         issues_count: issueList.length
       };
 
-      let cloudSaved = false;
-      if (isCloudConnected) {
-        try {
-          const result = await supabaseClient.from("vehicle_inspections").insert([record]).select("*").limit(1);
-          if (!result.error && result.data && result.data[0]) {
-            Object.assign(record, result.data[0]);
-            cloudSaved = true;
-          }
-        } catch (e) { console.warn("Fleet inspection cloud sync failed", e); }
+      if (!isCloudConnected || !supabaseClient) {
+        return alert("Supabase is unavailable. Inspection was NOT submitted; reconnect and retry.");
       }
-      if (!record.id) record.id = Date.now();
-      vehicleLogs.unshift(record);
-      localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
-
-      const vObj = garageList.find(v => String(v.id) === String(vId));
-      if (vObj) {
-        vObj.current_mileage = mileage;
-        vObj.last_inspected_date = record.inspection_date;
-        vObj.status = issueList.length > 0 ? "Flagged" : "Passed";
-        localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
-        if (isCloudConnected && activeUser?.perm_admin) {
-          try {
-            let result = await supabaseClient.from("fleet_vehicles").update({unit_name:vObj.unit_name,assigned_employee:vObj.assigned_employee,make:vObj.make,model:vObj.model,license_plate:vObj.license_plate,vin_number:vObj.vin_number,current_mileage:vObj.current_mileage,last_inspected_date:vObj.last_inspected_date,status:vObj.status}).eq("id", vObj.id).select("*").limit(1);
-            if(!result.error && (!result.data || result.data.length===0)){
-              result=await supabaseClient.from("fleet_vehicles").insert([{unit_name:vObj.unit_name,assigned_employee:vObj.assigned_employee,make:vObj.make,model:vObj.model,license_plate:vObj.license_plate,vin_number:vObj.vin_number,current_mileage:vObj.current_mileage,last_inspected_date:vObj.last_inspected_date,status:vObj.status}]).select("*").limit(1);
-            }
-            if(!result.error && result.data?.[0]){const oldId=vObj.id;Object.assign(vObj,result.data[0]);document.getElementById("garageVehicleSelect").value=String(vObj.id);localStorage.setItem("gp_fleet_garage",JSON.stringify(garageList));}
-          } catch (e) {}
-        }
+      try {
+        const result = await supabaseClient.from("vehicle_inspections").insert([record]).select("*").single();
+        if (result.error) throw result.error;
+        if (!result.data?.id) throw new Error("Supabase did not confirm the inspection.");
+        Object.assign(record, result.data);
+        vehicleLogs.unshift(record);
+        localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
+        // The existing database inspection trigger updates/inserts the Fleet
+        // Garage vehicle, including status, mileage and inspection date.
+      } catch (e) {
+        return alert(`Inspection was NOT saved: ${e.message || e}. Your checklist is still filled in.`);
       }
 
       document.getElementById("vDiscrepancies").value = "";
       document.getElementById("vComments").value = "";
       renderChecklistUI();
-      showToast(`Inspection saved ${cloudSaved ? "to cloud and locally" : "locally only (cloud sync unconfirmed)"}`);
+      showToast("Inspection saved to Supabase; Fleet Garage updated by database trigger");
       await loadFleetData();
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -648,17 +634,14 @@
       if (isCloudConnected) {
         try {
           usersList = await GP.employeeDirectory(supabaseClient);
-          const gRes = await supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true });
-          if (gRes.data && gRes.data.length > 0) {
-            const cloudPlates = new Set(gRes.data.map(v => String(v.license_plate || "").trim().toUpperCase()));
-            const pendingLocal = savedG ? garageList.filter(v => Number(v.id) > 1000000000000 && !cloudPlates.has(String(v.license_plate || "").trim().toUpperCase())) : [];
-            garageList = [...gRes.data, ...pendingLocal];
+          const gRes = { data: await GP.fetchAllRows(supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true })) };
+          if (gRes.data) {
+            garageList = gRes.data;
             localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
           }
-          const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
+          const vRes = { data: await GP.fetchAllRows(supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false })) };
           if (vRes.data) {
-            const keys = new Set(vRes.data.map(v => `${GP.escapeHtml(v.employee_name)}|${GP.escapeHtml(v.inspection_date)}|${GP.escapeHtml(v.license_plate)}|${GP.escapeHtml(v.mileage)}`));
-            vehicleLogs = [...vRes.data, ...vehicleLogs.filter(v => !keys.has(`${GP.escapeHtml(v.employee_name)}|${GP.escapeHtml(v.inspection_date)}|${GP.escapeHtml(v.license_plate)}|${GP.escapeHtml(v.mileage)}`))];
+            vehicleLogs = vRes.data;
             localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
         } catch (e) {}
@@ -755,33 +738,23 @@
       if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
       const duplicatePlate = garageList.find(v => String(v.id) !== String(editId) && String(v.license_plate || "").trim().toUpperCase() === obj.license_plate.toUpperCase());
       if (duplicatePlate) return alert(`License plate ${obj.license_plate} is already assigned to ${duplicatePlate.unit_name}.`);
-      let cloudRow = null;
-      if (isCloudConnected) {
-        try {
-          if (editId) {
-            const updateResult = await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId).select("*");
-            if (!updateResult.error && updateResult.data && updateResult.data[0]) cloudRow = updateResult.data[0];
-            else if (!updateResult.error && (!updateResult.data || updateResult.data.length === 0)) {
-              const insertResult = await supabaseClient.from("fleet_vehicles").insert([obj]).select("*").limit(1);
-              if (!insertResult.error && insertResult.data && insertResult.data[0]) cloudRow = insertResult.data[0];
-            }
-          } else {
-            const insertResult = await supabaseClient.from("fleet_vehicles").insert([obj]).select("*").limit(1);
-            if (!insertResult.error && insertResult.data && insertResult.data[0]) cloudRow = insertResult.data[0];
-          }
-        } catch (e) {}
-      }
-      if (editId) {
-        const idx = garageList.findIndex(v => String(v.id) === String(editId));
-        if (idx >= 0) {
-          obj.id = cloudRow?.id || garageList[idx].id;
-          if (cloudRow) Object.assign(obj, cloudRow);
-          garageList[idx] = obj;
+      if (!isCloudConnected || !supabaseClient) return alert("Supabase is unavailable. Vehicle was NOT saved.");
+      try {
+        let result;
+        if (editId) {
+          result = await supabaseClient.from("fleet_vehicles").update(obj).eq("id", editId).select("*").single();
+        } else {
+          result = await supabaseClient.from("fleet_vehicles").insert([obj]).select("*").single();
         }
-      } else {
-        if (cloudRow) Object.assign(obj, cloudRow);
-        if (!obj.id) obj.id = Date.now();
-        garageList.push(obj);
+        if (result.error) throw result.error;
+        if (!result.data?.id) throw new Error("Supabase did not confirm the vehicle save.");
+        const cloudRow = result.data;
+        if (editId) {
+          const idx = garageList.findIndex(v => String(v.id) === String(editId));
+          if (idx >= 0) garageList[idx] = cloudRow;
+        } else garageList.push(cloudRow);
+      } catch (e) {
+        return alert(`Vehicle was NOT saved: ${e.message || e}`);
       }
       localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
       resetVehicleForm();
@@ -792,12 +765,16 @@
     window.deleteVehicle = async function(id) {
       if (!activeUser?.perm_admin) return showToast("Admin role required to update Fleet Garage");
       if (!confirm("Remove vehicle from Fleet Garage?")) return;
-      if (isCloudConnected) {
-        try { await supabaseClient.from("fleet_vehicles").delete().eq("id", id); } catch (e) {}
-      }
-      garageList = garageList.filter(v => String(v.id) !== String(id));
-      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
-      await loadFleetData();
+      if (!isCloudConnected || !supabaseClient) return alert("Supabase is unavailable. Vehicle NOT deleted.");
+      try {
+        const {data,error} = await supabaseClient.from("fleet_vehicles").delete().eq("id",id).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Vehicle not found or permission denied.");
+        garageList = garageList.filter(v => String(v.id) !== String(id));
+        localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+        await loadFleetData();
+        showToast("Vehicle removed from Supabase Fleet Garage");
+      } catch (e) { alert(`Vehicle was NOT deleted: ${e.message || e}`); }
     };
 
     window.printInspectionReport = function(idx) {
@@ -903,6 +880,6 @@
       else if (canSafety) switchFleetTab("safetyPane", document.getElementById("subBtnSafety"));
     });
   </script>
-<script src="gp-pin.js?v=20261103"></script>
+<script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>
