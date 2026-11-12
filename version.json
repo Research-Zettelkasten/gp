@@ -1,5 +1,6 @@
 {
-  "version": "2026.11.12.1",
-  "notes": "Reliability and data-integrity audit: confirm Supabase writes before showing success; protect open time punches on failed sync, page long histories, fix stale-cache ghosts, synchronize fleet and callback changes reliably, and surface failed management cloud refreshes. Preserves existing lunch, collections and account-linked PIN features.",
-  "release_date": "2026-11-12"
+  "version": "2026.11.12.2",
+  "notes": "Collapsible role-based sidebar navigation, favorites and density preferences; exact server-timed lunch punches; mandatory no-lunch explanations and manager approval workflow.",
+  "release_date": "2026-11-12",
+  "released_at": "2026-11-12"
 }
