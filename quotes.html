@@ -161,7 +161,7 @@
       box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
     }
   </style>
-  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 </head>
 <body class="min-h-screen flex flex-col gp-app">
 
@@ -195,10 +195,11 @@
   <!-- UNIFIED 5-SECTION CROSS-PORTAL NAVIGATION BAR -->
   <nav id="mainNavBar" class="gp-nav-bar">
     <a href="index.html" class="gp-nav-btn">1. Time Clock</a>
-    <a href="quotes.html" class="gp-nav-btn active">2. Quote Call-Backs</a>
+    <a href="quotes.html" id="navLinkQuotes" class="gp-nav-btn active">2. Quote Call-Backs</a>
     <a href="commissions.html" id="navLinkComm" class="gp-nav-btn">3. Commission & WOs</a>
     <a href="fleet.html" id="navLinkFleet" class="gp-nav-btn">4. Vehicle Check & Safety</a>
     <a href="admin.html" id="navLinkAdmin" class="gp-nav-btn">5. Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">6. Collections</a>
   </nav>
 
   <!-- MAIN CONTENT CONTAINER -->
@@ -1063,7 +1064,11 @@
       const woIdentifier = `Q-${quote.quote_number}`;
       const existingComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
 
-      if (isCloudConnected) {
+      if (!isCloudConnected || !supabaseClient) {
+        showToast("Supabase unavailable. Quote conversion was NOT recorded.", "warning");
+        return false;
+      }
+      {
         const { data, error } = await supabaseClient.rpc("gp_bridge_won_quote", {
           p_quote_number: Number(quote.quote_number),
           p_target_employee_name: activePortalUser?.perm_admin ? csrMeta.fullName : null,
@@ -1120,7 +1125,10 @@
       try {
         const result = activePortalUser?.perm_admin
           ? await supabaseClient.from("outstanding_quotes").upsert([row], { onConflict: "quote_number" })
-          : await supabaseClient.from("outstanding_quotes").update(row).eq("quote_number", q.quote_number).select("quote_number");
+          : await supabaseClient.from("outstanding_quotes").update({
+              status:q.status, contact_attempts:q.contact_attempts||0,
+              call_data:q.call_data||{}
+            }).eq("quote_number", q.quote_number).select("quote_number");
         if (result.error) throw result.error;
         if (!activePortalUser?.perm_admin && (!Array.isArray(result.data) || result.data.length !== 1)) {
           throw new Error("Quote no longer exists or is no longer accessible.");
@@ -1199,7 +1207,7 @@
 
       if (isCloudConnected) {
         try {
-          const qRes = await supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false });
+          const qRes = { data: await GP.fetchAllRows(supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false })) };
           if (!qRes.error && Array.isArray(qRes.data)) {
             // Authenticated cloud state is authoritative. Never merge old
             // browser-cached customer records back into a protected dataset.
@@ -1520,6 +1528,7 @@
       if (!quote) return;
       if (!confirm(`Mark Quote #${quote.quote_number} as already acquired/booked and remove it from the active call-back queue?`)) return;
 
+      const before = JSON.parse(JSON.stringify(quote));
       const today = GP.localDate();
       quote.status = "acquired";
       quote.call_data = {
@@ -1533,8 +1542,11 @@
         csr_stamp: `${activeCsr} • ${today}`
       };
 
+      if (!await syncSingleQuoteToSupabase(quote)) {
+        Object.assign(quote, before);
+        return; // Keep the modal and customer record intact for retry.
+      }
       await logPortalAudit("QUOTE_ALREADY_ACQUIRED", `Quote #${quote.quote_number} (${quote.customer_name}) verified as already acquired/booked and removed from the call-back queue`);
-      await syncSingleQuoteToSupabase(quote);
       saveState();
       closeCallbackModal();
       refreshAllViews();
@@ -1600,7 +1612,8 @@
       if (!name) return;
       if (!competitorsState.some(c => c.name.toLowerCase() === name.toLowerCase())) {
         const cloudRow=await addCompetitorCloud(name,"Auto & Flat",true);
-        competitorsState.push(cloudRow?{id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false}:{ id: Date.now(), name, specialty: "Auto & Flat", active: true });
+        if (!cloudRow) return showToast("Competitor was not saved to Supabase; check permissions or connection.", "warning");
+        competitorsState.push({id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false});
         saveState();
         renderCompetitorsTable();
       }
@@ -1726,6 +1739,7 @@
     async function saveAndCloseCallReceipt() {
       const quote = quotesState.find(q => q.quote_number === Number(activeModalQuoteNumber));
       if (!quote) return;
+      const before = JSON.parse(JSON.stringify(quote));
 
       const workCompleted = document.querySelector('input[name="q_work_completed"]:checked')?.value || "";
       const competitorName = document.getElementById("q_competitor_select").value || "";
@@ -1767,22 +1781,43 @@
         csr_stamp: stamp
       };
 
+      let auditAction, auditDetails, notice, noticeType;
       if (notDoneOutcome === "WON_BOOKED" || (earnBackPossible === "yes" && winbackStatus.includes("Won Back"))) {
         quote.status = "won";
         const bridged = await bridgeWonQuoteToCommissionLogs(quote, activeCsr);
-        await logPortalAudit("QUOTE_WON", `Converted Quote #${quote.quote_number} (${quote.customer_name} - ${formatCurrency(quote.total)})${bridged ? " & synced to Commission WOs" : " (Commission WO sync failed)"}`);
-        if (bridged) showToast(`Quote #${quote.quote_number} marked WON & synced to Commission WOs!`, "success");
+        if (!bridged) { Object.assign(quote, before); return; }
+        auditAction = "QUOTE_WON";
+        auditDetails = `Converted Quote #${quote.quote_number} (${quote.customer_name} - ${formatCurrency(quote.total)}) & synced to Commission WOs`;
+        notice = `Quote #${quote.quote_number} marked WON & synced to Commission WOs!`;
+        noticeType = "success";
       } else if (stillForReview === "yes") {
         quote.status = "follow_up";
-        await logPortalAudit("QUOTE_FOLLOWUP", `Scheduled Quote #${quote.quote_number} (${quote.customer_name}) for review on ${expectedAnswerDate}`);
-        showToast(`Quote #${quote.quote_number} scheduled for follow-up on ${expectedAnswerDate}!`, "info");
+        auditAction = "QUOTE_FOLLOWUP";
+        auditDetails = `Scheduled Quote #${quote.quote_number} (${quote.customer_name}) for review on ${expectedAnswerDate}`;
+        notice = `Quote #${quote.quote_number} scheduled for follow-up on ${expectedAnswerDate}!`;
+        noticeType = "info";
       } else {
         quote.status = "admin_review";
-        await logPortalAudit("QUOTE_RECEIPT", `Sent Quote #${quote.quote_number} (${quote.customer_name}) receipt to Admin Review Queue`);
-        showToast(`Job receipt for Quote #${quote.quote_number} sent to Admin Review Queue!`, "info");
+        auditAction = "QUOTE_RECEIPT";
+        auditDetails = `Sent Quote #${quote.quote_number} (${quote.customer_name}) receipt to Admin Review Queue`;
+        notice = `Job receipt for Quote #${quote.quote_number} sent to Admin Review Queue!`;
+        noticeType = "info";
+      }
+      const synced = await syncSingleQuoteToSupabase(quote);
+      if (!synced) {
+        // The secured WON bridge may already have committed. Don't revert its
+        // confirmed status; show a note-sync warning and refresh from Supabase.
+        if (quote.status === "won") {
+          showToast("Quote won and WO recorded, but callback notes need to be checked in Supabase.", "warning");
+        } else {
+          Object.assign(quote, before);
+          return;
+        }
+      } else {
+        await logPortalAudit(auditAction, auditDetails);
+        showToast(notice, noticeType);
       }
 
-      await syncSingleQuoteToSupabase(quote);
       closeCallbackModal();
       refreshAllViews();
     }
@@ -1790,6 +1825,7 @@
     async function handleVoicemailQuickAction() {
       const quote = quotesState.find(q => q.quote_number === Number(activeModalQuoteNumber));
       if (!quote) return;
+      const before = JSON.parse(JSON.stringify(quote));
 
       quote.contact_attempts = (quote.contact_attempts || 0) + 1;
       const csrInfo = getCsrInfo(activeCsr);
@@ -1798,19 +1834,23 @@
       if (quote.contact_attempts >= 3) {
         quote.status = "admin_review";
         quote.call_data = {
-          work_completed: "unknown",
-          date_reviewed: GP.localDate(),
+          work_completed: "unknown", date_reviewed: GP.localDate(),
           still_for_review: "no",
           notes: "Reached 3 unanswered voicemail attempts. Auto-routed to Admin Review.",
           csr_stamp: stamp
         };
+      }
+      if (!await syncSingleQuoteToSupabase(quote)) {
+        Object.assign(quote, before);
+        return;
+      }
+      if (quote.contact_attempts >= 3) {
         await logPortalAudit("QUOTE_3X_VM", `Quote #${quote.quote_number} (${quote.customer_name}) hit 3 voicemails -> routed to Admin Review`);
         showToast(`Quote #${quote.quote_number} hit 3 voicemails — routed to Admin Review Log.`, "warning");
       } else {
         showToast(`Logged Voicemail #${quote.contact_attempts} for ${quote.customer_name}.`, "info");
       }
 
-      await syncSingleQuoteToSupabase(quote);
       closeCallbackModal();
       refreshAllViews();
     }
@@ -1949,25 +1989,32 @@
       if (!activePortalUser?.perm_admin) return showToast("Admin role required", "warning");
       const q = quotesState.find(item => item.quote_number === Number(quoteNumber));
       if (!q) return;
+      const before = JSON.parse(JSON.stringify(q));
       const coachingNote = document.getElementById("adminCoachingInput")?.value.trim() || "";
 
+      let actionName = "QUOTE_ARCHIVED", description = "Archived quote receipt", toast = "Receipt archived";
       if (action === "REQUEUE") {
         q.status = "open";
         if (coachingNote) q.admin_coaching_note = coachingNote;
-        await logPortalAudit("QUOTE_REQUEUE", `Admin re-queued Quote #${q.quote_number} (${q.customer_name}) with note: ${coachingNote || 'Re-work'}`);
-        showToast(`Quote #${q.quote_number} re-queued to active CSR Call-Back Board!`, "info");
+        actionName = "QUOTE_REQUEUE"; description = `Re-queued Quote #${q.quote_number} (${q.customer_name}) with note: ${coachingNote || 'Re-work'}`;
+        toast = `Quote #${q.quote_number} re-queued to active CSR Call-Back Board`;
       } else if (action === "WON") {
         q.status = "won";
-        const bridged = await bridgeWonQuoteToCommissionLogs(q, q.csr || activeCsr);
-        await logPortalAudit("QUOTE_WON_ADMIN", `Admin converted Quote #${q.quote_number} (${q.customer_name}) to WON${bridged ? " & logged Commission WO" : " (Commission WO sync failed)"}`);
-        if (bridged) showToast(`Quote #${q.quote_number} marked WON & synced to Commission WOs!`, "success");
+        if (!await bridgeWonQuoteToCommissionLogs(q, q.csr || activeCsr)) { Object.assign(q,before); return; }
+        actionName = "QUOTE_WON_ADMIN"; description = `Converted Quote #${q.quote_number} (${q.customer_name}) to WON & logged Commission WO`;
+        toast = `Quote #${q.quote_number} marked WON & synced to Commission WOs`;
       } else {
         q.status = "closed";
-        await logPortalAudit("QUOTE_ARCHIVED", `Admin archived Quote Receipt #${q.quote_number} (${q.customer_name})`);
-        showToast(`Job receipt #${q.quote_number} archived and closed.`, "info");
+        description = `Archived Quote Receipt #${q.quote_number} (${q.customer_name})`;
+        toast = `Job receipt #${q.quote_number} archived and closed`;
       }
-
-      await syncSingleQuoteToSupabase(q);
+      if (!await syncSingleQuoteToSupabase(q)) {
+        if (q.status !== "won") { Object.assign(q,before); return; }
+        showToast("Won quote recorded, but callback detail synchronization needs review.", "warning");
+      } else {
+        await logPortalAudit(actionName, description);
+        showToast(toast, action === "WON" ? "success" : "info");
+      }
       closeAdminInspectorModal();
       refreshAllViews();
     }
@@ -2006,22 +2053,40 @@
         showToast(`"${name}" is already in the Competitor Manager.`, "warning");
         return;
       }
+      if (!activePortalUser?.perm_admin) return showToast("Admin permission required", "warning");
       const cloudRow=await addCompetitorCloud(name,catSelect.value,true);
-      competitorsState.push(cloudRow?{id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false}:{ id: Date.now(), name, specialty: catSelect.value, active: true });
+      if (!cloudRow) return showToast("Competitor was not saved to Supabase. Retry after checking your connection.", "warning");
+      competitorsState.push({id:cloudRow.id,name:cloudRow.name,specialty:cloudRow.specialty,active:cloudRow.active!==false});
       nameInput.value = "";
       refreshAllViews();
       showToast(`Added "${name}" to the active Competitor Dropdown!`, "success");
     }
 
     async function toggleCompetitorActive(id) {
+      if (!activePortalUser?.perm_admin) return showToast("Admin permission required", "warning");
       const comp = competitorsState.find(c => String(c.id) === String(id));
-      if (comp) { comp.active = !comp.active; if(isCloudConnected && Number(comp.id)<1000000000000){try{await supabaseClient.from("quote_competitors").update({active:comp.active}).eq("id",comp.id);}catch(e){}} refreshAllViews(); }
+      if (!comp) return;
+      if (!isCloudConnected || !supabaseClient) return showToast("Supabase is unavailable; competitor unchanged", "warning");
+      try {
+        const next = !comp.active;
+        const {data,error} = await supabaseClient.from("quote_competitors").update({active:next}).eq("id",comp.id).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Competitor not found or permission denied");
+        comp.active = next;
+        refreshAllViews();
+      } catch (e) { showToast(`Competitor was not updated: ${e.message || e}`, "warning"); }
     }
 
     async function deleteCompetitor(id) {
-      if(isCloudConnected && Number(id)<1000000000000){try{await supabaseClient.from("quote_competitors").delete().eq("id",id);}catch(e){}}
-      competitorsState = competitorsState.filter(c => String(c.id) !== String(id));
-      refreshAllViews();
+      if (!activePortalUser?.perm_admin) return showToast("Admin permission required", "warning");
+      if (!isCloudConnected || !supabaseClient) return showToast("Supabase is unavailable; competitor unchanged", "warning");
+      try {
+        const {data,error} = await supabaseClient.from("quote_competitors").delete().eq("id",id).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Competitor not found or permission denied");
+        competitorsState = competitorsState.filter(c => String(c.id) !== String(id));
+        refreshAllViews();
+      } catch (e) { showToast(`Competitor was not deleted: ${e.message || e}`, "warning"); }
     }
 
     function renderDeduplicationRegistry() {
@@ -2048,17 +2113,20 @@
     }
 
     async function toggleCustomerDedupExemption(normName) {
-      const removing=exemptedCustomerNames.has(normName);
-      if (removing) exemptedCustomerNames.delete(normName);
-      else exemptedCustomerNames.add(normName);
-      localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));
-      renderDeduplicationRegistry();
-      if(isCloudConnected){
-        try{
-          if(removing) await supabaseClient.from("quote_customer_exemptions").delete().eq("normalized_customer_name",normName);
-          else await supabaseClient.from("quote_customer_exemptions").upsert([{normalized_customer_name:normName,created_by:activePortalUser?.employee_name||activeCsr}],{onConflict:"normalized_customer_name"});
-        }catch(e){}
-      }
+      if (!activePortalUser?.perm_admin) return showToast("Admin permission required", "warning");
+      if (!isCloudConnected || !supabaseClient) return showToast("Supabase is unavailable; exemption unchanged", "warning");
+      const removing = exemptedCustomerNames.has(normName);
+      try {
+        const result = removing
+          ? await supabaseClient.from("quote_customer_exemptions").delete().eq("normalized_customer_name",normName).select("normalized_customer_name")
+          : await supabaseClient.from("quote_customer_exemptions").upsert([{normalized_customer_name:normName,created_by:activePortalUser.employee_name}],{onConflict:"normalized_customer_name"}).select("normalized_customer_name");
+        if (result.error) throw result.error;
+        if (!result.data?.length) throw new Error("Supabase did not confirm the change");
+        if (removing) exemptedCustomerNames.delete(normName);
+        else exemptedCustomerNames.add(normName);
+        localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));
+        renderDeduplicationRegistry();
+      } catch(e) { showToast(`Exemption change failed: ${e.message || e}`, "warning"); }
     }
 
     // =======================================================================
@@ -2155,11 +2223,22 @@
       });
 
       if (acceptedQuotes.length > 0) {
-        quotesState = [...acceptedQuotes, ...quotesState];
-        for (const q of acceptedQuotes) {
-          await syncSingleQuoteToSupabase(q);
+        if (!activePortalUser?.perm_admin || !isCloudConnected) {
+          return showToast("Admin account with Supabase connection is required for CSV imports.", "warning");
         }
-        await logPortalAudit("CSV_UPLOAD", `Uploaded ${sourceLabel}: +${acceptedQuotes.length} new quotes added, ${rejectedQuotes.length} duplicates blocked`);
+        const rows = acceptedQuotes.map(q=>({
+          quote_number:q.quote_number, normalized_customer_name:normalizeCustomerName(q.customer_name),
+          customer_name:q.customer_name,quote_date:q.quote_date,module:q.module,phone:q.phone,
+          has_cell:q.has_cell,subtotal:q.subtotal,tax:q.tax,total:q.total,
+          original_csr:q.csr,parts:q.parts||[],status:q.status||"open",
+          contact_attempts:0,call_data:{},admin_coaching_note:""
+        }));
+        const {error} = await supabaseClient.from("outstanding_quotes").insert(rows);
+        if (error) {
+          return showToast(`CSV import NOT saved: ${error.message}. Refresh records before retrying.`, "warning");
+        }
+        quotesState = [...acceptedQuotes, ...quotesState];
+        await logPortalAudit("CSV_UPLOAD", `Uploaded ${sourceLabel}: +${acceptedQuotes.length} new quotes saved in Supabase, ${rejectedQuotes.length} duplicates blocked`);
         refreshAllViews();
       }
 
@@ -2205,6 +2284,6 @@
 
     window.addEventListener("DOMContentLoaded", initApp);
   </script>
-<script src="gp-pin.js?v=20261103"></script>
+<script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>
