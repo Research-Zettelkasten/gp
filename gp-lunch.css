@@ -1,0 +1,17 @@
+/* Variable-length lunch punches, exception notes and supervisor review. */
+.gp-lunch-panel {border:1px solid #d9e5f0;background:linear-gradient(135deg,#f7fbff,#edf5fc);border-radius:15px;padding:17px;margin:0 0 16px}
+.gp-lunch-heading {display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.gp-lunch-heading strong {font-size:15px;color:#153351}
+.gp-lunch-panel p,.gp-manual-lunch-guide,.gp-form-hint {font-size:12px;line-height:1.6;color:#526a83}
+.gp-lunch-times {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:13px 0}
+.gp-lunch-times span{min-width:0;background:white;border:1px solid #e0eaf5;border-radius:10px;padding:10px 12px;font-size:11px;color:#6e8197}
+.gp-lunch-times b{display:block;margin-top:4px;color:#183454;font-size:16px;white-space:nowrap}
+.gp-lunch-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px}
+.gp-lunch-actions .btn {flex:1;min-width:135px}
+.gp-no-lunch-reason {margin:14px 0 9px;padding:13px;background:#fffaf0;border:1px solid #ead6a9;border-radius:10px}
+.gp-no-lunch-reason label{font-size:12px;font-weight:750;color:#785722;display:block;margin-bottom:7px}
+.gp-no-lunch-reason textarea{width:100%;min-height:70px;padding:11px;border:1px solid #d4bd8a;border-radius:9px;box-sizing:border-box;resize:vertical;font:inherit}
+.gp-no-lunch-reason small{display:block;margin-top:5px;color:#806232;font-size:11px;line-height:1.5}
+.gp-lunch-review{border-left:4px solid #e7aa42!important}
+.gp-lunch-review table td {vertical-align:top}
+@media(max-width:560px){.gp-lunch-times{grid-template-columns:1fr 1fr}.gp-lunch-times span:last-child{grid-column:1 / -1}.gp-lunch-actions{flex-direction:column}.gp-lunch-actions .btn{flex:auto}}
