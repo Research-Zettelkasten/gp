@@ -731,7 +731,7 @@
     @media(max-width:850px){.dashboard-pref-panel{grid-template-columns:1fr 1fr}#dashboardLowerGrid.layout-two{grid-template-columns:1fr}}@media(max-width:560px){.dashboard-pref-panel{grid-template-columns:1fr}.time-group summary{align-items:flex-start;flex-direction:column}}
 
   </style>
-  <link rel="stylesheet" href="glasspro-theme.css?v=20261103">
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 </head>
 <body class="gp-app">
 
@@ -764,6 +764,7 @@
     <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
     <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
     <a href="admin.html" id="navLinkAdmin" class="nav-btn active">5. Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="nav-btn">6. Collections</a>
   </nav>
 
   <div class="container">
@@ -995,6 +996,7 @@
         <div class="perm-grid">
           <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
           <label class="perm-label"><input type="checkbox" id="permQuotes" checked /> Quote Call-Backs</label>
+          <label class="perm-label"><input type="checkbox" id="permCollections" /> Collections &amp; AR</label>
           <label class="perm-label"><input type="checkbox" id="permCommission" checked /> Commission / WO Log</label>
           <label class="perm-label"><input type="checkbox" id="permVehSubmit" /> Submit Vehicle Check</label>
           <label class="perm-label"><input type="checkbox" id="permVehView" /> View Fleet History</label>
@@ -1090,15 +1092,18 @@
             <input type="time" id="editEnd" oninput="previewEditedHours()" />
           </div>
           <div>
-            <label>Unpaid Break Deduction</label>
-            <select id="editBreak" onchange="previewEditedHours()">
-              <option value="0">0 mins (00.00)</option>
-              <option value="15">15 mins (00.25)</option>
-              <option value="30">30 mins (00.50)</option>
-              <option value="45">45 mins (00.75)</option>
-              <option value="60">60 mins (01.00)</option>
-            </select>
+            <label>Manual Break Minutes (only if lunch times aren't known)</label>
+            <input type="number" id="editBreak" min="0" max="1439" step="1" value="0" oninput="previewEditedHours()" />
           </div>
+        </div>
+
+        <div class="card" style="padding:13px 14px;margin-bottom:12px;border:1px solid #b9d4e7;background:#eef7fd;">
+          <div style="font-weight:800;margin-bottom:9px;">Exact Lunch Punches <span style="font-size:11px;font-weight:500;">(optional, replaces manual break minutes)</span></div>
+          <div class="grid-2">
+            <div><label for="editLunchOut">Lunch Out — when employee left</label><input type="time" id="editLunchOut" oninput="previewEditedHours()" /></div>
+            <div><label for="editLunchBack">Lunch Back — when employee returned</label><input type="time" id="editLunchBack" oninput="previewEditedHours()" /></div>
+          </div>
+          <div id="editLunchSummary" role="status" aria-live="polite" style="font-size:12px;color:#334155;margin-top:8px;">Enter both lunch punches to calculate exact minutes.</div>
         </div>
 
         <!-- LIVE BEFORE -> AFTER HOURS PREVIEW -->
@@ -1119,7 +1124,7 @@
           <input type="text" id="editAuditReason" placeholder="e.g. Forgot to clock out for lunch, late mobile route return..." />
         </div>
 
-        <button type="button" class="btn btn-navy" onclick="saveEditedTimeRecord()">Save Time Adjustment & Record to Supervisor Audit Log</button>
+        <button type="button" id="saveEditedTimeButton" class="btn btn-navy" onclick="saveEditedTimeRecord()">Save Time Adjustment & Record to Supervisor Audit Log</button>
       </div>
 
       <!-- DRAWER B: ADD MISSING TIME PUNCH FOR AN EMPLOYEE -->
@@ -1143,22 +1148,25 @@
         <div class="grid-3" style="margin-bottom:12px;">
           <div>
             <label>Clock-In Time *</label>
-            <input type="time" id="addShiftStart" value="08:00" />
+            <input type="time" id="addShiftStart" value="08:00" oninput="previewAddedShiftHours()" />
           </div>
           <div>
             <label>Clock-Out Time *</label>
-            <input type="time" id="addShiftEnd" value="17:00" />
+            <input type="time" id="addShiftEnd" value="17:00" oninput="previewAddedShiftHours()" />
           </div>
           <div>
-            <label>Unpaid Break Mins</label>
-            <select id="addShiftBreak">
-              <option value="0">0 mins</option>
-              <option value="15">15 mins</option>
-              <option value="30" selected>30 mins</option>
-              <option value="45">45 mins</option>
-              <option value="60">60 mins</option>
-            </select>
+            <label>Manual Break Minutes (if exact times unavailable)</label>
+            <input type="number" id="addShiftBreak" min="0" max="1439" step="1" value="0" oninput="previewAddedShiftHours()" />
           </div>
+        </div>
+
+        <div class="card" style="padding:13px 14px;margin-bottom:12px;border:1px solid #b9d4e7;background:#eef7fd;">
+          <div style="font-weight:800;margin-bottom:9px;">Exact Lunch Punches <span style="font-size:11px;font-weight:500;">(optional, replaces manual break minutes)</span></div>
+          <div class="grid-2">
+            <div><label for="addShiftLunchOut">Lunch Out — when employee left</label><input type="time" id="addShiftLunchOut" oninput="previewAddedShiftHours()" /></div>
+            <div><label for="addShiftLunchBack">Lunch Back — when employee returned</label><input type="time" id="addShiftLunchBack" oninput="previewAddedShiftHours()" /></div>
+          </div>
+          <div id="addShiftLunchSummary" role="status" aria-live="polite" style="font-size:12px;color:#334155;margin-top:8px;">No exact lunch punches entered.</div>
         </div>
 
         <div style="margin-bottom:12px;">
@@ -1166,7 +1174,7 @@
           <input type="text" id="addShiftReason" placeholder="e.g. Phone battery died on job site, forgot morning punch..." />
         </div>
 
-        <button type="button" class="btn btn-green" onclick="saveAdminAddedShift()">Insert Shift & Record to Supervisor Audit Log</button>
+        <button type="button" id="saveAdminAddedShiftButton" class="btn btn-green" onclick="saveAdminAddedShift()">Insert Shift & Record to Supervisor Audit Log</button>
       </div>
 
       <!-- PAYROLL HOURS & CLASSIFICATION SUMMARY TABLE -->
@@ -1193,7 +1201,7 @@
       </div>
 
       <div class="card live-sync-card"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Live Elapsed</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
-      <div class="card"><div class="card-title"><span>Time Logs & High-Precision Street Geotags — Grouped by Employee</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select an employee to drop down every registered shift. Use <b>Edit Punch</b> to adjust a record; every change is recorded in the Audit Trail.</p><div id="adminTimeGroups"></div></div>
+      <div class="card"><div class="card-title"><span>Time Logs & High-Precision Street Geotags — Grouped by Employee</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
     </div>
 
     <!-- ====================================================================
@@ -1399,6 +1407,79 @@
       return format00(dec);
     }
 
+    // Exact lunch punches are expressed as HH:MM on the work shift's local clock.
+    // Cross-midnight shifts are supported (22:00-06:00 with lunch 01:00-01:30).
+    // Existing records without exact lunch punches retain their original break deduction.
+    function evaluateAdminShift(start, end, lunchOut, lunchBack, manualBreak) {
+      const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+      if (!validTime.test(start || "") || !validTime.test(end || "")) {
+        return { error: "Enter valid clock-in and clock-out times." };
+      }
+      const minuteOfDay = t => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+      const shiftStart = minuteOfDay(start);
+      const shiftEnd = minuteOfDay(end) + (minuteOfDay(end) < shiftStart ? 1440 : 0);
+      const span = shiftEnd - shiftStart;
+      if (span <= 0) return { error: "Clock-in and clock-out cannot be the same time." };
+      const rawBreak = String(manualBreak ?? "").trim();
+      const fallbackBreak = rawBreak === "" ? 0 : Number(rawBreak);
+      if (!Number.isSafeInteger(fallbackBreak) || fallbackBreak < 0 || fallbackBreak > 1439) {
+        return { error: "Manual break minutes must be a whole number between 0 and 1439." };
+      }
+      const hasOut = Boolean(lunchOut), hasBack = Boolean(lunchBack);
+      if (hasOut !== hasBack) return { error: "Enter both Lunch Out and Lunch Back, or leave both blank." };
+      let breakMinutes = fallbackBreak;
+      if (hasOut && hasBack) {
+        if (!validTime.test(lunchOut) || !validTime.test(lunchBack)) return { error: "Use valid HH:MM lunch times." };
+        const toShiftTime = t => {
+          const min = minuteOfDay(t);
+          return min < shiftStart ? min + 1440 : min;
+        };
+        const out = toShiftTime(lunchOut);
+        let back = toShiftTime(lunchBack);
+        if (back <= out) back += 1440;
+        if (out < shiftStart || back > shiftEnd || back <= out) {
+          return { error: "Lunch must begin and end within the recorded shift, and Lunch Back must follow Lunch Out." };
+        }
+        breakMinutes = back - out;
+      }
+      if (breakMinutes > span) return { error: "Unpaid break cannot exceed shift duration." };
+      return {
+        breakMinutes,
+        lunchOut: hasOut ? lunchOut : null,
+        lunchBack: hasBack ? lunchBack : null,
+        hours: format00((span - breakMinutes) / 60),
+        usesExactLunch: hasOut && hasBack
+      };
+    }
+
+    function getPunchEditorResult(prefix) {
+      const edit = prefix === "edit";
+      return evaluateAdminShift(
+        document.getElementById(edit ? "editStart" : "addShiftStart").value,
+        document.getElementById(edit ? "editEnd" : "addShiftEnd").value,
+        document.getElementById(edit ? "editLunchOut" : "addShiftLunchOut").value,
+        document.getElementById(edit ? "editLunchBack" : "addShiftLunchBack").value,
+        document.getElementById(edit ? "editBreak" : "addShiftBreak").value
+      );
+    }
+    function showPunchPreview(prefix) {
+      const isEdit = prefix === "edit";
+      const result = getPunchEditorResult(prefix);
+      const target = document.getElementById(isEdit ? "editLunchSummary" : "addShiftLunchSummary");
+      const breakInput = document.getElementById(isEdit ? "editBreak" : "addShiftBreak");
+      const bothEntered = Boolean(document.getElementById(isEdit ? "editLunchOut" : "addShiftLunchOut").value)
+        && Boolean(document.getElementById(isEdit ? "editLunchBack" : "addShiftLunchBack").value);
+      breakInput.disabled = bothEntered;
+      target.style.color = result.error ? "#b91c1c" : "#334155";
+      target.textContent = result.error || (result.usesExactLunch
+        ? `Exact unpaid lunch: ${result.breakMinutes} minutes. Net shift: ${result.hours} hours.`
+        : `No exact lunch times; ${result.breakMinutes} manually deducted minute(s). Net shift: ${result.hours} hours.`);
+      if (isEdit) document.getElementById("editNewHoursDisplay").textContent = result.error ? "—" : `${result.hours} hrs`;
+      return result;
+    }
+    window.previewEditedHours = () => showPunchPreview("edit");
+    window.previewAddedShiftHours = () => showPunchPreview("add");
+
     // Safely extracts numeric hours from any time_log row (even if decimal_hours was stored under another field)
     function getShiftHours(r) {
       if (!r) return 0;
@@ -1578,11 +1659,13 @@
       setDashboardSaveState("Saving dashboard…");
       let cloudSaved=false;
       try{
-        if(isCloudConnected&&activeUser?.auth_user_id){
+        if(!isCloudConnected || !activeUser?.auth_user_id) throw new Error("Supabase is unavailable. Dashboard preferences were not saved; reconnect and retry.");
+        {
           const payload={auth_user_id:String(activeUser.auth_user_id),dashboard_prefs:nextPrefs,updated_at:new Date().toISOString()};
           const {data,error}=await supabaseClient.from("portal_preferences").upsert([payload],{onConflict:"auth_user_id"}).select("dashboard_prefs,updated_at").single();
           if(error)throw error;
-          cloudSaved=!!data;
+          if (!data) throw new Error("Supabase did not confirm the saved dashboard.");
+          cloudSaved=true;
         }
         dashboardPrefs={...nextPrefs,locked:true};
         dashboardSavedPrefs={...dashboardPrefs};
@@ -1604,14 +1687,14 @@
     };
     function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
     function getOpenTimeGroups(){try{return JSON.parse(localStorage.getItem("gp_admin_time_groups_open")||"[]");}catch(e){return[];}}
-    window.rememberTimeGroupState=function(el){const open=new Set(getOpenTimeGroups()),key=el.dataset.employee||"";if(!key)return;if(el.open)open.add(key);else open.delete(key);localStorage.setItem("gp_admin_time_groups_open",JSON.stringify([...open]));};
-    window.setAllTimeGroups=function(openState){const keys=[];document.querySelectorAll(".time-group").forEach(el=>{el.open=openState;if(openState&&el.dataset.employee)keys.push(el.dataset.employee);});localStorage.setItem("gp_admin_time_groups_open",JSON.stringify(keys));};
+    window.rememberTimeGroupState=function(el){const open=new Set(getOpenTimeGroups()),key=el.dataset.employee||"";if(!key)return;if(el.open)open.add(key);else open.delete(key);localStorage.setItem("gp_admin_time_groups_open",JSON.stringify([...open]))};
+    window.setAllTimeGroups=function(openState){const keys=[];document.querySelectorAll(".time-group").forEach(el=>{el.open=openState;if(openState&&el.dataset.employee)keys.push(el.dataset.employee);});localStorage.setItem("gp_admin_time_groups_open",JSON.stringify(keys))};
     function renderGroupedTimeLogs(){
       const host=document.getElementById("adminTimeGroups");if(!host)return;const openGroups=new Set(getOpenTimeGroups()),grouped=new Map();
       timeLogs.forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
       const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No time logs recorded yet.</div>`;return;}
       host.innerHTML=names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
-        const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.break_minutes||0}m</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
+        const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.lunch_out_time && r.lunch_in_time ? `<small style="display:block;white-space:nowrap;">${GP.escapeHtml(r.lunch_out_time)} → ${GP.escapeHtml(r.lunch_in_time)}</small>` : ""}${Number(r.break_minutes)||0}m${r.lunch_out_time && r.lunch_in_time ? " <small>(exact)</small>" : ""}</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
         return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
     }
     function parseClockAudit(a){if(!a||!["TIME_CLOCK_IN","TIME_CLOCK_OUT"].includes(a.action_type))return null;try{return {...JSON.parse(a.details||"{}"),action_type:a.action_type,fallbackName:a.supervisor_name};}catch(e){return{action_type:a.action_type,employee_name:a.supervisor_name||"Unknown"};}}
@@ -1626,6 +1709,17 @@
     function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),gross=Math.max(0,(Date.now()-ms)/3600000),elapsed=Math.max(0,gross-((Number(e.break_minutes)||0)/60)),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
     function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dashboardPrefs.locked)loadDashboardPreferences();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
+
+    function requireManagementCloud() {
+      if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable. No changes were made. Reconnect and retry.");
+    }
+    async function confirmManagementWrite(request, description) {
+      requireManagementCloud();
+      const {data, error} = await request;
+      if (error) throw error;
+      if (Array.isArray(data) && data.length === 0) throw new Error(`${description} was not found or you do not have permission.`);
+      return data;
+    }
 
     async function logAudit(actionType, detailsText) {
       const entry = {
@@ -1662,48 +1756,54 @@
       if (isCloudConnected) {
         try {
           const uRes = await supabaseClient.from("app_users").select("*").order("id", { ascending: true });
-          if (!uRes.error && Array.isArray(uRes.data)) {
-            usersList = uRes.data.map(u => ({...u,active:u.active!==false,perm_time:u.perm_time!==false,perm_quotes:u.perm_quotes!==false,perm_commission:u.perm_commission!==false,perm_safety:u.perm_safety!==false}));
+          if (uRes.error) throw uRes.error;
+          if (Array.isArray(uRes.data)) {
+            usersList = uRes.data.map(GP.normalizeProfile);
             localStorage.setItem("gp_app_users", JSON.stringify(usersList));
           }
 
-          const tRes = await supabaseClient.from("time_logs").select("*").order("id", { ascending: false });
+          const tRes = {data:await GP.fetchAllRows(supabaseClient.from("time_logs").select("*").order("id", { ascending: false }))};
           if (tRes.data) {
-            timeLogs = mergeRecordLists(tRes.data, localTime, r => `${normalizeName(r.employee_name)}|${r.work_date}|${r.clock_in}|${r.clock_out}`);
+            timeLogs = tRes.data; // Supabase is authoritative after a successful load.
             localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
           }
 
-          const cRes = await supabaseClient.from("commission_logs").select("*").order("id", { ascending: false });
+          const cRes = {data:await GP.fetchAllRows(supabaseClient.from("commission_logs").select("*").order("id", { ascending: false }))};
           if (cRes.data) {
-            commissionLogs = mergeRecordLists(cRes.data, localComm, c => `${normalizeName(c.employee_name)}|${c.work_date}|${c.wo_number}`);
+            commissionLogs = cRes.data;
             localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
           }
 
-          const vRes = await supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false });
+          const vRes = {data:await GP.fetchAllRows(supabaseClient.from("vehicle_inspections").select("*").order("id", { ascending: false }))};
           if (vRes.data) {
-            vehicleLogs = mergeRecordLists(vRes.data, localVeh, v => `${v.license_plate}|${v.inspection_date}|${v.mileage}`);
+            vehicleLogs = vRes.data;
             localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
 
-          const aRes = await supabaseClient.from("audit_logs").select("*").order("id", { ascending: false });
+          const aRes = {data:await GP.fetchAllRows(supabaseClient.from("audit_logs").select("*").order("id", { ascending: false }))};
           if (aRes.data) {
-            auditLogs = mergeRecordLists(aRes.data, localAudit, a => `${a.timestamp}|${a.action_type}|${a.details}`);
+            auditLogs = aRes.data;
             localStorage.setItem("gp_audit_logs", JSON.stringify(auditLogs));
           }
 
           const activeRes = await supabaseClient.from("active_time_sessions").select("*").order("started_at", { ascending: true });
-          if (!activeRes.error && Array.isArray(activeRes.data)) activeTimeSessions = activeRes.data;
-          else activeTimeSessions = [];
+          if (activeRes.error) throw activeRes.error;
+          if (Array.isArray(activeRes.data)) activeTimeSessions = activeRes.data;
 
-          const qRes = await supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false });
+          const qRes = {data:await GP.fetchAllRows(supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false }))};
           if (!qRes.error && Array.isArray(qRes.data)) {
             const cloudQuotes=qRes.data.map(r=>({quote_number:r.quote_number,quote_date:r.quote_date,module:r.module,customer_name:r.customer_name,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""}));
-            const merged=new Map(localQuotes.map(q=>[Number(q.quote_number),q]));
-            cloudQuotes.forEach(q=>merged.set(Number(q.quote_number),q));
-            quoteLogs=[...merged.values()];
+            quoteLogs=cloudQuotes;
             localStorage.setItem("glasspro_quotes_v1",JSON.stringify(quoteLogs));
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn("Management cloud refresh failed; showing available cached data:", e);
+          const syncBadge = document.getElementById("timeLiveSyncStatus");
+          if (syncBadge) {
+            syncBadge.textContent = "Cloud refresh failed — data may be outdated";
+            syncBadge.className = "badge badge-warn";
+          }
+        }
       }
 
       // Ensure any employee who has logged time in timeLogs is represented in the watchlist
@@ -1717,6 +1817,7 @@
             pin_code: "----",
             perm_time: true,
             perm_quotes: true,
+            perm_collections: false,
             perm_commission: true
           });
         }
@@ -1774,9 +1875,22 @@
       document.getElementById("statTotalCommVolume").textContent = `${formatCurrency(totalVol)} logged volume`;
       document.getElementById("statFlaggedVehicles").textContent = flaggedVeh;
 
-      let shiftEmpHtml = "";
-      usersList.forEach(u => { shiftEmpHtml += `<option value="${GP.escapeHtml(u.employee_name)}">${GP.escapeHtml(u.employee_name)} (${GP.escapeHtml(u.department)})</option>`; });
-      document.getElementById("addShiftEmpSelect").innerHTML = shiftEmpHtml;
+      // Live refresh runs every 15 seconds. Never recreate a selected employee option:
+      // doing so silently selects the first staff member while the supervisor is typing.
+      const shiftSelect = document.getElementById("addShiftEmpSelect");
+      const employeeChoices = usersList.filter(u => u.employee_name).map(u => ({
+        value: String(u.employee_name),
+        text: `${u.employee_name} (${u.department || "Operations"})`
+      }));
+      const currentValues = Array.from(shiftSelect.options).slice(1).map(o => `${o.value}\u0000${o.text}`).join("\u0001");
+      const nextValues = employeeChoices.map(o => `${o.value}\u0000${o.text}`).join("\u0001");
+      if (currentValues !== nextValues || !shiftSelect.options.length) {
+        const previousSelection = shiftSelect.value;
+        shiftSelect.replaceChildren();
+        shiftSelect.add(new Option("Choose an employee…", ""));
+        employeeChoices.forEach(o => shiftSelect.add(new Option(o.text, o.value)));
+        shiftSelect.value = employeeChoices.some(o => o.value === previousSelection) ? previousSelection : "";
+      }
 
       let otAlerts = 0;
       document.getElementById("adminOtWatchlistTable").innerHTML = usersList.map(u => {
@@ -1886,6 +2000,7 @@
         let perms = [];
         if (u.perm_time) perms.push("Time");
         if (u.perm_quotes !== false) perms.push("Quotes");
+        if (u.perm_collections === true) perms.push("Collections");
         if (u.perm_commission !== false) perms.push("Comm");
         if (u.perm_vehicle_submit) perms.push("VehSubmit");
         if (u.perm_vehicle_view) perms.push("VehView");
@@ -2070,149 +2185,125 @@
     window.openEditTime = function(id) {
       const r = timeLogs.find(x => String(x.id) === String(id));
       if (!r) return;
-
       document.getElementById("addMissingTimeCard").classList.add("hidden");
       document.getElementById("editTimeId").value = r.id;
       document.getElementById("editEmpName").value = r.employee_name;
       document.getElementById("editDate").value = r.work_date;
-
-      const start24 = to24HourTime(r.clock_in);
-      const end24 = to24HourTime(r.clock_out);
-      document.getElementById("editStart").value = start24;
-      document.getElementById("editEnd").value = end24;
+      document.getElementById("editStart").value = to24HourTime(r.clock_in);
+      document.getElementById("editEnd").value = to24HourTime(r.clock_out);
       document.getElementById("editBreak").value = String(r.break_minutes || 0);
+      document.getElementById("editLunchOut").value = r.lunch_out_time || "";
+      document.getElementById("editLunchBack").value = r.lunch_in_time || "";
       document.getElementById("editOrigHoursDisplay").textContent = format00(getShiftHours(r)) + " hrs";
       document.getElementById("editAuditReason").value = "";
-
       previewEditedHours();
       const card = document.getElementById("editTimeCard");
       card.classList.remove("hidden");
       card.scrollIntoView({ behavior: "smooth" });
     };
 
-    window.previewEditedHours = function() {
-      const start = document.getElementById("editStart").value;
-      const end = document.getElementById("editEnd").value;
-      const brk = document.getElementById("editBreak").value;
-      const newDec = computeDecimalHours(start, end, brk);
-      document.getElementById("editNewHoursDisplay").textContent = newDec + " hrs";
-    };
-
     window.saveEditedTimeRecord = async function() {
+      const button = document.getElementById("saveEditedTimeButton");
+      if (button.disabled) return;
       const id = document.getElementById("editTimeId").value;
       const date = document.getElementById("editDate").value;
       const start = document.getElementById("editStart").value;
       const end = document.getElementById("editEnd").value;
-      const brk = parseInt(document.getElementById("editBreak").value, 10) || 0;
       const reason = document.getElementById("editAuditReason").value.trim();
-
-      if (!date || !start || !end) {
-        return alert("Please provide a valid Work Date, Clock-In Time, and Clock-Out Time.");
-      }
-      if (!reason) {
-        return alert("A Supervisor Audit Reason is required whenever manually editing an employee's time punch.");
-      }
-
+      const calculated = getPunchEditorResult("edit");
+      if (!date || calculated.error) return alert(calculated.error || "Please provide a valid work date and punch times.");
+      if (!reason) return alert("A Supervisor Audit Reason is required whenever manually editing an employee's time punch.");
       const r = timeLogs.find(x => String(x.id) === String(id));
-      if (!r) return;
-
-      const oldSummary = `${r.work_date} (${r.clock_in} to ${r.clock_out}, ${r.break_minutes || 0}m break = ${format00(getShiftHours(r))} hrs)`;
-      const newDec = computeDecimalHours(start, end, brk);
-      const newSummary = `${date} (${start} to ${end}, ${brk}m break = ${newDec} hrs)`;
+      if (!r) return alert("The selected time record is no longer available. Refresh and try again.");
+      const oldSummary = `${r.work_date} (${r.clock_in} to ${r.clock_out}; lunch ${r.lunch_out_time || "not recorded"} to ${r.lunch_in_time || "not recorded"}; ${r.break_minutes || 0}m break = ${format00(getShiftHours(r))} hrs)`;
+      const newSummary = `${date} (${start} to ${end}; lunch ${calculated.lunchOut || "not recorded"} to ${calculated.lunchBack || "not recorded"}; ${calculated.breakMinutes}m break = ${calculated.hours} hrs)`;
       const supervisor = activeUser ? activeUser.employee_name : "Admin";
       const updatedNotes = `[ADMIN EDIT by ${supervisor}: ${reason}] ${r.notes || ""}`.trim();
-
       const updatedFields = {
-        work_date: date,
-        clock_in: start,
-        clock_out: end,
-        break_minutes: brk,
-        decimal_hours: newDec,
-        notes: updatedNotes
+        work_date: date, clock_in: start, clock_out: end,
+        lunch_out_time: calculated.lunchOut, lunch_in_time: calculated.lunchBack,
+        break_minutes: calculated.breakMinutes, decimal_hours: calculated.hours, notes: updatedNotes
       };
-
-      Object.assign(r, updatedFields);
-      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
-
-      if (isCloudConnected) {
-        try {
-          await supabaseClient.from("time_logs").update(updatedFields).eq("id", r.id);
-        } catch (e) {}
+      button.disabled = true;
+      try {
+        if (isCloudConnected) {
+          const { data, error } = await supabaseClient.from("time_logs")
+            .update(updatedFields).eq("id", r.id).select("id").maybeSingle();
+          if (error) throw error;
+          if (!data) throw new Error("Supabase did not update this punch. Check administrator permissions and that the record exists.");
+        }
+        Object.assign(r, updatedFields);
+        localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+        await logAudit("EDIT_TIME", `Edited ${r.employee_name}: Changed ${oldSummary} -> ${newSummary} | Reason: ${reason}`);
+        document.getElementById("editTimeCard").classList.add("hidden");
+        showToast(isCloudConnected ? "Punch and exact lunch saved to Supabase" : "Punch saved on this device; cloud not connected");
+        await loadAdminData();
+      } catch (e) {
+        console.error("Failed to save edited time punch", e);
+        alert(`Time punch was NOT saved: ${e?.message || "Unknown Supabase error"}. Confirm the lunch-time SQL migration has run.`);
+      } finally {
+        button.disabled = false;
       }
-
-      await logAudit("EDIT_TIME", `Edited ${r.employee_name}: Changed ${oldSummary} -> ${newSummary} | Reason: ${reason}`);
-      document.getElementById("editTimeCard").classList.add("hidden");
-      showToast("Time punch updated & recorded in Supervisor Audit Log");
-      await loadAdminData();
     };
 
     window.openAddMissingShiftModal = function() {
       document.getElementById("editTimeCard").classList.add("hidden");
       document.getElementById("addShiftDate").value = GP.localDate();
       document.getElementById("addShiftReason").value = "";
+      document.getElementById("addShiftLunchOut").value = "";
+      document.getElementById("addShiftLunchBack").value = "";
+      // Preserve the employee selected previously; the supervisor may take as long as necessary.
+      previewAddedShiftHours();
       const card = document.getElementById("addMissingTimeCard");
       card.classList.remove("hidden");
       card.scrollIntoView({ behavior: "smooth" });
     };
 
     window.saveAdminAddedShift = async function() {
+      const button = document.getElementById("saveAdminAddedShiftButton");
+      if (button.disabled) return;
       const empName = document.getElementById("addShiftEmpSelect").value;
       const date = document.getElementById("addShiftDate").value;
       const start = document.getElementById("addShiftStart").value;
       const end = document.getElementById("addShiftEnd").value;
-      const brk = parseInt(document.getElementById("addShiftBreak").value, 10) || 0;
       const reason = document.getElementById("addShiftReason").value.trim();
-
-      if (!empName || !date || !start || !end) return alert("Please complete all shift fields.");
+      const calculated = getPunchEditorResult("add");
+      if (!empName || !date) return alert("Select an employee and work date before saving.");
+      if (calculated.error) return alert(calculated.error);
       if (!reason) return alert("Please enter an Audit Reason for manually adding this shift.");
-
-      const empObj = usersList.find(u => isSameEmployee(u.employee_name, empName)) || { department: "Operations" };
-      const dec = computeDecimalHours(start, end, brk);
+      const empObj = usersList.find(u => isSameEmployee(u.employee_name, empName));
+      if (!empObj) return alert("That employee was removed or renamed. Please select them again.");
       const supervisor = activeUser ? activeUser.employee_name : "Admin";
-
       const record = {
-        employee_name: empName,
-        department: empObj.department,
-        work_date: date,
-        clock_in: start,
-        clock_out: end,
-        break_minutes: brk,
-        decimal_hours: dec,
-        clock_in_location: "Manual Admin Entry",
-        clock_out_location: "Manual Admin Entry",
+        employee_name: empName, department: empObj.department,
+        work_date: date, clock_in: start, clock_out: end,
+        lunch_out_time: calculated.lunchOut, lunch_in_time: calculated.lunchBack,
+        break_minutes: calculated.breakMinutes, decimal_hours: calculated.hours,
+        clock_in_location: "Manual Admin Entry", clock_out_location: "Manual Admin Entry",
         notes: `[ADMIN ADDED by ${supervisor}: ${reason}]`
       };
-
-      let savedCloudRow = null;
-      if (isCloudConnected) {
-        try {
-          let result = await supabaseClient.from("time_logs").insert([record]).select("*").limit(1);
-          if (result.error) {
-            const fallback = {
-              employee_name: record.employee_name,
-              department: record.department,
-              work_date: record.work_date,
-              clock_in: record.clock_in,
-              clock_out: record.clock_out,
-              break_minutes: record.break_minutes,
-              decimal_hours: record.decimal_hours,
-              notes: record.notes
-            };
-            result = await supabaseClient.from("time_logs").insert([fallback]).select("*").limit(1);
-          }
-          if (!result.error && result.data?.[0]) savedCloudRow = result.data[0];
-        } catch (e) {}
+      button.disabled = true;
+      try {
+        requireManagementCloud();
+        {
+          const { data, error } = await supabaseClient.from("time_logs")
+            .insert([record]).select("*").single();
+          if (error) throw error;
+          if (!data) throw new Error("Supabase did not confirm the inserted time record.");
+          Object.assign(record, data);
+        }
+        timeLogs.unshift(record);
+        localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+        await logAudit("ADMIN_ADD_TIME", `Added shift for ${empName} on ${date} (${start} to ${end}; lunch ${calculated.lunchOut || "not recorded"} to ${calculated.lunchBack || "not recorded"}; ${calculated.breakMinutes}m break = ${calculated.hours} hrs) | Reason: ${reason}`);
+        document.getElementById("addMissingTimeCard").classList.add("hidden");
+        showToast(isCloudConnected ? "Shift and exact lunch saved to Supabase" : "Shift saved on this device; cloud not connected");
+        await loadAdminData();
+      } catch (e) {
+        console.error("Failed to save added time punch", e);
+        alert(`Shift was NOT saved: ${e?.message || "Unknown Supabase error"}. Confirm the lunch-time SQL migration has run.`);
+      } finally {
+        button.disabled = false;
       }
-
-      if(savedCloudRow) Object.assign(record,savedCloudRow);
-      if(!record.id) record.id = Date.now();
-      timeLogs.unshift(record);
-      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
-
-      await logAudit("ADMIN_ADD_TIME", `Added shift for ${empName} on ${date} (${start} to ${end}, ${brk}m break = ${dec} hrs) | Reason: ${reason}`);
-      document.getElementById("addMissingTimeCard").classList.add("hidden");
-      showToast("Shift added & logged in Supervisor Audit Trail");
-      await loadAdminData();
     };
 
     window.deleteTime = async function(id) {
@@ -2220,15 +2311,14 @@
       if (!r) return;
       const reason = prompt(`Enter mandatory audit reason for deleting ${r.employee_name}'s time punch on ${r.work_date} (${format00(getShiftHours(r))} hrs):`);
       if (!reason || !reason.trim()) return alert("Deletion cancelled: an audit reason is required to delete a time punch.");
-
-      if (isCloudConnected) {
-        try { await supabaseClient.from("time_logs").delete().eq("id", r.id); } catch (e) {}
-      }
-      timeLogs = timeLogs.filter(x => String(x.id) !== String(id));
-      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
-      await logAudit("DELETE_TIME", `Deleted shift for ${r.employee_name} on ${r.work_date} (${r.clock_in}-${r.clock_out}, ${format00(getShiftHours(r))} hrs) | Reason: ${reason.trim()}`);
-      showToast("Time punch deleted & audited");
-      await loadAdminData();
+      try {
+        await confirmManagementWrite(supabaseClient.from("time_logs").delete().eq("id", r.id).select("id"), "Time punch");
+        timeLogs = timeLogs.filter(x => String(x.id) !== String(id));
+        localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
+        await logAudit("DELETE_TIME", `Deleted shift for ${r.employee_name} on ${r.work_date} (${r.clock_in}-${r.clock_out}, ${format00(getShiftHours(r))} hrs) | Reason: ${reason.trim()}`);
+        showToast("Time punch deleted from Supabase & audited");
+        await loadAdminData();
+      } catch (e) { alert(`Time punch was NOT deleted: ${e.message || e}`); }
     };
 
     // ========================================================================
@@ -2244,6 +2334,7 @@
       document.getElementById("userActive").checked = true;
       document.getElementById("permTime").checked = true;
       document.getElementById("permQuotes").checked = true;
+      document.getElementById("permCollections").checked = false;
       document.getElementById("permCommission").checked = true;
       document.getElementById("permVehSubmit").checked = false;
       document.getElementById("permVehView").checked = false;
@@ -2266,6 +2357,7 @@
       document.getElementById("userActive").checked = u.active !== false;
       document.getElementById("permTime").checked = !!u.perm_time;
       document.getElementById("permQuotes").checked = u.perm_quotes !== false;
+      document.getElementById("permCollections").checked = u.perm_collections === true;
       document.getElementById("permCommission").checked = u.perm_commission !== false;
       document.getElementById("permVehSubmit").checked = !!u.perm_vehicle_submit;
       document.getElementById("permVehView").checked = !!u.perm_vehicle_view;
@@ -2304,6 +2396,7 @@
         active,
         perm_time: document.getElementById("permTime").checked,
         perm_quotes: document.getElementById("permQuotes").checked,
+        perm_collections: document.getElementById("permCollections").checked,
         perm_commission: document.getElementById("permCommission").checked,
         perm_vehicle_submit: document.getElementById("permVehSubmit").checked,
         perm_vehicle_view: document.getElementById("permVehView").checked,
@@ -2370,25 +2463,28 @@
     // ========================================================================
     window.setCommStatus = async function(id, st) {
       const c = commissionLogs.find(x => String(x.id) === String(id));
-      if (c) c.status = st;
-      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
-      if (isCloudConnected) {
-        try { await supabaseClient.from("commission_logs").update({ status: st }).eq("id", id); } catch (e) {}
-      }
-      if (c) await logAudit("WO_STATUS", `Marked WO ${c.wo_number} as ${st}`);
-      await loadAdminData();
+      if (!c) return alert("This work order is no longer available.");
+      try {
+        const result = await confirmManagementWrite(
+          supabaseClient.from("commission_logs").update({status:st}).eq("id", id).select("id"),
+          "Work order");
+        c.status = st;
+        localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+        await logAudit("WO_STATUS", `Marked WO ${c.wo_number} as ${st}`);
+        await loadAdminData();
+      } catch (e) { alert(`Work order was not updated: ${e.message || e}`); }
     };
 
     window.deleteComm = async function(id) {
       const c = commissionLogs.find(x => String(x.id) === String(id));
-      if (!confirm("Delete this Work Order?")) return;
-      if (isCloudConnected) {
-        try { await supabaseClient.from("commission_logs").delete().eq("id", id); } catch (e) {}
-      }
-      commissionLogs = commissionLogs.filter(x => String(x.id) !== String(id));
-      localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
-      if (c) await logAudit("DELETE_WO", `Deleted WO ${c.wo_number}`);
-      await loadAdminData();
+      if (!c || !confirm("Delete this Work Order?")) return;
+      try {
+        await confirmManagementWrite(supabaseClient.from("commission_logs").delete().eq("id", id).select("id"), "Work order");
+        commissionLogs = commissionLogs.filter(x => String(x.id) !== String(id));
+        localStorage.setItem("gp_commission_logs", JSON.stringify(commissionLogs));
+        await logAudit("DELETE_WO", `Deleted WO ${c.wo_number}`);
+        await loadAdminData();
+      } catch (e) { alert(`Work order was NOT deleted: ${e.message || e}`); }
     };
 
     window.copyMOSScoreboardSnapshot = function() {
@@ -2429,8 +2525,8 @@
     }
 
     window.exportTimeCSV = function() {
-      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Break Mins", "Hours", "Geotag", "Notes"],
-        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || ""]));
+      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Lunch Out", "Lunch Back", "Break Mins", "Hours", "Geotag", "Notes"],
+        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.lunch_out_time || "", r.lunch_in_time || "", r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || ""]));
     };
 
     window.exportCommissionsCSV = function() {
@@ -2510,12 +2606,13 @@
 
             let added = 0, rejected = 0;
             const acceptedCloudRows = [];
+            const acceptedQuotes = [];
             grouped.forEach(cand => {
               const normName = cand.customer_name.trim().toUpperCase().replace(/\s+/g," ");
               if (existingNums.has(cand.quote_number) || existingNames.has(normName)) {
                 rejected++;
               } else {
-                existingQuotes.unshift(cand);
+                acceptedQuotes.push(cand);
                 existingNums.add(cand.quote_number);
                 existingNames.add(normName);
                 acceptedCloudRows.push({quote_number:cand.quote_number,normalized_customer_name:normName,customer_name:cand.customer_name,quote_date:cand.quote_date,module:cand.module,phone:cand.phone,has_cell:cand.has_cell,subtotal:cand.subtotal,tax:cand.tax,total:cand.total,original_csr:cand.csr,parts:cand.parts||[],status:cand.status||"open",contact_attempts:cand.contact_attempts||0,call_data:cand.call_data||{},admin_coaching_note:cand.admin_coaching_note||""});
@@ -2523,14 +2620,23 @@
               }
             });
 
-            localStorage.setItem("glasspro_quotes_v1", JSON.stringify(existingQuotes));
-            let cloudSynced = 0;
-            if(isCloudConnected && acceptedCloudRows.length){
-              try{const {error}=await supabaseClient.from("outstanding_quotes").upsert(acceptedCloudRows,{onConflict:"quote_number"});if(!error)cloudSynced=acceptedCloudRows.length;}catch(e){}
+            try {
+              requireManagementCloud();
+              if (acceptedCloudRows.length) {
+                // Never upsert existing quote numbers while importing fresh
+                // callbacks; no CRM state or notes may be overwritten.
+                const {error} = await supabaseClient.from("outstanding_quotes").insert(acceptedCloudRows);
+                if (error) throw error;
+              }
+              existingQuotes.unshift(...acceptedQuotes);
+              localStorage.setItem("glasspro_quotes_v1", JSON.stringify(existingQuotes));
+              await logAudit("CSV_UPLOAD", `Uploaded ${file.name}: +${added} new quotes in Supabase, ${rejected} duplicates skipped`);
+              showToast(`CSV imported: ${added} quotes saved in Supabase; ${rejected} duplicates skipped`);
+              event.target.value = "";
+            } catch (e) {
+              alert(`Quotes were NOT imported: ${e.message || e}. Existing quotes were not changed. Refresh your data before retrying.`);
+              return;
             }
-            await logAudit("CSV_UPLOAD", `Uploaded ${file.name} in Tab 5: +${added} new quotes (${cloudSynced} cloud-synced), ${rejected} duplicates blocked`);
-            showToast(`CSV Synced: +${added} Quotes Added, ${rejected} Duplicates Blocked${isCloudConnected&&added&&!cloudSynced?" (cloud sync pending)":""}`);
-            event.target.value = "";
             await loadAdminData();
           }
         });
@@ -2542,6 +2648,6 @@
       startAdminLiveSync();
     });
   </script>
-<script src="gp-pin.js?v=20261103"></script>
+<script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>
