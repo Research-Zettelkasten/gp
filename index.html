@@ -282,6 +282,10 @@
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261112b">
+<script src="gp-sidebar.js?v=20261112b" defer></script>
+<script src="gp-lunch-core.js?v=20261112b"></script>
+<link rel="stylesheet" href="gp-lunch.css?v=20261112b">
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -306,12 +310,12 @@
 
   <!-- CROSS-SECTION NAVIGATION BAR -->
   <nav id="mainNavBar" class="nav-bar hidden">
-    <a href="index.html" id="navLinkTime" class="nav-btn active">1. Time Clock</a>
-    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
-    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
-    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
-    <a href="admin.html" id="navLinkAdmin" class="nav-btn">5. Management & MOS Hub</a>
-    <a href="collections.html" id="navLinkCollections" class="nav-btn">6. Collections</a>
+    <a href="index.html" id="navLinkTime" class="nav-btn active">Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="nav-btn">Collections</a>
   </nav>
 
   <div class="container">
@@ -444,15 +448,24 @@
                 <strong id="liveDecimalDisplay">00.00</strong>
               </div>
 
-              <div style="margin-bottom: 14px;">
-                <label>Unpaid Lunch / Break Deduction</label>
-                <select id="liveBreakMins" onchange="refreshLiveTimer(); syncActiveBreakMinutes()">
-                  <option value="0">No Unpaid Break (0 mins)</option>
-                  <option value="15">15 Minutes (00.25 hrs)</option>
-                  <option value="30">30 Minutes (00.50 hrs)</option>
-                  <option value="45">45 Minutes (00.75 hrs)</option>
-                  <option value="60">1 Hour (01.00 hrs)</option>
-                </select>
+              <div class="gp-lunch-panel" aria-label="Exact lunch tracking">
+                <div class="gp-lunch-heading"><strong>Lunch break</strong><span id="liveLunchStatus" class="badge badge-navy">Not started</span></div>
+                <p>Tap <b>Start Lunch</b> when you leave and <b>Return from Lunch</b> when you come back. Your exact timestamps sync to Supabase. There is no preset one-hour deduction.</p>
+                <div class="gp-lunch-times">
+                  <span>Lunch Out <b id="liveLunchOut">—</b></span>
+                  <span>Lunch Back <b id="liveLunchBack">—</b></span>
+                  <span>Unpaid <b id="lunchDurationDisplay">0m</b></span>
+                </div>
+                <input type="hidden" id="liveBreakMins" value="0" />
+                <div class="gp-lunch-actions">
+                  <button type="button" id="btnLunchStart" class="btn btn-navy hidden" onclick="startEmployeeLunch()">Start Lunch</button>
+                  <button type="button" id="btnLunchEnd" class="btn btn-green hidden" onclick="endEmployeeLunch()">Return from Lunch</button>
+                </div>
+                <div id="noLunchReasonBox" class="gp-no-lunch-reason hidden">
+                  <label for="noLunchReason">No lunch taken? Explain why for manager approval <span aria-hidden="true">*</span></label>
+                  <textarea id="noLunchReason" rows="3" maxlength="2000" placeholder="Explain why a lunch break was not taken. Your completed timecard will be marked Pending Approval."></textarea>
+                  <small>A zero-lunch timecard requires a note (minimum 10 characters) and stays pending until a manager reviews it. No break is deducted automatically.</small>
+                </div>
               </div>
 
               <button type="button" id="btnClockIn" class="btn btn-green" onclick="clockInNow()">Clock In Now (Geotag Location)</button>
@@ -470,13 +483,8 @@
                   <input type="date" id="manDate" />
                 </div>
                 <div>
-                  <label>Lunch Break</label>
-                  <select id="manBreak" onchange="calcManualHours()">
-                    <option value="0">No Break (0m)</option>
-                    <option value="30" selected>30 Mins (00.50)</option>
-                    <option value="45">45 Mins (00.75)</option>
-                    <option value="60">1 Hour (01.00)</option>
-                  </select>
+                  <label>Lunch tracking</label>
+                  <div class="gp-manual-lunch-guide">Use the exact time left and time returned below. If no lunch was taken, leave both blank and explain why.</div>
                 </div>
               </div>
 
@@ -491,6 +499,15 @@
                 </div>
               </div>
 
+              <div class="grid-2 gp-manual-lunch-times" style="margin-bottom:12px;">
+                <div><label for="manLunchOut">Lunch Out — time left</label><input type="time" id="manLunchOut" oninput="calcManualHours()" /></div>
+                <div><label for="manLunchBack">Lunch Back — time returned</label><input type="time" id="manLunchBack" oninput="calcManualHours()" /></div>
+              </div>
+              <p id="manLunchSummary" class="gp-form-hint">Exact lunch times will calculate the unpaid deduction.</p>
+              <div id="manNoLunchBox" class="gp-no-lunch-reason">
+                <label for="manNoLunchReason">Reason no lunch was taken — required for manager approval *</label>
+                <textarea id="manNoLunchReason" rows="3" maxlength="2000" placeholder="Explain why no lunch was taken during this shift."></textarea>
+              </div>
               <div style="margin-bottom:12px;">
                 <label>MultiplyOS Work Order # / Shift Notes (Optional)</label>
                 <input type="text" id="manNotes" placeholder="Optional WO# or shift reference" />
@@ -940,6 +957,56 @@
       document.getElementById("liveGeoText").textContent = geo.address;
     };
 
+    let activeLunchState = null; // Refreshed from server: never trust a local dropdown for unpaid breaks.
+    function lunchStateFromRow(row){
+      return row ? {lunch_out_at:row.lunch_out_at||null,lunch_in_at:row.lunch_in_at||null,break_minutes:Number(row.break_minutes)||0,started_at_ms:Number(row.started_at_ms)} : null;
+    }
+    function lunchBreakMinutes(now=Date.now()){return GP_LUNCH.liveBreakMinutes(activeLunchState,now);}
+    function renderLunchState(){
+      const clocked=!!(activeUser&&localStorage.getItem(getClockKey()));
+      const out=activeLunchState?.lunch_out_at||null,back=activeLunchState?.lunch_in_at||null;
+      const inProgress=!!out&&!back,completed=!!out&&!!back;
+      const display=t=>t?new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"—";
+      document.getElementById("liveLunchOut").textContent=display(out);
+      document.getElementById("liveLunchBack").textContent=display(back);
+      document.getElementById("lunchDurationDisplay").textContent=`${Math.round(lunchBreakMinutes())}m`;
+      document.getElementById("liveBreakMins").value=String(completed?lunchBreakMinutes():0);
+      const state=document.getElementById("liveLunchStatus");
+      state.textContent=inProgress?"On lunch":completed?"Lunch completed":clocked?"No lunch recorded":"Off clock";
+      state.className=`badge ${inProgress?"badge-warn":completed?"badge-ok":"badge-navy"}`;
+      document.getElementById("btnLunchStart").classList.toggle("hidden",!clocked||!!out);
+      document.getElementById("btnLunchEnd").classList.toggle("hidden",!clocked||!inProgress);
+      document.getElementById("noLunchReasonBox").classList.toggle("hidden",!clocked||!!out);
+    }
+    async function refreshLunchState(){
+      const started=activeUser&&localStorage.getItem(getClockKey());
+      if(!started||!isCloudConnected){activeLunchState=null;renderLunchState();return null;}
+      const {data,error}=await supabaseClient.from("active_time_sessions")
+        .select("started_at_ms,lunch_out_at,lunch_in_at,break_minutes")
+        .eq("auth_user_id",activeUser.auth_user_id).eq("started_at_ms",Number(started)).maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error("Your active shift is missing from Supabase. Contact a manager before clocking out.");
+      activeLunchState=lunchStateFromRow(data);renderLunchState();return activeLunchState;
+    }
+    async function changeLunchAction(action){
+      if(!activeUser||!localStorage.getItem(getClockKey()))return alert("Clock in before using lunch punches.");
+      const btn=document.getElementById(action==="start"?"btnLunchStart":"btnLunchEnd");
+      if(btn.disabled)return;
+      btn.disabled=true;
+      try{
+        if(!isCloudConnected)throw new Error("Supabase is unavailable; lunch was NOT recorded.");
+        // The RPC uses the server clock, enforces session ownership and will reject duplicates.
+        const {data,error}=await supabaseClient.rpc(action==="start"?"gp_start_lunch":"gp_end_lunch");
+        if(error)throw error;
+        if(!data?.lunch_out_at)throw new Error("Supabase did not confirm your lunch punch.");
+        activeLunchState=lunchStateFromRow(data);
+        renderLunchState();refreshLiveTimer();
+        showToast(action==="start"?"Lunch Out recorded in Supabase":"Lunch Back saved; exact break calculated");
+      }catch(e){alert(`Lunch punch was NOT saved: ${e.message||e}`);try{await refreshLunchState();}catch(_){}}
+      finally{btn.disabled=false;}
+    }
+    window.startEmployeeLunch=()=>changeLunchAction("start");
+    window.endEmployeeLunch=()=>changeLunchAction("end");
     function getClockKey() { return `gp_clock_in_${activeUser.pin_code}`; }
     function getClockLocKey() { return `gp_clock_loc_${activeUser.pin_code}`; }
     function getClockCoordsKey() { return `gp_clock_coords_${activeUser.pin_code}`; }
@@ -980,17 +1047,15 @@
           };
           result = await supabaseClient.from("active_time_sessions").insert([row]).select("auth_user_id");
         } else {
-          result = await supabaseClient.from("active_time_sessions")
-            .update({break_minutes:breakMinutes,updated_at:new Date().toISOString()})
-            .eq("auth_user_id",String(activeUser.auth_user_id))
-            .eq("started_at_ms",Number(startedAtMs)).select("auth_user_id");
+          // Breaks are exclusively changed by the server-side Lunch Out/Back RPCs.
+          return false;
         }
         return !result.error && !!result.data?.length;
       } catch (e) { return false; }
     }
 
     async function restoreActiveTimeSession() {
-      if (!activeUser || localStorage.getItem(getClockKey()) || !isCloudConnected) return;
+      if (!activeUser || !isCloudConnected) return;
       try {
         const result = await supabaseClient.from("active_time_sessions").select("*").eq("auth_user_id", String(activeUser.auth_user_id)).limit(1);
         const row = !result.error && result.data ? result.data[0] : null;
@@ -998,21 +1063,21 @@
         localStorage.setItem(getClockKey(), String(row.started_at_ms));
         localStorage.setItem(getClockLocKey(), row.clock_in_location || "Location Not Recorded");
         localStorage.setItem(getClockCoordsKey(), row.clock_in_coords || "");
-        document.getElementById("liveBreakMins").value = String(Math.max(0, parseInt(row.break_minutes, 10) || 0));
+        activeLunchState = lunchStateFromRow(row);
+        renderLunchState();
       } catch (e) {}
     }
 
-    window.syncActiveBreakMinutes = async function() {
-      const savedStart = activeUser ? localStorage.getItem(getClockKey()) : null;
-      if (!savedStart) return;
-      await syncActiveTimeSession(Number(savedStart));
-    };
+    // No employee-editable break minutes. Exact lunch punches are stored by Supabase.
+
 
     window.clockInNow = async function() {
       if (!activeUser) return showToast("Sign in before clocking in.");
       if (localStorage.getItem(getClockKey())) return showToast("Already clocked in — clock out first.");
       if (!isCloudConnected) return alert("Supabase is unavailable. Clock-in was not recorded. Please reconnect and retry.");
+      activeLunchState=null;
       document.getElementById("liveBreakMins").value = "0";
+      document.getElementById("noLunchReason").value="";
       const btn = document.getElementById("btnClockIn");
       if (btn.disabled) return;
       btn.disabled = true;
@@ -1056,7 +1121,9 @@
       const savedLoc = localStorage.getItem(getClockLocKey()) || "Location Not Recorded";
 
       if (!savedStart) {
+        activeLunchState=null;
         document.getElementById("liveBreakMins").value = "0";
+        renderLunchState();
         document.getElementById("liveGeoText").textContent = "Clock-In Address: waiting for clock-in";
         document.getElementById("liveDecimalDisplay").textContent = "00.00";
         document.getElementById("punchStatusText").textContent = "Off Clock";
@@ -1073,6 +1140,7 @@
       document.getElementById("liveGeoText").textContent = "Clock-In Address: " + savedLoc;
       document.getElementById("btnClockIn").classList.add("hidden");
       document.getElementById("btnClockOut").classList.remove("hidden");
+      renderLunchState();
 
       refreshLiveTimer();
       liveInterval = setInterval(refreshLiveTimer, 10000);
@@ -1083,8 +1151,9 @@
       const savedStart = localStorage.getItem(getClockKey());
       if (!savedStart) return;
       const elapsed = (Date.now() - parseInt(savedStart, 10)) / 3600000;
-      const brk = (parseInt(document.getElementById("liveBreakMins").value, 10) || 0) / 60;
+      const brk = lunchBreakMinutes() / 60;
       document.getElementById("liveDecimalDisplay").textContent = format00(Math.max(0, elapsed - brk));
+      renderLunchState();
       updateOvertimeBanner();
     };
 
@@ -1115,12 +1184,21 @@
           showToast("Saved shift finalized; clocked out successfully.");
           return;
         }
+        const lunch = await refreshLunchState();
+        if(lunch.lunch_out_at && !lunch.lunch_in_at){
+          throw new Error("Lunch is still in progress. Select Return from Lunch before clocking out.");
+        }
+        const noLunchReason = !lunch.lunch_out_at ? document.getElementById("noLunchReason").value.trim() : "";
+        if(!lunch.lunch_out_at && noLunchReason.length<10){
+          document.getElementById("noLunchReason").focus();
+          throw new Error("No lunch was recorded. Enter a reason (at least 10 characters) for manager approval before clock-out.");
+        }
         const outGeo = await captureGeotag();
         const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
         const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
         const startObj = new Date(Number(savedStart));
         const endObj = new Date();
-        const breakMins = Math.max(0, parseInt(document.getElementById("liveBreakMins").value, 10) || 0);
+        const breakMins = lunch.lunch_out_at ? GP_LUNCH.minutesBetween(lunch.lunch_out_at,lunch.lunch_in_at) : 0;
         const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
         const netDecimal = Math.max(0, elapsed - (breakMins / 60));
         if (!Number.isFinite(elapsed) || elapsed <= 0 || elapsed > 24 || breakMins > elapsed * 60) {
@@ -1136,6 +1214,11 @@
             clock_in: startObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
             clock_out: endObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
             break_minutes: breakMins, decimal_hours: format00(netDecimal),
+            lunch_out_time: GP_LUNCH.localTime(lunch.lunch_out_at),
+            lunch_in_time: GP_LUNCH.localTime(lunch.lunch_in_at),
+            lunch_out_at: lunch.lunch_out_at, lunch_in_at: lunch.lunch_in_at,
+            no_lunch_reason: noLunchReason || null,
+            lunch_review_status: noLunchReason ? "pending" : "not_required",
             clock_in_location: inLoc, clock_out_location: outGeo.address,
             clock_in_coords: inCoords, clock_out_coords: outGeo.coords,
             notes: `In: ${inLoc} | Out: ${outGeo.address}`
@@ -1159,7 +1242,7 @@
         localStorage.removeItem(getClockCoordsKey());
         if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
         await resumeClockState();
-        showToast("Shift saved to Supabase and clocked out.");
+        showToast(noLunchReason ? "Clocked out — no-lunch explanation pending manager approval." : "Shift saved to Supabase and clocked out.");
       } catch (e) {
         alert(`Clock-out not fully completed: ${e.message || e}. Your active punch remains available.`);
       } finally {
@@ -1169,48 +1252,49 @@
     };
 
     window.calcManualHours = function() {
-      const start = document.getElementById("manStart").value;
-      const end = document.getElementById("manEnd").value;
-      const brk = parseInt(document.getElementById("manBreak").value) || 0;
-      if (!start || !end) return 0;
-      const [sh, sm] = start.split(":").map(Number);
-      const [eh, em] = end.split(":").map(Number);
-      let mins = (eh * 60 + em) - (sh * 60 + sm);
-      if (mins < 0) mins += 1440;
-      const dec = Math.max(0, mins - brk) / 60;
-      document.getElementById("manDecimalDisplay").textContent = format00(dec);
-      return dec;
+      const calc=GP_LUNCH.manualInterval(
+        document.getElementById("manStart").value,document.getElementById("manEnd").value,
+        document.getElementById("manLunchOut").value,document.getElementById("manLunchBack").value
+      );
+      document.getElementById("manDecimalDisplay").textContent=calc.error?"—":format00(calc.decimalHours);
+      document.getElementById("manLunchSummary").textContent=calc.error?calc.error:
+        calc.breakMinutes?`Exact lunch: ${calc.breakMinutes} minutes unpaid.`:"No lunch recorded; an explanation and manager approval are required.";
+      document.getElementById("manNoLunchBox").classList.toggle("hidden",!calc.error&&calc.breakMinutes>0);
+      return calc;
     };
 
     window.submitManualTime = async function() {
-      const btn = document.getElementById("btnManualSubmit");
-      if (btn.disabled) return;
-      btn.disabled = true;
-      btn.textContent = "Saving & Geotagging...";
+      const btn=document.getElementById("btnManualSubmit");
+      if(btn.disabled)return;
+      btn.disabled=true;btn.textContent="Saving & Geotagging...";
       try {
-        const date = document.getElementById("manDate").value;
-        const dec = calcManualHours();
-        const brk = Number(document.getElementById("manBreak").value || 0);
-        if (!date || !document.getElementById("manStart").value || !document.getElementById("manEnd").value ||
-            !Number.isFinite(dec) || dec <= 0 || dec > 24 || !Number.isSafeInteger(brk) || brk < 0 || brk >= 1440) {
-          throw new Error("Enter a valid date, times, and break minutes, with a positive shift no longer than 24 hours.");
-        }
-        const geo = await captureGeotag();
-        const note = document.getElementById("manNotes").value.trim();
-        const record = {
-          employee_name: activeUser.employee_name, department: activeUser.department,
-          work_date: date, clock_in: document.getElementById("manStart").value,
-          clock_out: document.getElementById("manEnd").value,
-          break_minutes: brk, decimal_hours: format00(dec),
-          clock_in_location: geo.address, clock_out_location: geo.address,
-          clock_in_coords: geo.coords, clock_out_coords: geo.coords,
-          notes: note ? `${note} (${geo.address})` : `Manual Entry (${geo.address})`
+        const date=document.getElementById("manDate").value;
+        const calc=calcManualHours();
+        if(!date || calc.error || !Number.isFinite(calc.decimalHours) || calc.decimalHours<=0)
+          throw new Error(calc.error||"Enter a valid work date and shift time.");
+        const noLunchReason=calc.breakMinutes===0?document.getElementById("manNoLunchReason").value.trim():"";
+        if(calc.breakMinutes===0&&noLunchReason.length<10)
+          throw new Error("No lunch recorded: enter a reason of at least 10 characters for manager approval.");
+        const geo=await captureGeotag();
+        const note=document.getElementById("manNotes").value.trim();
+        const record={
+          employee_name:activeUser.employee_name, department:activeUser.department,
+          work_date:date,clock_in:document.getElementById("manStart").value,
+          clock_out:document.getElementById("manEnd").value,
+          lunch_out_time:calc.lunchOut,lunch_in_time:calc.lunchBack,
+          break_minutes:calc.breakMinutes,decimal_hours:format00(calc.decimalHours),
+          no_lunch_reason:noLunchReason||null,
+          lunch_review_status:noLunchReason?"pending":"not_required",
+          clock_in_location:geo.address,clock_out_location:geo.address,
+          clock_in_coords:geo.coords,clock_out_coords:geo.coords,
+          notes:note?`${note} (${geo.address})`:`Manual Entry (${geo.address})`
         };
         await saveShiftRecord(record);
-        document.getElementById("manNotes").value = "";
-        showToast("Manual shift saved to Supabase.");
-      } catch (e) { alert(`Manual shift was NOT saved: ${e.message || e}`); }
-      finally { btn.disabled = false; btn.textContent = "Submit Shift Hours"; }
+        document.getElementById("manNotes").value="";
+        document.getElementById("manNoLunchReason").value="";
+        showToast(noLunchReason?"Shift saved — no-lunch exception pending manager approval":"Manual shift saved to Supabase.");
+      } catch (e) {alert(`Manual shift was NOT saved: ${e.message||e}`);}
+      finally {btn.disabled=false;btn.textContent="Submit Shift Hours";}
     };
 
     async function saveShiftRecord(record) {
@@ -1269,7 +1353,7 @@
       const savedStart = localStorage.getItem(getClockKey());
       if (savedStart) {
         const elapsed = (Date.now() - Math.max(Number(savedStart), GP.weekStart().getTime())) / 3600000;
-        const brk = (parseInt(document.getElementById("liveBreakMins").value) || 0) / 60;
+        const brk = lunchBreakMinutes() / 60;
         hrs += Math.max(0, elapsed - brk);
       }
 
@@ -1321,7 +1405,10 @@
           <tr>
             <td>${GP.escapeHtml(r.work_date)}</td>
             <td>${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td>
-            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || r.notes || "Standard Punch")} ${mapLink}</td>
+            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || r.notes || "Standard Punch")} ${mapLink}
+              ${r.lunch_out_time&&r.lunch_in_time?`<div style="margin-top:5px;">Lunch ${GP.escapeHtml(r.lunch_out_time)}–${GP.escapeHtml(r.lunch_in_time)} · ${Number(r.break_minutes)||0}m</div>`:""}
+              ${r.lunch_review_status==="pending"?'<div class="badge badge-warn" style="margin-top:5px;">No lunch — pending manager review</div>':r.lunch_review_status==="rejected"?'<div class="badge badge-issue" style="margin-top:5px;">Lunch exception rejected — contact manager</div>':r.lunch_review_status==="approved"?'<div class="badge badge-ok" style="margin-top:5px;">No lunch approved</div>':""}
+            </td>
             <td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td>
           </tr>
         `;
