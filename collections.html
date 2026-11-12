@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#091426" />
+  <title>GLASSPRO | Collections & Reconciliation</title>
+  <script src="portal-utils.js"></script>
+  <script src="collections-core.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112" />
+  <link rel="stylesheet" href="collections.css?v=20261112" />
+</head>
+<body class="gp-app gp-collections">
+  <header class="gp-exec-header collection-header">
+    <div class="gp-brand"><div class="gp-brand-badge">GLASSPRO</div><div>
+      <h1>GLASS PRO BY AMERICAN GLASS</h1><p>Collections intelligence · Mainstreet + QuickBooks Online</p>
+    </div></div>
+    <div class="collection-header-actions"><span class="user-chip" id="activeUserName">Checking account…</span><button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()">Account &amp; PIN</button><button type="button" class="gp-col-button gp-col-button-quiet" id="btnSignOut">Sign Out</button></div>
+  </header>
+  <nav id="mainNavBar" class="gp-nav-bar" aria-label="GLASSPRO modules">
+    <a href="index.html" id="navLinkTime" class="gp-nav-btn">1. Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="gp-nav-btn">2. Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="gp-nav-btn">3. Commission &amp; WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="gp-nav-btn">4. Vehicle Check &amp; Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="gp-nav-btn">5. Management &amp; MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn active" aria-current="page">6. Collections</a>
+  </nav>
+  <main class="collection-shell" id="collectionMain">
+    <div class="collection-intro">
+      <div><div class="col-kicker">RECEIVABLES COMMAND CENTER</div><h2>Collections &amp; reconciliation</h2><p>Find the next best follow-up, document customer outcomes, and keep accounting corrections visible until they're confirmed in both systems.</p></div>
+      <div class="col-intro-actions"><button type="button" class="gp-col-button gp-col-button-quiet" id="refreshBtn">↻ Refresh data</button><span class="col-status" id="syncStatus" role="status">Connecting…</span></div>
+    </div>
+    <div class="col-notice"><strong>Before contacting a customer:</strong> Confirm the current payment and account status in Mainstreet and QBO. These are imported snapshots, not live payment feeds. A resolved GLASSPRO case does not post or apply a payment in either system.</div>
+    <section class="col-metrics" aria-label="Collections totals">
+      <article><div class="metric-label">Active collection cases</div><div class="metric-value" id="metricCases">—</div><div class="metric-foot">Open, contacted, promised or disputed</div></article>
+      <article><div class="metric-label">Receivables on queue</div><div class="metric-value" id="metricBalance">—</div><div class="metric-foot">Higher source balance, not double-counted</div></article>
+      <article><div class="metric-label">Follow-ups due</div><div class="metric-value" id="metricFollowups">—</div><div class="metric-foot">Including overdue reminders</div></article>
+      <article><div class="metric-label">External updates pending</div><div class="metric-value" id="metricPending">—</div><div class="metric-foot">Resolved here but not reconciled</div></article>
+    </section>
+    <div class="col-tab-bar" role="tablist" aria-label="Collections workspace">
+      <button type="button" class="col-tab active" data-tab="queue" role="tab" aria-selected="true">Collection queue</button>
+      <button type="button" class="col-tab" data-tab="reconcile" role="tab" aria-selected="false">Source reconciliation</button>
+      <button type="button" class="col-tab" data-tab="closeout" role="tab" aria-selected="false">End-of-day closeout</button>
+      <button type="button" class="col-tab" data-tab="imports" role="tab" aria-selected="false">Import center</button>
+    </div>
+    <div id="colMessage" class="col-message" role="status" aria-live="polite"></div>
+    <section class="col-section" data-pane="queue">
+      <div class="col-section-title"><div><h3>Proactive collections queue</h3><p>Open a customer to see their invoices, callback history, and next actions.</p></div><span class="col-source-hint" id="queueCount">0 shown</span></div>
+      <div class="col-filterbar"><label>Search customer / invoice<input id="queueSearch" type="search" placeholder="Customer, invoice # or phone" autocomplete="off"></label><label>Status<select id="queueStatus"><option value="active">Needs attention</option><option value="all">All cases</option><option value="resolved_pending">Needs accounting fix</option><option value="reconciled">Reconciled</option><option value="promise">Promises to pay</option><option value="disputed">Disputes</option></select></label><label>Priority<select id="queuePriority"><option value="all">All priorities</option><option value="Critical">Critical</option><option value="High">High</option><option value="Medium">Medium</option><option value="Standard">Standard</option></select></label><label>Sort<select id="queueSort"><option value="priority">Urgency first</option><option value="balance">Highest balance</option><option value="followup">Soonest follow-up</option><option value="customer">Customer A–Z</option></select></label></div>
+      <div id="queueList" class="col-customer-list"><p class="col-empty">Sign in to load your queue.</p></div><button type="button" class="gp-col-button gp-col-button-quiet col-show-more hidden" id="showMore">Show more customers</button>
+    </section>
+    <section class="col-section hidden" data-pane="reconcile"><div class="col-section-title"><div><h3>Cross-system exceptions</h3><p>Prioritize balance differences, one-source invoices, and negative credit balances. These are review flags—not proof that a system is wrong.</p></div></div>
+      <div class="col-recon-summary" id="reconSummary"></div><div class="col-panel"><h4>Balances requiring review</h4><div class="col-table-wrap"><table><thead><tr><th>Customer / invoice</th><th>Mainstreet</th><th>QBO</th><th>Difference</th><th>Next step</th></tr></thead><tbody id="mismatchTable"></tbody></table></div></div>
+      <div class="col-panel"><h4>Invoices present in only one source</h4><p class="col-secondary">Review mismatched report dates, partially paid invoices, or different customer naming before assuming one system is wrong.</p><div class="col-table-wrap"><table><thead><tr><th>Customer / invoice</th><th>Present in</th><th>Balance</th><th>Next step</th></tr></thead><tbody id="onlySourceTable"></tbody></table></div></div>
+      <div class="col-panel"><h4>Possible invoice-number matches with different customer names</h4><p class="col-secondary">These records are intentionally NOT merged. Only reconcile after checking the invoice and customer identity manually.</p><div class="col-table-wrap"><table><thead><tr><th>Invoice</th><th>Mainstreet customer</th><th>QBO customer</th><th>Review</th></tr></thead><tbody id="possibleMatchesTable"></tbody></table></div></div>
+      <div class="col-panel"><h4>Negative QBO balances: payments, credit memos and adjustments</h4><p class="col-secondary">A negative open balance may be an unapplied credit or valid accounting entry. Verify how it is applied before contacting customers or correcting records.</p><div class="col-table-wrap"><table><thead><tr><th>Customer</th><th>Transaction</th><th>Reference</th><th>Open credit</th></tr></thead><tbody id="creditsTable"></tbody></table></div></div>
+    </section>
+    <section class="col-section hidden" data-pane="closeout">
+      <div class="col-section-title"><div><h3>Daily collections closeout</h3><p>Today's resolutions, what was confirmed, and exactly what remains to fix in Mainstreet and QBO.</p></div><div class="col-inline-actions"><label class="col-small-label">Report date<input type="date" id="closeoutDate"></label><button class="gp-col-button gp-col-button-primary" type="button" id="exportCloseout">Export daily CSV</button><button class="gp-col-button gp-col-button-quiet" type="button" id="printCloseout">Print</button></div></div>
+      <div class="col-summary-strip" id="closeoutSummary"></div><div class="col-panel"><h4>Accounting corrections still needed</h4><div id="pendingList"></div></div>
+      <div class="col-panel"><h4>Employee resolutions &amp; confirmations on selected day</h4><div class="col-table-wrap"><table><thead><tr><th>Time</th><th>Customer / invoice</th><th>Action</th><th>Employee</th><th>Notes</th></tr></thead><tbody id="dailyActionsTable"></tbody></table></div></div>
+      <div class="col-panel"><h4>Source mismatch watchlist</h4><p class="col-secondary">Include these in the reconciliation review alongside pending manual corrections. A missing invoice in one export isn't automatically an error.</p><div id="closeoutExceptions"></div></div>
+    </section>
+    <section class="col-section hidden" data-pane="imports"><div class="col-section-title"><div><h3>Import Mainstreet &amp; QBO</h3><p>Upload each export independently. Every upload is saved with its source and timestamp; the latest completed snapshot of each system drives comparisons.</p></div></div>
+      <div class="col-import-grid"><article class="col-panel col-import-card"><div class="col-system-icon">MS</div><h4>Mainstreet · AR Aging</h4><p>Choose the AR Aging export with Customer, Inv #, Type, Balance and aging buckets.</p><label class="col-file"><span>Choose Mainstreet CSV</span><input type="file" id="uploadMainstreet" accept=".csv,text/csv"></label><div id="mainstreetImportStatus" class="col-secondary">No import selected</div></article>
+        <article class="col-panel col-import-card"><div class="col-system-icon col-system-qbo">QBO</div><h4>QuickBooks Online · Collections Report</h4><p>Choose the Collections Report including customer headings, open balances, payments and credits.</p><label class="col-file"><span>Choose QBO CSV</span><input type="file" id="uploadQbo" accept=".csv,text/csv"></label><div id="qboImportStatus" class="col-secondary">No import selected</div></article></div>
+      <div class="col-panel"><h4>Most recent imports</h4><div class="col-table-wrap"><table><thead><tr><th>Source</th><th>File name</th><th>Imported</th><th>Rows</th><th>Status</th></tr></thead><tbody id="importHistory"></tbody></table></div></div>
+      <p class="col-secondary">CSV uploads do not edit Mainstreet or QBO. They update only GLASSPRO's protected Supabase collections tables. Export/import dates and negative balances should be reviewed before drawing conclusions.</p>
+    </section>
+  </main>
+  <div id="caseOverlay" class="col-overlay hidden" role="presentation">
+    <section class="col-case-dialog" role="dialog" aria-modal="true" aria-labelledby="caseTitle">
+      <div class="col-dialog-head"><div><span class="col-kicker">COLLECTION RECORD</span><h3 id="caseTitle">Customer</h3><p id="caseSubtitle"></p></div><button type="button" id="closeCase" class="col-close" aria-label="Close case">×</button></div>
+      <div class="col-dialog-body"><div class="col-case-facts" id="caseFacts"></div>
+        <div class="col-panel col-source-evidence"><div class="col-evidence-head"><div><h4>Source evidence · full imported detail</h4><p class="col-secondary">Latest Mainstreet/QBO snapshot fields, invoice references, aging, payments and credits. Read-only; the original exports are authoritative.</p></div><button type="button" class="gp-col-button gp-col-button-quiet" id="exportCaseEvidence">Export evidence CSV</button></div><div id="caseSourceEvidence" class="col-evidence-body">Opening accounting records…</div></div>
+        <div class="col-callback-script"><strong>Before reaching out</strong><p>Verify whether payment has already posted and check any recent promises or disputes. If it has been resolved, record the outcome rather than contacting the customer unnecessarily.</p><blockquote id="callScript"></blockquote></div>
+        <form id="caseActionForm"><h4>Record a collections action</h4><div class="col-form-grid"><label>Action<select id="actionType" required><option value="note">Internal note</option><option value="contacted">Customer contacted</option><option value="no_answer">No answer / attempt</option><option value="left_voicemail">Voicemail left</option><option value="statement_sent">Statement / reminder sent</option><option value="payment_claim">Payment reported by customer</option><option value="promise_broken">Broken promise / overdue</option><option value="research">Internal research</option><option value="wrong_number">Wrong number / contact correction</option><option value="promise">Promise to pay</option><option value="disputed">Dispute / research</option><option value="rectified">Resolved in GLASSPRO – accounting follow-up</option><option value="reopen">Reopen case</option><option value="confirm_mainstreet">Confirmed fixed in Mainstreet</option><option value="confirm_qbo">Confirmed fixed in QBO</option></select></label><label>Next follow-up date<input type="date" id="nextFollowup" /></label><label>Amount discussed (optional)<input type="number" step="0.01" min="0" id="actionAmount" /></label><label>Assigned employee<select id="assigneeSelect"><option value="">Unassigned</option></select></label></div>
+          <div id="resolvedFlags" class="col-resolve-options hidden"><strong>Which accounting system still needs correction?</strong><label><input type="checkbox" id="needsMainstreet" checked> Update / verify Mainstreet</label><label><input type="checkbox" id="needsQbo" checked> Update / verify QBO</label><small>Only select “resolved” after verifying the customer's actual job/payment status. These are outstanding tasks until explicitly confirmed.</small></div>
+          <fieldset class="col-extra-details"><legend>Contact details &amp; follow-up intelligence</legend><div class="col-form-grid">
+            <label>Contact method<select id="contactChannel"><option value="">Not applicable</option><option value="phone">Phone call</option><option value="email">Email</option><option value="text">Text / SMS</option><option value="portal">Customer portal</option><option value="in_person">In person</option><option value="mail">Letter / mail</option><option value="internal">Internal follow-up</option></select></label>
+            <label>Conversation outcome<select id="contactOutcome"><option value="">Choose outcome</option><option value="spoke_to_customer">Spoke with customer</option><option value="no_answer">No answer</option><option value="voicemail">Left voicemail</option><option value="message_sent">Reminder / statement sent</option><option value="promised_payment">Payment promised</option><option value="payment_claimed">Customer reports paid</option><option value="billing_dispute">Billing dispute</option><option value="needs_documentation">Needs documentation</option><option value="wrong_contact">Wrong contact details</option><option value="escalated">Escalated to manager</option><option value="internal_only">Internal work</option></select></label>
+            <label>Person / department reached<input id="contactPerson" maxlength="200" placeholder="Accounts payable / contact name" /></label>
+            <label>Phone / email used<input id="contactDetail" maxlength="250" placeholder="Which number or email was used?" /></label>
+            <label>Promised payment date<input type="date" id="promiseDate" /></label>
+            <label>Promised amount ($)<input type="number" min="0" step=".01" id="promiseAmount" /></label>
+            <label>Check / ACH / payment reference<input id="paymentReference" maxlength="250" placeholder="Reference or confirmation number" /></label>
+            <label>Tags (comma separated)<input id="caseTags" maxlength="250" placeholder="AP, insurance, dispute, needs PO" /></label>
+            <label class="col-wide">Specific next action<input id="nextActionText" maxlength="600" placeholder="Who does what by when?" /></label>
+          </div></fieldset>
+          <label class="col-notes-label">Detailed notes / resolution details<textarea id="actionNote" rows="6" maxlength="8000" placeholder="Document the conversation and facts: who you spoke with, customer explanation, payment or claim verification, blockers, supporting reference, disputed charges, actions taken, and next steps."></textarea></label><div class="col-inline-actions"><button type="submit" id="saveAction" class="gp-col-button gp-col-button-primary">Save &amp; audit action</button><button type="button" id="claimCase" class="gp-col-button gp-col-button-quiet">Assign to me</button></div>
+        </form>
+        <div class="col-panel col-activity"><div class="col-evidence-head"><h4>Invoice activity &amp; detailed notes</h4><button type="button" class="gp-col-button gp-col-button-quiet" id="exportCaseHistory">Export activity CSV</button></div><div id="caseHistory" class="col-history"></div></div>
+        <div class="col-panel col-activity"><h4>Customer-wide notes (shared across invoices)</h4><p class="col-secondary">Use for AP contact preferences, recurring billing issues, EDI requirements, agreed escalation procedures and other context that applies to every invoice for this customer.</p><form id="accountNoteForm"><div class="col-form-grid"><label>Note category<select id="accountNoteCategory"><option value="general">General account note</option><option value="contact">Contacts / AP details</option><option value="instructions">Payment / EDI instructions</option><option value="dispute">Recurring dispute</option><option value="escalation">Escalation</option><option value="followup">Follow-up plan</option></select></label><label>Subject<input id="accountNoteSubject" maxlength="150" placeholder="Brief subject"></label></div><label class="col-notes-label">Account-wide note<textarea id="accountNoteText" maxlength="8000" rows="4" required placeholder="Add supporting details, source of information, how to reach AP, and next recommended step"></textarea></label><label class="col-pin-label"><input type="checkbox" id="accountNotePin"> Highlight this note for future collectors</label><button type="submit" class="gp-col-button gp-col-button-primary" id="saveAccountNote">Save customer-wide note</button></form><div id="accountNotesHistory" class="col-history"></div></div>
+      </div>
+    </section>
+  </div>
+  <script src="collections.js?v=20261112"></script>
+  <script src="gp-pin.js?v=20261112"></script>
+</body>
+</html>
