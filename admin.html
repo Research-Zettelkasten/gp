@@ -732,6 +732,10 @@
 
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261112b">
+<script src="gp-sidebar.js?v=20261112b" defer></script>
+<script src="gp-lunch-core.js?v=20261112b"></script>
+<link rel="stylesheet" href="gp-lunch.css?v=20261112b">
 </head>
 <body class="gp-app">
 
@@ -759,12 +763,12 @@
   </header>
 
   <nav id="mainNavBar" class="nav-bar">
-    <a href="index.html" id="navLinkTime" class="nav-btn">1. Time Clock</a>
-    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">2. Quote Call-Backs</a>
-    <a href="commissions.html" id="navLinkComm" class="nav-btn">3. Commission & WOs</a>
-    <a href="fleet.html" id="navLinkFleet" class="nav-btn">4. Vehicle Check & Safety</a>
-    <a href="admin.html" id="navLinkAdmin" class="nav-btn active">5. Management & MOS Hub</a>
-    <a href="collections.html" id="navLinkCollections" class="nav-btn">6. Collections</a>
+    <a href="index.html" id="navLinkTime" class="nav-btn">Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn active">Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="nav-btn">Collections</a>
   </nav>
 
   <div class="container">
@@ -774,12 +778,12 @@
     </section>
 
     <div class="sub-bar">
-      <button type="button" id="adminSubBtnOverview" class="sub-btn active" onclick="showAdminSubTab('adminOverviewPane', this)">1. Command Center</button>
-      <button type="button" id="adminSubBtnMOS" class="sub-btn" onclick="showAdminSubTab('adminMOSPane', this)">2. MultiplyOS Hub</button>
-      <button type="button" id="adminSubBtnUsers" class="sub-btn" onclick="showAdminSubTab('adminUsersPane', this)">3. Users & Roles</button>
-      <button type="button" id="adminSubBtnComm" class="sub-btn" onclick="showAdminSubTab('adminCommissionsPane', this)">4. Commissions & WOs</button>
-      <button type="button" id="adminSubBtnTime" class="sub-btn" onclick="showAdminSubTab('adminTimePane', this)">5. Time & Geotags</button>
-      <button type="button" id="adminSubBtnAudits" class="sub-btn" onclick="showAdminSubTab('adminFleetPane', this)">6. Audit Trail</button>
+      <button type="button" id="adminSubBtnOverview" class="sub-btn active" onclick="showAdminSubTab('adminOverviewPane', this)">Command Center</button>
+      <button type="button" id="adminSubBtnMOS" class="sub-btn" onclick="showAdminSubTab('adminMOSPane', this)">MultiplyOS Hub</button>
+      <button type="button" id="adminSubBtnUsers" class="sub-btn" onclick="showAdminSubTab('adminUsersPane', this)">Users & Roles</button>
+      <button type="button" id="adminSubBtnComm" class="sub-btn" onclick="showAdminSubTab('adminCommissionsPane', this)">Commissions & WOs</button>
+      <button type="button" id="adminSubBtnTime" class="sub-btn" onclick="showAdminSubTab('adminTimePane', this)">Time & Geotags</button>
+      <button type="button" id="adminSubBtnAudits" class="sub-btn" onclick="showAdminSubTab('adminFleetPane', this)">Audit Trail</button>
     </div>
 
     <div class="dashboard-pref-bar">
@@ -1063,6 +1067,15 @@
          ==================================================================== -->
     <div id="adminTimePane" class="hidden">
 
+      <section class="card gp-lunch-review" aria-label="Lunch exceptions requiring manager review">
+        <div class="card-title" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <span>Lunch Exception Review <span id="lunchPendingCount" class="badge badge-warn">0 pending</span></span>
+          <button type="button" class="btn-outline" onclick="renderLunchApprovalQueue()">Refresh Review Queue</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 12px;">Employees who did not take lunch must explain why at shift submission. Their hours are saved <strong>without a fabricated break deduction</strong>, but the exception stays pending until a manager approves or rejects it. Rejected cases remain visible for correction.</p>
+        <div class="table-wrap"><table><thead><tr><th>Employee / date</th><th>Shift</th><th>No-lunch explanation</th><th>Review status</th><th>Manager action</th></tr></thead><tbody id="lunchReviewRows"><tr><td colspan="5">Loading exceptions...</td></tr></tbody></table></div>
+      </section>
+
       <!-- DRAWER A: EDIT EXISTING TIME PUNCH -->
       <div id="editTimeCard" class="card hidden" style="border: 2px solid var(--obsidian); background:#F8FAFC;">
         <div class="card-title">
@@ -1200,7 +1213,7 @@
         </div>
       </div>
 
-      <div class="card live-sync-card"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Live Elapsed</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
+      <div class="card live-sync-card"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
       <div class="card"><div class="card-title"><span>Time Logs & High-Precision Street Geotags — Grouped by Employee</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
     </div>
 
@@ -1694,7 +1707,7 @@
       timeLogs.forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
       const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No time logs recorded yet.</div>`;return;}
       host.innerHTML=names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
-        const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.lunch_out_time && r.lunch_in_time ? `<small style="display:block;white-space:nowrap;">${GP.escapeHtml(r.lunch_out_time)} → ${GP.escapeHtml(r.lunch_in_time)}</small>` : ""}${Number(r.break_minutes)||0}m${r.lunch_out_time && r.lunch_in_time ? " <small>(exact)</small>" : ""}</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
+        const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.lunch_out_time && r.lunch_in_time ? `<small style="display:block;white-space:nowrap;">${GP.escapeHtml(r.lunch_out_time)} → ${GP.escapeHtml(r.lunch_in_time)}</small>` : ""}${Number(r.break_minutes)||0}m${r.lunch_out_time && r.lunch_in_time ? " <small>(exact)</small>" : ""}</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${r.lunch_review_status==="pending"?'<span class="badge badge-warn">No Lunch — Pending Approval</span><br>':r.lunch_review_status==="rejected"?'<span class="badge badge-issue">No Lunch — Rejected</span><br>':r.lunch_review_status==="approved"?'<span class="badge badge-ok">No Lunch — Approved</span><br>':""}${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
         return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
     }
     function parseClockAudit(a){if(!a||!["TIME_CLOCK_IN","TIME_CLOCK_OUT"].includes(a.action_type))return null;try{return {...JSON.parse(a.details||"{}"),action_type:a.action_type,fallbackName:a.supervisor_name};}catch(e){return{action_type:a.action_type,employee_name:a.supervisor_name||"Unknown"};}}
@@ -1702,11 +1715,25 @@
     function getActiveClockRows(){
       const latest=getLatestClockAuditMap();
       if(activeTimeSessions.length){
-        return activeTimeSessions.filter(s=>{const a=latest.get(normalizeName(s.employee_name));if(!a||a.action_type!=="TIME_CLOCK_OUT")return true;const outMs=Date.parse(a.audit_timestamp||a.ended_at||"")||Number(a.ended_at_ms)||0;const startMs=Number(s.started_at_ms)||Date.parse(s.started_at||"")||0;return !outMs||outMs<startMs;}).map(s=>({employee_name:s.employee_name,department:s.department,started_at_ms:s.started_at_ms,started_at:s.started_at,location:s.clock_in_location,coords:s.clock_in_coords,break_minutes:Number(s.break_minutes)||0,action_type:"TIME_CLOCK_IN"}));
+        return activeTimeSessions.filter(s=>{const a=latest.get(normalizeName(s.employee_name));if(!a||a.action_type!=="TIME_CLOCK_OUT")return true;const outMs=Date.parse(a.audit_timestamp||a.ended_at||"")||Number(a.ended_at_ms)||0;const startMs=Number(s.started_at_ms)||Date.parse(s.started_at||"")||0;return !outMs||outMs<startMs;}).map(s=>({employee_name:s.employee_name,department:s.department,started_at_ms:s.started_at_ms,started_at:s.started_at,location:s.clock_in_location,coords:s.clock_in_coords,break_minutes:Number(s.break_minutes)||0,lunch_out_at:s.lunch_out_at,lunch_in_at:s.lunch_in_at,action_type:"TIME_CLOCK_IN"}));
       }
       return[...latest.values()].filter(e=>e.action_type==="TIME_CLOCK_IN");
     }
-    function renderActiveTimeMonitor(){const body=document.getElementById("adminActiveTimeTable");if(!body)return;const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));body.innerHTML=active.map(e=>{const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now(),gross=Math.max(0,(Date.now()-ms)/3600000),elapsed=Math.max(0,gross-((Number(e.break_minutes)||0)/60)),started=new Date(ms),map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;}).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;}
+    function renderActiveTimeMonitor(){
+      const body=document.getElementById("adminActiveTimeTable");if(!body)return;
+      const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));
+      body.innerHTML=active.map(e=>{
+        const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now();
+        const gross=Math.max(0,(Date.now()-ms)/3600000);
+        const unpaid=GP_LUNCH.liveBreakMinutes(e)/60;
+        const elapsed=Math.max(0,gross-unpaid);
+        const started=new Date(ms);
+        const onLunch=!!e.lunch_out_at&&!e.lunch_in_at;
+        const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${Math.round(unpaid*60)}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
+        const map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";
+        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td></tr>`;
+      }).join("")||`<tr><td colspan="6" style="text-align:center;color:var(--muted);">No employees are currently clocked in.</td></tr>`;
+    }
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
     function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dashboardPrefs.locked)loadDashboardPreferences();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
 
@@ -1865,6 +1892,42 @@
       });
     }
 
+    window.renderLunchApprovalQueue = function(){
+      const body=document.getElementById("lunchReviewRows");if(!body)return;
+      const rows=timeLogs.filter(r=>["pending","rejected"].includes(r.lunch_review_status)).sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||"")));
+      const pending=rows.filter(r=>r.lunch_review_status==="pending").length;
+      document.getElementById("lunchPendingCount").textContent=`${pending} pending`;
+      body.innerHTML=rows.map(r=>{
+        const rejected=r.lunch_review_status==="rejected";
+        return `<tr>
+          <td><b>${GP.escapeHtml(r.employee_name||"Unknown")}</b><br><small>${GP.escapeHtml(r.work_date||"")}</small></td>
+          <td class="mono">${GP.escapeHtml(r.clock_in||"")}–${GP.escapeHtml(r.clock_out||"")}<br><b>${format00(getShiftHours(r))}h</b> · ${Number(r.break_minutes)||0}m lunch</td>
+          <td style="max-width:320px;white-space:normal;overflow-wrap:anywhere;">${GP.escapeHtml(r.no_lunch_reason||"No reason on file")}${r.lunch_review_note?`<p style="margin-top:6px;color:var(--muted);">Manager: ${GP.escapeHtml(r.lunch_review_note)}</p>`:""}</td>
+          <td><span class="badge ${rejected?"badge-issue":"badge-warn"}">${rejected?"Rejected — needs correction":"Pending Approval"}</span></td>
+          <td style="white-space:nowrap;"><button type="button" class="btn-outline" onclick="reviewNoLunch('${r.id}','approved')">Approve</button> <button type="button" class="btn-outline" style="color:var(--red);" onclick="reviewNoLunch('${r.id}','rejected')">Reject</button> <button type="button" class="btn-outline" onclick="openEditTime('${r.id}')">Edit</button></td>
+        </tr>`;
+      }).join("")||'<tr><td colspan="5" style="text-align:center;color:var(--muted);">No unresolved no-lunch exceptions. Previously approved entries remain in timecard history.</td></tr>';
+    };
+    window.reviewNoLunch = async function(id,status){
+      if(!["approved","rejected"].includes(status))return;
+      const record=timeLogs.find(r=>String(r.id)===String(id));
+      if(!record||!["pending","rejected"].includes(record.lunch_review_status))return alert("This exception is no longer waiting for review.");
+      const reason=prompt(`${status==="approved"?"Approve":"Reject"} no-lunch exception for ${record.employee_name} on ${record.work_date}?\n\nEmployee explanation: ${record.no_lunch_reason||"None"}\n\nEnter a manager review note (required):`);
+      if(reason===null)return;
+      if(reason.trim().length<10)return alert("A manager review note of at least 10 characters is required.");
+      try{
+        requireManagementCloud();
+        const {data,error}=await supabaseClient.from("time_logs").update({lunch_review_status:status,lunch_review_note:reason.trim()}).eq("id",record.id).select("*").single();
+        if(error)throw error;
+        if(!data||data.lunch_review_status!==status)throw new Error("Supabase did not confirm the lunch decision.");
+        Object.assign(record,data);
+        await logAudit("REVIEW_NO_LUNCH",`${status.toUpperCase()} ${record.employee_name} ${record.work_date}; reason: ${reason.trim()}`);
+        renderLunchApprovalQueue();
+        await loadAdminData();
+        showToast(`No-lunch exception ${status}; review saved to Supabase.`);
+      }catch(e){alert(`Manager review was NOT saved: ${e.message||e}`);}
+    };
+
     window.renderAdminUI = function() {
       const totalHrs = timeLogs.reduce((a, r) => a + getShiftHours(r), 0);
       const totalVol = commissionLogs.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
@@ -1978,6 +2041,11 @@
         exList.push({ cat: a.action_type, subj: a.supervisor_name, det: a.details });
       });
 
+      // Pending no-lunch exceptions are true end-of-day payroll review items.
+      timeLogs.filter(r=>r.lunch_review_status==="pending").slice(0,8).forEach(r=>{
+        exList.push({cat:"LUNCH APPROVAL",subj:`${r.employee_name} (${r.work_date})`,det:r.no_lunch_reason||"Employee no-lunch explanation required"});
+      });
+
       // 3. THE BONUS: Pull in Quotes Due for Admin Review or CSR Follow-Up
       quoteLogs.filter(q => q.status === "admin_review" || q.status === "follow_up").slice(0, 5).forEach(q => {
         exList.push({
@@ -2053,6 +2121,7 @@
 
       renderGroupedTimeLogs();
       renderActiveTimeMonitor();
+      renderLunchApprovalQueue();
 
       document.getElementById("adminAuditTable").innerHTML = auditLogs.slice(0, auditLimit).map(a => `
         <tr>
@@ -2222,7 +2291,8 @@
       const updatedFields = {
         work_date: date, clock_in: start, clock_out: end,
         lunch_out_time: calculated.lunchOut, lunch_in_time: calculated.lunchBack,
-        break_minutes: calculated.breakMinutes, decimal_hours: calculated.hours, notes: updatedNotes
+        break_minutes: calculated.breakMinutes, decimal_hours: calculated.hours, notes: updatedNotes,
+        ...(calculated.breakMinutes>0 ? {lunch_review_status:"not_required",no_lunch_reason:null} : {})
       };
       button.disabled = true;
       try {
@@ -2271,6 +2341,8 @@
       if (!empName || !date) return alert("Select an employee and work date before saving.");
       if (calculated.error) return alert(calculated.error);
       if (!reason) return alert("Please enter an Audit Reason for manually adding this shift.");
+      if(calculated.breakMinutes===0 && reason.length<10)
+        return alert("For a shift without lunch, enter at least 10 characters describing the verified no-lunch exception.");
       const empObj = usersList.find(u => isSameEmployee(u.employee_name, empName));
       if (!empObj) return alert("That employee was removed or renamed. Please select them again.");
       const supervisor = activeUser ? activeUser.employee_name : "Admin";
@@ -2279,6 +2351,9 @@
         work_date: date, clock_in: start, clock_out: end,
         lunch_out_time: calculated.lunchOut, lunch_in_time: calculated.lunchBack,
         break_minutes: calculated.breakMinutes, decimal_hours: calculated.hours,
+        no_lunch_reason:calculated.breakMinutes===0?`Supervisor verified no lunch: ${reason}`:null,
+        lunch_review_status:calculated.breakMinutes===0?"approved":"not_required",
+        lunch_review_note:calculated.breakMinutes===0?`Manager-created shift: ${reason}`:null,
         clock_in_location: "Manual Admin Entry", clock_out_location: "Manual Admin Entry",
         notes: `[ADMIN ADDED by ${supervisor}: ${reason}]`
       };
@@ -2525,8 +2600,8 @@
     }
 
     window.exportTimeCSV = function() {
-      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Lunch Out", "Lunch Back", "Break Mins", "Hours", "Geotag", "Notes"],
-        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.lunch_out_time || "", r.lunch_in_time || "", r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || ""]));
+      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Lunch Out", "Lunch Back", "Break Mins", "Hours", "Geotag", "Notes", "Lunch Review", "No-Lunch Reason", "Manager Note", "Reviewed At"],
+        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.lunch_out_time || "", r.lunch_in_time || "", r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || "",r.lunch_review_status||"",r.no_lunch_reason||"",r.lunch_review_note||"",r.lunch_reviewed_at||""]));
     };
 
     window.exportCommissionsCSV = function() {
