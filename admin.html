@@ -732,12 +732,19 @@
 
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261112b">
-<script src="gp-sidebar.js?v=20261112b" defer></script>
+<link rel="stylesheet" href="gp-sidebar.css?v=20261112d">
+<link rel="stylesheet" href="gp-dashboard-builder.css?v=20261112e">
+<script src="gp-dashboard-core.js?v=20261112e"></script>
+<script src="gp-payroll-weeks.js?v=20261112d"></script>
+<script src="gp-sidebar.js?v=20261112d" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
+<link rel="stylesheet" href="gp-payroll-weeks.css?v=20261112d">
+<link rel="stylesheet" href="gp-accounting-bridge.css?v=20261112e">
+<script src="gp-accounting-core.js?v=20261112e"></script>
+<script src="gp-accounting-bridge.js?v=20261112e"></script>
 </head>
-<body class="gp-app">
+<body class="gp-app gp-admin-shell">
 
   <header>
     <div class="brand">
@@ -787,21 +794,29 @@
     </div>
 
     <div class="dashboard-pref-bar">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><strong style="font-size:12px;">Management Dashboard</strong><span id="dashboardLockStatus" class="badge badge-ok">Locked</span><span style="font-size:11px;color:var(--muted);">Saved layout and default view persist until you change them.</span></div>
-      <div class="dashboard-pref-controls"><span id="dashboardSaveState" style="font-size:11px;color:var(--muted);"></span><button type="button" id="dashboardCustomizeBtn" class="btn-outline" onclick="toggleDashboardCustomization()">Customize Dashboard</button><button type="button" id="dashboardResetBtn" class="btn-outline hidden" onclick="resetDashboardCustomization()">Reset Defaults</button><button type="button" id="dashboardSaveLockBtn" class="btn-outline hidden" onclick="saveAndLockDashboard()">Save & Lock</button></div>
-      <div id="dashboardPrefPanel" class="dashboard-pref-panel hidden">
-        <div><label>Default Management View</label><select id="dashboardDefaultPane" onchange="previewDashboardDefaultPane()"><option value="adminOverviewPane">Command Center</option><option value="adminMOSPane">MultiplyOS Hub</option><option value="adminUsersPane">Users & Roles</option><option value="adminCommissionsPane">Commissions & WOs</option><option value="adminTimePane">Time & Geotags</option><option value="adminFleetPane">Audit Trail</option></select></div>
-        <div><label>Command Center Layout</label><select id="dashboardColumnMode" onchange="previewDashboardCustomization()"><option value="two">Two-column widgets</option><option value="one">Single-column widgets</option></select></div>
-        <label class="perm-label"><input type="checkbox" id="dashShowKpis" checked onchange="previewDashboardCustomization()" /> Show KPI Summary</label><label class="perm-label"><input type="checkbox" id="dashShowOvertime" checked onchange="previewDashboardCustomization()" /> Show Overtime Watchlist</label><label class="perm-label"><input type="checkbox" id="dashShowDivision" checked onchange="previewDashboardCustomization()" /> Show Division Scoreboard</label>
-        <div style="grid-column:1/-1;font-size:11px;color:var(--muted);">Changes preview immediately. <b>Save & Lock</b> writes them to your signed-in manager profile so they return on future logins and devices.</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><strong style="font-size:12px;">Management Workspace</strong><span id="dashboardLockStatus" class="badge badge-ok">Locked</span><span style="font-size:11px;color:var(--muted);">Personalized sections, menus, and saved layouts follow your account.</span></div>
+      <div class="dashboard-pref-controls"><span id="dashboardSaveState" style="font-size:11px;color:var(--muted);"></span><button type="button" id="dashboardCustomizeBtn" class="btn-outline" onclick="toggleDashboardCustomization()">Customize Workspace</button><button type="button" id="dashboardResetBtn" class="btn-outline hidden" onclick="resetDashboardCustomization()">Reset Defaults</button><button type="button" id="dashboardSaveLockBtn" class="btn-outline hidden" onclick="saveAndLockDashboard()">Save & Lock</button></div>
+      <div id="dashboardPrefPanel" class="dashboard-pref-panel gp-dashboard-editor hidden">
+        <div class="gp-builder-intro">
+          <div><strong>Management Workspace Builder</strong>
+          <p>Personalize your Management screens: which sections appear, their order, the sidebar menu, and your default view. Your changes preview immediately and remain private to your manager account until saved.</p></div>
+        </div>
+        <div class="gp-builder-grid">
+          <label class="gp-builder-field"><span>Open Management on</span><select id="dashboardDefaultPane" onchange="dashboardBuilderChanged()"></select></label>
+          <label class="gp-builder-field"><span>Command Center columns</span><select id="dashboardColumnMode" onchange="dashboardBuilderChanged()"><option value="two">Two columns</option><option value="one">One column</option></select></label>
+          <label class="gp-builder-field"><span>Information density</span><select id="dashboardDensity" onchange="dashboardBuilderChanged()"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+          <label class="gp-builder-field"><span>Workspace width</span><select id="dashboardContentWidth" onchange="dashboardBuilderChanged()"><option value="standard">Standard</option><option value="wide">Wide</option></select></label>
+        </div>
+        <div id="dashboardBuilderTabs" class="gp-builder-tabs"></div>
+        <p class="gp-builder-footnote">Use ↑ and ↓ to rearrange sections. Turn sections off to declutter your view (this does not change staff permissions or delete records). At least one Management menu entry stays visible. Click <b>Save &amp; Lock</b> to synchronize the layout to Supabase, or <b>Cancel Changes</b> to restore the last saved version.</p>
       </div>
     </div>
 
     <!-- ====================================================================
          PANE 1: EXECUTIVE COMMAND CENTER
          ==================================================================== -->
-    <div id="adminOverviewPane">
-      <div id="dashWidgetKpis" class="grid-4" style="margin-bottom:18px;">
+    <div id="adminOverviewPane" class="gp-managed-pane">
+      <div id="dashWidgetKpis" class="grid-4 gp-widget-section" style="margin-bottom:18px;">
         <div class="kpi-card">
           <label>Total Logged Hours</label>
           <div id="statTotalHours" class="kpi-value">00.00</div>
@@ -825,7 +840,7 @@
       </div>
 
       <div id="dashboardLowerGrid" class="desktop-split layout-two">
-        <div id="dashWidgetOvertime" class="card">
+        <div id="dashWidgetOvertime" class="card gp-widget-section">
           <div class="card-title">
             <span>Overtime & Hour Cap Compliance Watchlist</span>
             <span class="badge badge-warn">Click Any Name for Weekly Popup</span>
@@ -848,7 +863,7 @@
           </div>
         </div>
 
-        <div id="dashWidgetDivision">
+        <div id="dashWidgetDivision" class="gp-widget-section">
           <div class="card">
             <div class="card-title">
               <span>6-Division Labor & WO Scoreboard</span>
@@ -878,8 +893,8 @@
     <!-- ====================================================================
          PANE 2: MULTIPLY-OS HUB
          ==================================================================== -->
-    <div id="adminMOSPane" class="hidden">
-      <div class="card" style="border-top: 4px solid var(--mos-indigo);">
+    <div id="adminMOSPane" class="gp-managed-pane hidden">
+      <div id="gpWidgetMOSOverview" class="card gp-widget-section" style="border-top: 4px solid var(--mos-indigo);">
         <div class="card-title">
           <span>MultiplyOS (MOS) Divisional Scoreboard & Sync Bridge</span>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -907,16 +922,16 @@
 
         <div class="desktop-split">
           <div class="card" style="margin-bottom:0; background:#F8FAFC;">
-            <div class="card-title" style="font-size:13px;">MultiplyOS Webhook & Workspace Settings</div>
+            <div class="card-title" style="font-size:13px;">MultiplyOS Workspace Shortcut (local browser setting)</div>
             <div style="margin-bottom:10px;">
               <label>MultiplyOS Workspace Launch URL</label>
               <input type="url" id="mosWorkspaceUrlInput" value="https://app.multiplyos.com" />
             </div>
             <div style="margin-bottom:12px;">
-              <label>MultiplyOS Webhook Endpoint (Optional)</label>
+              <label>Optional webhook reference — NOT connected (do not enter a secret URL)</label>
               <input type="url" id="mosWebhookUrlInput" placeholder="https://hook.us1.make.com/..." />
             </div>
-            <button type="button" class="btn btn-mos" onclick="saveMOSConfig()">Save MultiplyOS Settings</button>
+            <button type="button" class="btn btn-mos" onclick="saveMOSConfig()">Save Local MOS Shortcut</button>
           </div>
 
           <div class="card" style="margin-bottom:0; background:#F8FAFC;">
@@ -939,13 +954,46 @@
           </div>
         </div>
       </div>
+      <section class="card gp-widget-section" id="gpWidgetAccountingBridge" aria-label="Cross-system accounting and MOS integration review">
+        <div class="gp-accounting-head">
+          <div><h3>Mainstreet · QBO · MultiplyOS integration review</h3>
+            <p>Make collections, accounting exceptions and operational scorecards visible in one place. Mainstreet/QBO are report snapshots until an approved API connection is configured. No accounting changes are posted from here.</p></div>
+          <div class="gp-accounting-tools">
+            <button type="button" class="btn-outline" id="gpAccountingRefresh">Refresh source review</button>
+            <button type="button" class="btn-outline" id="gpAccountingExport">Export exception CSV</button>
+          </div>
+        </div>
+        <div id="gpAccountingStatus" class="gp-accounting-status" role="status" aria-live="polite">Awaiting verified Supabase data…</div>
+        <div class="gp-qbo-panel" aria-label="Secure QuickBooks Online integration">
+          <strong>QuickBooks Online · Secure Account Connection</strong>
+          <p class="gp-qbo-note">Read-only QBO invoice, customer, payment and credit imports. Intuit authorization and token storage occur on the Supabase server; this website never receives the QBO secret or tokens.</p>
+          <div id="gpQboState" class="gp-qbo-readout">Checking connection status…</div>
+          <div class="gp-qbo-actions"><button type="button" class="gp-primary" id="gpQboConnect">Connect / Reconnect QuickBooks</button><button type="button" id="gpQboSync">Sync QBO Now</button></div>
+          <div id="gpQboFeedback" class="gp-qbo-readout" role="status" aria-live="polite"></div>
+          <p class="gp-qbo-note">Accounting information syncs into Collections; employee notes and statuses are not overwritten. Scheduled sync and webhook notices require the Supabase service configuration described in the setup guide.</p>
+        </div>
+        <div class="gp-accounting-sources">
+          <article class="gp-source-tile" id="gpAccountingMainstreet">Mainstreet status pending</article>
+          <article class="gp-source-tile" id="gpAccountingQbo">QBO status pending</article>
+          <article class="gp-source-tile" id="gpAccountingMos">MultiplyOS status pending</article>
+        </div>
+        <div id="gpAccountingMetrics" class="gp-accounting-metrics" aria-label="Reconciliation summary"></div>
+        <div class="gp-accounting-navigation">
+          <a class="btn-outline" href="collections.html#reconcile">Review balance exceptions</a>
+          <a class="btn-outline" href="collections.html#closeout">End-of-day reconciliation</a>
+          <a class="btn-outline" href="collections.html#imports">Import Mainstreet / QBO reports</a>
+        </div>
+        <div class="card-title"><span>Accounting exceptions requiring investigation</span><span class="badge badge-warn" id="gpAccountingExceptionCount">Pending source review</span></div>
+        <div class="table-wrap gp-accounting-exception-table"><table><thead><tr><th>Flag</th><th>Customer / invoice</th><th>Source</th><th>Mainstreet</th><th>QBO</th><th>Difference</th><th>Recommended action</th></tr></thead><tbody id="gpAccountingExceptionRows"><tr><td colspan="7">Refresh to read the current Supabase snapshot.</td></tr></tbody></table></div>
+        <p class="gp-accounting-guard">Audit rule: source matches require the same case key and presence in both latest completed exports. A pending GLASSPRO correction is not proof of an external payment or ledger change. Compare as-of dates before treating mismatches as discrepancies.</p>
+      </section>
     </div>
 
     <!-- ====================================================================
          PANE 3: USERS & ROLES
          ==================================================================== -->
-    <div id="adminUsersPane" class="hidden">
-      <div class="card">
+    <div id="adminUsersPane" class="gp-managed-pane hidden">
+      <div id="gpWidgetUserEditor" class="card gp-widget-section">
         <div class="card-title">
           <span id="userFormTitle">Add or Update Employee Account</span>
           <button type="button" class="btn-outline" onclick="resetUserForm()">Clear Form</button>
@@ -1011,7 +1059,7 @@
         <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveEmployeeUser()">Save Employee Account</button>
       </div>
 
-      <div class="card">
+      <div id="gpWidgetUserRoster" class="card gp-widget-section">
         <div class="card-title">Employee Roster & Classification Directory</div>
         <div class="table-wrap">
           <table>
@@ -1036,8 +1084,8 @@
     <!-- ====================================================================
          PANE 4: COMMISSIONS & WOs
          ==================================================================== -->
-    <div id="adminCommissionsPane" class="hidden">
-      <div class="card">
+    <div id="adminCommissionsPane" class="gp-managed-pane hidden">
+      <div id="gpWidgetCommissionBoard" class="card gp-widget-section">
         <div class="card-title">
           <span>Commission & Work Order Review Board</span>
           <button type="button" class="btn-outline" onclick="exportCommissionsCSV()">Export WOs CSV</button>
@@ -1065,9 +1113,24 @@
     <!-- ====================================================================
          PANE 5: TIME & GEOTAGS (WITH MANUAL EDIT + ADD MISSING SHIFT + AUDIT)
          ==================================================================== -->
-    <div id="adminTimePane" class="hidden">
+    <div id="adminTimePane" class="gp-managed-pane hidden">
+        <section id="gpPayrollWeekControls" class="card gp-payroll-week-picker" aria-label="Choose payroll week">
+          <div class="gp-payroll-week-heading">
+            <div><span class="gp-week-eyebrow">PAYROLL PERIOD</span><h3>Weekly shift register</h3><p>Each week runs Monday–Sunday. Shifts belong to the work date/clock-in date, including overnight shifts; no shift appears in two weeks.</p></div>
+            <span id="gpPayrollWeekMode" class="badge badge-navy">Current week</span>
+          </div>
+          <div class="gp-payroll-week-controls">
+            <button type="button" class="btn-outline" id="gpPayrollPrev" onclick="changePayrollWeek(-1)" title="View the previous Monday–Sunday week">← Previous week</button>
+            <div class="gp-payroll-week-range" role="status" aria-live="polite"><strong id="gpPayrollWeekLabel">Current Monday – Sunday</strong><small id="gpPayrollWeekDates"></small></div>
+            <button type="button" class="btn-outline" id="gpPayrollNext" onclick="changePayrollWeek(1)" title="View the next Monday–Sunday week">Next week →</button>
+            <label class="gp-payroll-week-jump">Jump to a date<input type="date" id="gpPayrollWeekPicker" aria-label="Jump to payroll week containing date" onchange="choosePayrollWeek(this.value)"></label>
+            <button type="button" class="btn-outline" onclick="jumpToCurrentPayrollWeek()">This week</button>
+          </div>
+          <div class="gp-payroll-week-summary" id="gpPayrollWeekSummary" aria-live="polite"></div>
+        </section>
+        
 
-      <section class="card gp-lunch-review" aria-label="Lunch exceptions requiring manager review">
+      <section id="gpWidgetLunchReview" class="card gp-lunch-review gp-widget-section" aria-label="Lunch exceptions requiring manager review">
         <div class="card-title" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
           <span>Lunch Exception Review <span id="lunchPendingCount" class="badge badge-warn">0 pending</span></span>
           <button type="button" class="btn-outline" onclick="renderLunchApprovalQueue()">Refresh Review Queue</button>
@@ -1191,10 +1254,10 @@
       </div>
 
       <!-- PAYROLL HOURS & CLASSIFICATION SUMMARY TABLE -->
-      <div class="card">
+      <div id="gpWidgetPayroll" class="card gp-widget-section">
         <div class="card-title">
           <span>Employee Payroll Hours & Overtime Breakdown</span>
-          <span class="badge badge-navy">Click Any Employee for Weekly Popup</span>
+          <span class="badge badge-navy" id="payrollWeekHeaderBadge">Selected Monday–Sunday week</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -1213,15 +1276,15 @@
         </div>
       </div>
 
-      <div class="card live-sync-card"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
-      <div class="card"><div class="card-title"><span>Time Logs & High-Precision Street Geotags — Grouped by Employee</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Time CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
+      <div id="gpWidgetLiveTime" class="card live-sync-card gp-widget-section"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Active punches are inferred from cloud-synced clock-in/clock-out events. Completed shifts refresh automatically as employees submit time.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
+      <div id="gpWidgetTimeHistory" class="card gp-widget-section"><div class="card-title"><span>Shift History & Geotags — By Employee / Selected Week</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Selected Week CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Only shifts belonging to the selected Monday–Sunday week are shown here. Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
     </div>
 
     <!-- ====================================================================
          PANE 6: IMMUTABLE SUPERVISOR AUDIT LOGS
          ==================================================================== -->
-    <div id="adminFleetPane" class="hidden">
-      <div class="card">
+    <div id="adminFleetPane" class="gp-managed-pane hidden">
+      <div id="gpWidgetAuditHistory" class="card gp-widget-section">
         <div class="card-title">
           <span>Immutable Supervisor Audit Logs (Showing 10)</span>
           <span class="badge badge-navy">Tracks All Time Edits, Additions & Deletions</span>
@@ -1256,6 +1319,7 @@
         <div>
           <span id="modalEmpNameTitle" style="font-size:16px;">Employee Weekly Breakdown</span>
           <small id="modalEmpDeptSubtitle" style="display:block; color:var(--muted); font-size:11px; margin-top:2px;"></small>
+          <small id="modalEmpWeekLabel" style="display:block; color:#a93c4f; font-size:11px; margin-top:3px; font-weight:750;"></small>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <span id="modalEmpTypeBadge" class="badge badge-navy">Full-Time</span>
@@ -1370,7 +1434,8 @@
     let activeTimeSessions = [];
     let auditLimit = 10;
     let currentModalEmployeeName = "";
-    const DASHBOARD_PREF_DEFAULTS=Object.freeze({locked:true,defaultPane:"adminOverviewPane",columns:"two",showKpis:true,showOvertime:true,showDivision:true});
+    let payrollWeekMonday = GP_PAYROLL_WEEKS.readSavedWeek();
+    const DASHBOARD_PREF_DEFAULTS=Object.freeze(GP_DASH_CORE.defaults());
     const VALID_ADMIN_PANES=new Set(["adminOverviewPane","adminMOSPane","adminUsersPane","adminCommissionsPane","adminTimePane","adminFleetPane"]);
     let dashboardPrefs={...DASHBOARD_PREF_DEFAULTS};
     let dashboardSavedPrefs={...DASHBOARD_PREF_DEFAULTS};
@@ -1540,172 +1605,304 @@
 
     window.logoutPortal = async function() { await GP.signOut(supabaseClient); };
 
-    function normalizeDashboardPreferences(raw){
-      const source=(raw&&typeof raw==="object"&&!Array.isArray(raw))?raw:{};
-      return {
-        locked: source.locked !== false,
-        defaultPane: VALID_ADMIN_PANES.has(source.defaultPane)?source.defaultPane:DASHBOARD_PREF_DEFAULTS.defaultPane,
-        columns: source.columns === "one" ? "one" : "two",
-        showKpis: source.showKpis !== false,
-        showOvertime: source.showOvertime !== false,
-        showDivision: source.showDivision !== false
-      };
-    }
-
-    window.showAdminSubTab = function(paneId, btn) {
-      const safePane=VALID_ADMIN_PANES.has(paneId)?paneId:"adminOverviewPane";
-      ["adminOverviewPane", "adminMOSPane", "adminUsersPane", "adminCommissionsPane", "adminTimePane", "adminFleetPane"].forEach(id => {
-        document.getElementById(id)?.classList.add("hidden");
-      });
-      document.getElementById(safePane)?.classList.remove("hidden");
-      document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
-      const safeBtn=btn||getDashboardButtonForPane(safePane);
-      if (safeBtn) safeBtn.classList.add("active");
+    // Management Workspace Builder v2. Settings are presentation-only;
+    // Supabase policies continue to enforce actual permissions.
+    function normalizeDashboardPreferences(raw){return GP_DASH_CORE.normalize(raw);}
+    function copyDashboardPreferences(raw){return JSON.parse(JSON.stringify(normalizeDashboardPreferences(raw)));}
+    function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
+    window.showAdminSubTab = function(paneId,btn){
+      const pane=VALID_ADMIN_PANES.has(paneId)?paneId:"adminOverviewPane";
+      VALID_ADMIN_PANES.forEach(id=>document.getElementById(id)?.classList.toggle("hidden",id!==pane));
+      document.querySelectorAll(".sub-btn").forEach(b=>b.classList.remove("active"));
+      (btn||getDashboardButtonForPane(pane))?.classList.add("active");
+      window.GP_SIDEBAR?.setAdminPane?.(pane);
     };
-
-    function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.auth_user_id || "default"}`;}
+    window.addEventListener("hashchange",()=>{
+      const target=decodeURIComponent((location.hash||"").slice(1));
+      if(VALID_ADMIN_PANES.has(target))showAdminSubTab(target,getDashboardButtonForPane(target));
+    });
+    function getDashboardPrefsKey(){return `gp_admin_dashboard_prefs_${activeUser?.auth_user_id||"default"}`;}
     function setDashboardSaveState(message,isError=false){
-      const el=document.getElementById("dashboardSaveState");
-      if(!el)return;
+      const el=document.getElementById("dashboardSaveState");if(!el)return;
       el.textContent=message||"";
       el.style.color=isError?"var(--red)":"var(--muted)";
-    }
-    function readDashboardControls(lockState=false){
-      return normalizeDashboardPreferences({
-        locked:lockState,
-        defaultPane:document.getElementById("dashboardDefaultPane")?.value,
-        columns:document.getElementById("dashboardColumnMode")?.value,
-        showKpis:document.getElementById("dashShowKpis")?.checked,
-        showOvertime:document.getElementById("dashShowOvertime")?.checked,
-        showDivision:document.getElementById("dashShowDivision")?.checked
-      });
+      el.setAttribute("role",isError?"alert":"status");
     }
     function cacheDashboardPreferences(prefs){
-      try{localStorage.setItem(getDashboardPrefsKey(),JSON.stringify({...prefs,locked:true}));}catch(e){}
+      try{localStorage.setItem(getDashboardPrefsKey(),JSON.stringify({...prefs,locked:true}));}catch(err){console.warn("Unable to cache manager preferences",err);}
     }
+    let dashboardLoadGeneration=0;
     async function loadDashboardPreferences(){
-      let localPrefs=null;
-      try{localPrefs=JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"null");}catch(e){}
-      dashboardPrefs=normalizeDashboardPreferences(localPrefs||DASHBOARD_PREF_DEFAULTS);
+      // Live clock updates, background visibility events, or a second browser tab
+      // must never discard a manager's unsaved editing session.
+      if(!dashboardPrefs.locked||dashboardSaveInFlight)return;
+      const generation=++dashboardLoadGeneration;
+      let local=null;
+      try{local=JSON.parse(localStorage.getItem(getDashboardPrefsKey())||"null");}catch(err){}
+      dashboardPrefs=normalizeDashboardPreferences(local||DASHBOARD_PREF_DEFAULTS);
       dashboardPrefs.locked=true;
-      dashboardSavedPrefs={...dashboardPrefs};
+      dashboardSavedPrefs=copyDashboardPreferences(dashboardPrefs);
       applyDashboardPreferences();
-      setDashboardSaveState(localPrefs?"Loaded saved dashboard":"Using dashboard defaults");
-      if(isCloudConnected && activeUser?.auth_user_id){
-        try{
-          const {data,error}=await supabaseClient.from("portal_preferences").select("dashboard_prefs,updated_at").eq("auth_user_id",String(activeUser.auth_user_id)).maybeSingle();
-          if(error) throw error;
-          if(data?.dashboard_prefs && typeof data.dashboard_prefs==="object"){
-            dashboardPrefs=normalizeDashboardPreferences(data.dashboard_prefs);
-            dashboardPrefs.locked=true;
-            dashboardSavedPrefs={...dashboardPrefs};
-            cacheDashboardPreferences(dashboardPrefs);
-            applyDashboardPreferences();
-            setDashboardSaveState("Synced with Supabase");
-          }else{
-            setDashboardSaveState(localPrefs?"Saved locally — not yet in Supabase":"No saved dashboard yet");
-          }
-        }catch(e){
-          console.error("Dashboard preference load failed",e);
-          setDashboardSaveState("Supabase preference sync unavailable",true);
+      setDashboardSaveState(local?"Saved layout loaded from this device":"Default workspace layout");
+      if(!isCloudConnected||!activeUser?.auth_user_id){setDashboardSaveState("Cloud preferences unavailable — saving requires Supabase",true);return;}
+      try{
+        const {data,error}=await supabaseClient.from("portal_preferences")
+          .select("dashboard_prefs,updated_at")
+          .eq("auth_user_id",String(activeUser.auth_user_id)).maybeSingle();
+        if(error)throw error;
+        if(generation!==dashboardLoadGeneration||!dashboardPrefs.locked||dashboardSaveInFlight)return;
+        if(data?.dashboard_prefs&&typeof data.dashboard_prefs==="object"&&Object.keys(data.dashboard_prefs).length){
+          dashboardPrefs=normalizeDashboardPreferences(data.dashboard_prefs);
+          dashboardPrefs.locked=true;
+          dashboardSavedPrefs=copyDashboardPreferences(dashboardPrefs);
+          cacheDashboardPreferences(dashboardPrefs);
+          applyDashboardPreferences();
+          setDashboardSaveState("Synced with Supabase");
+        }else{
+          setDashboardSaveState("No saved cloud layout — customize and Save & Lock");
         }
+      }catch(err){console.warn("Workspace preference read failed",err);setDashboardSaveState(`Preference sync error: ${err.message||err}`,true);}
+    }
+    function renderDashboardBuilder(){
+      const host=document.getElementById("dashboardBuilderTabs");if(!host)return;
+      const expanded=new Set([...host.querySelectorAll("details[open]")].map(d=>d.dataset.pane));
+      const hadContent=host.children.length>0;
+      host.replaceChildren();
+      const sel=document.getElementById("dashboardDefaultPane");
+      if(sel){sel.replaceChildren();for(const id of dashboardPrefs.tabOrder){
+        if(dashboardPrefs.hiddenTabs.includes(id))continue;
+        const p=GP_DASH_CORE.PANES.find(x=>x.id===id);const option=document.createElement("option");
+        option.value=id;option.textContent=dashboardPrefs.tabNames[id]||p.label;sel.append(option);
+      }sel.value=dashboardPrefs.defaultPane;}
+      document.getElementById("dashboardColumnMode").value=dashboardPrefs.columns;
+      document.getElementById("dashboardDensity").value=dashboardPrefs.density;
+      document.getElementById("dashboardContentWidth").value=dashboardPrefs.contentWidth;
+      const titleRow=(label,control)=>{
+        const row=document.createElement("label");row.className="gp-builder-switch";
+        row.append(control,document.createTextNode(label));return row;
+      };
+      for(const paneId of dashboardPrefs.tabOrder){
+        const info=GP_DASH_CORE.PANES.find(p=>p.id===paneId);
+        const details=document.createElement("details");details.className="gp-builder-tab";details.dataset.pane=paneId;
+        details.open=hadContent?expanded.has(paneId):paneId===dashboardPrefs.tabOrder[0];
+        const summary=document.createElement("summary");
+        const summaryName=document.createElement("span");summaryName.textContent=dashboardPrefs.tabNames[paneId]||info.label;
+        const count=document.createElement("small");count.textContent=`${info.widgets.filter(w=>!dashboardPrefs.hiddenWidgets.includes(w.id)).length}/${info.widgets.length} visible · Edit ▾`;
+        summary.append(summaryName,count);details.append(summary);
+        const body=document.createElement("div");body.className="gp-builder-panel";
+        const nameLabel=document.createElement("label");nameLabel.className="gp-builder-label";
+        nameLabel.textContent="Sidebar label (optional)";
+        const name=document.createElement("input");name.type="text";name.maxLength=35;name.value=dashboardPrefs.tabNames[paneId]||"";
+        name.placeholder=info.label;
+        name.addEventListener("change",()=>{
+          dashboardPrefs.tabNames[paneId]=GP_DASH_CORE.limitLabel(name.value,info.label);
+          dashboardPrefs=normalizeDashboardPreferences({...dashboardPrefs,locked:false});
+          applyDashboardPreferences();renderDashboardBuilder();setDashboardSaveState("Editing unsaved sidebar labels");
+        });nameLabel.append(name);body.append(nameLabel);
+        const check=document.createElement("input");check.type="checkbox";check.checked=!dashboardPrefs.hiddenTabs.includes(paneId);
+        check.addEventListener("change",()=>{
+          const hidden=new Set(dashboardPrefs.hiddenTabs);
+          if(check.checked)hidden.delete(paneId);else hidden.add(paneId);
+          if(hidden.size>=GP_DASH_CORE.PANES.length){check.checked=true;return alert("At least one Management menu entry must remain visible.");}
+          dashboardPrefs=normalizeDashboardPreferences({...dashboardPrefs,hiddenTabs:[...hidden],locked:false});
+          applyDashboardPreferences();renderDashboardBuilder();setDashboardSaveState("Editing unsaved menu visibility");
+        });body.append(titleRow("Show this page in my Management sidebar",check));
+        const navActions=document.createElement("div");navActions.className="gp-builder-row";
+        const navTitle=document.createElement("span");navTitle.textContent="Position in sidebar";navActions.append(navTitle);
+        const navBtns=document.createElement("div");navBtns.className="gp-builder-row-controls";
+        [-1,1].forEach((direction)=>{const b=document.createElement("button");b.type="button";b.textContent=direction<0?"↑":"↓";b.title=direction<0?"Move this page up":"Move this page down";
+          b.disabled=direction<0?dashboardPrefs.tabOrder[0]===paneId:dashboardPrefs.tabOrder.at(-1)===paneId;
+          b.addEventListener("click",()=>{dashboardPrefs.tabOrder=GP_DASH_CORE.reorder(dashboardPrefs.tabOrder,paneId,direction);applyDashboardPreferences();renderDashboardBuilder();setDashboardSaveState("Editing unsaved sidebar order");});navBtns.append(b);
+        });navActions.append(navBtns);body.append(navActions);
+        const sectionHeading=document.createElement("div");sectionHeading.className="gp-builder-section-title";sectionHeading.textContent="Sections on this page";body.append(sectionHeading);
+        for(const widgetId of dashboardPrefs.widgetOrder[paneId]){
+          const widget=info.widgets.find(w=>w.id===widgetId);if(!widget)continue;
+          const row=document.createElement("div");row.className="gp-builder-row";
+          const sectionCheckbox=document.createElement("input");sectionCheckbox.type="checkbox";
+          sectionCheckbox.checked=!dashboardPrefs.hiddenWidgets.includes(widgetId);
+          sectionCheckbox.setAttribute("aria-label",`Show ${widget.label}`);
+          sectionCheckbox.addEventListener("change",()=>{
+            const hidden=new Set(dashboardPrefs.hiddenWidgets);
+            if(sectionCheckbox.checked)hidden.delete(widgetId);else hidden.add(widgetId);
+            dashboardPrefs=normalizeDashboardPreferences({...dashboardPrefs,hiddenWidgets:[...hidden],locked:false});
+            applyDashboardPreferences();renderDashboardBuilder();setDashboardSaveState("Editing unsaved section visibility");
+          });
+          const sectionTitle=document.createElement("span");sectionTitle.textContent=widget.label;
+          const controls=document.createElement("div");controls.className="gp-builder-row-controls";
+          [-1,1].forEach(direction=>{const b=document.createElement("button");b.type="button";b.textContent=direction<0?"↑":"↓";b.title=direction<0?"Move section up":"Move section down";
+            const order=dashboardPrefs.widgetOrder[paneId];b.disabled=direction<0?order[0]===widgetId:order.at(-1)===widgetId;
+            b.addEventListener("click",()=>{dashboardPrefs.widgetOrder[paneId]=GP_DASH_CORE.reorder(order,widgetId,direction);applyDashboardPreferences();renderDashboardBuilder();setDashboardSaveState("Editing unsaved section order");});controls.append(b);
+          });row.append(sectionCheckbox,sectionTitle,controls);body.append(row);
+        }
+        details.append(body);host.append(details);
       }
     }
-    function applyDashboardPreferences(){
-      const ids=[["dashWidgetKpis","showKpis"],["dashWidgetOvertime","showOvertime"],["dashWidgetDivision","showDivision"]];
-      ids.forEach(([id,key])=>document.getElementById(id)?.classList.toggle("dashboard-widget-hidden",dashboardPrefs[key]===false));
-      const lower=document.getElementById("dashboardLowerGrid");
-      if(lower){lower.classList.toggle("layout-one",dashboardPrefs.columns==="one");lower.classList.toggle("layout-two",dashboardPrefs.columns!=="one");}
-      const panel=document.getElementById("dashboardPrefPanel"),badge=document.getElementById("dashboardLockStatus"),custom=document.getElementById("dashboardCustomizeBtn"),save=document.getElementById("dashboardSaveLockBtn"),reset=document.getElementById("dashboardResetBtn");
-      panel?.classList.toggle("hidden",dashboardPrefs.locked);
-      if(badge){badge.textContent=dashboardPrefs.locked?"Locked":"Editing";badge.className=`badge ${dashboardPrefs.locked?"badge-ok":"badge-warn"}`;}
-      if(custom)custom.textContent=dashboardPrefs.locked?"Customize Dashboard":"Cancel Changes";
-      save?.classList.toggle("hidden",dashboardPrefs.locked);
-      reset?.classList.toggle("hidden",dashboardPrefs.locked);
-      if(document.getElementById("dashboardDefaultPane"))document.getElementById("dashboardDefaultPane").value=dashboardPrefs.defaultPane;
-      if(document.getElementById("dashboardColumnMode"))document.getElementById("dashboardColumnMode").value=dashboardPrefs.columns;
-      if(document.getElementById("dashShowKpis"))document.getElementById("dashShowKpis").checked=dashboardPrefs.showKpis;
-      if(document.getElementById("dashShowOvertime"))document.getElementById("dashShowOvertime").checked=dashboardPrefs.showOvertime;
-      if(document.getElementById("dashShowDivision"))document.getElementById("dashShowDivision").checked=dashboardPrefs.showDivision;
+    function readDashboardControls(){
+      return normalizeDashboardPreferences({
+        ...dashboardPrefs,locked:false,
+        defaultPane:document.getElementById("dashboardDefaultPane")?.value||dashboardPrefs.defaultPane,
+        columns:document.getElementById("dashboardColumnMode")?.value||dashboardPrefs.columns,
+        density:document.getElementById("dashboardDensity")?.value||dashboardPrefs.density,
+        contentWidth:document.getElementById("dashboardContentWidth")?.value||dashboardPrefs.contentWidth
+      });
     }
-    window.previewDashboardCustomization=function(){
+    function applyDashboardPreferences(){
+      const prefs=dashboardPrefs;
+      for(const info of GP_DASH_CORE.PANES){
+        const pane=document.getElementById(info.id);
+        if(!pane)continue;
+        pane.classList.add("gp-managed-pane");
+        for(const id of prefs.widgetOrder[info.id]){
+          const el=document.getElementById(id);if(!el)continue;
+          el.style.order=String(prefs.widgetOrder[info.id].indexOf(id));
+          el.classList.toggle("gp-widget-inactive",prefs.hiddenWidgets.includes(id));
+        }
+      }
+      const lower=document.getElementById("dashboardLowerGrid");
+      if(lower){lower.classList.toggle("layout-one",prefs.columns==="one");lower.classList.toggle("layout-two",prefs.columns!=="one");}
+      const overview=document.getElementById("adminOverviewPane");
+      if(overview){overview.classList.toggle("gp-one-column",prefs.columns==="one");}
+      document.body.classList.toggle("gp-admin-dense",prefs.density==="compact");
+      document.body.classList.toggle("gp-admin-wide",prefs.contentWidth==="wide");
+      const panel=document.getElementById("dashboardPrefPanel"),badge=document.getElementById("dashboardLockStatus"),custom=document.getElementById("dashboardCustomizeBtn"),save=document.getElementById("dashboardSaveLockBtn"),reset=document.getElementById("dashboardResetBtn");
+      panel?.classList.toggle("hidden",prefs.locked);
+      if(badge){badge.textContent=prefs.locked?"Locked":"Editing";badge.className=`badge ${prefs.locked?"badge-ok":"badge-warn"}`;}
+      if(custom)custom.textContent=prefs.locked?"Customize Workspace":"Cancel Changes";
+      save?.classList.toggle("hidden",prefs.locked);reset?.classList.toggle("hidden",prefs.locked);
+      window.GP_SIDEBAR?.setAdminPrefs?.(prefs);
+    }
+    window.dashboardBuilderChanged=function(){
       if(dashboardPrefs.locked||dashboardSaveInFlight)return;
-      dashboardPrefs=readDashboardControls(false);
+      const prev=dashboardPrefs.defaultPane;
+      dashboardPrefs=readDashboardControls();
       applyDashboardPreferences();
+      if(prev!==dashboardPrefs.defaultPane)showAdminSubTab(dashboardPrefs.defaultPane);
       setDashboardSaveState("Previewing unsaved changes");
     };
-    window.previewDashboardDefaultPane=function(){
-      if(dashboardPrefs.locked||dashboardSaveInFlight)return;
-      dashboardPrefs=readDashboardControls(false);
-      applyDashboardPreferences();
-      showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));
-      setDashboardSaveState("Previewing unsaved changes");
-    };
+    window.previewDashboardCustomization=window.dashboardBuilderChanged;
+    window.previewDashboardDefaultPane=window.dashboardBuilderChanged;
     window.toggleDashboardCustomization=function(){
       if(dashboardSaveInFlight)return;
       if(dashboardPrefs.locked){
-        dashboardEditSnapshot={...dashboardSavedPrefs};
-        dashboardPrefs={...dashboardSavedPrefs,locked:false};
-        applyDashboardPreferences();
-        setDashboardSaveState("Editing — changes are not saved yet");
+        ++dashboardLoadGeneration; // invalidate any delayed remote load
+        dashboardEditSnapshot=copyDashboardPreferences(dashboardSavedPrefs);
+        dashboardPrefs={...copyDashboardPreferences(dashboardSavedPrefs),locked:false};
+        applyDashboardPreferences();renderDashboardBuilder();
+        setDashboardSaveState("Editing — click Save & Lock when satisfied");
+        document.getElementById("dashboardPrefPanel")?.scrollIntoView({behavior:"smooth",block:"nearest"});
       }else{
-        dashboardPrefs={...(dashboardEditSnapshot||dashboardSavedPrefs),locked:true};
-        dashboardEditSnapshot=null;
-        applyDashboardPreferences();
-        showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));
-        setDashboardSaveState("Changes canceled");
+        dashboardPrefs={...copyDashboardPreferences(dashboardEditSnapshot||dashboardSavedPrefs),locked:true};
+        dashboardEditSnapshot=null;applyDashboardPreferences();
+        setDashboardSaveState("Changes canceled; your previously locked layout was restored");
       }
     };
     window.resetDashboardCustomization=function(){
       if(dashboardPrefs.locked||dashboardSaveInFlight)return;
-      dashboardPrefs={...DASHBOARD_PREF_DEFAULTS,locked:false};
-      applyDashboardPreferences();
-      showAdminSubTab("adminOverviewPane",getDashboardButtonForPane("adminOverviewPane"));
+      dashboardPrefs={...GP_DASH_CORE.defaults(),locked:false};
+      applyDashboardPreferences();renderDashboardBuilder();showAdminSubTab("adminOverviewPane");
       setDashboardSaveState("Defaults previewed — Save & Lock to keep them");
     };
     window.saveAndLockDashboard=async function(){
-      if(dashboardSaveInFlight)return;
-      const nextPrefs=readDashboardControls(true);
+      if(dashboardPrefs.locked||dashboardSaveInFlight)return;
+      const nextPrefs=normalizeDashboardPreferences({...readDashboardControls(),locked:true});
       dashboardSaveInFlight=true;
       const saveBtn=document.getElementById("dashboardSaveLockBtn");
       if(saveBtn){saveBtn.disabled=true;saveBtn.textContent="Saving…";}
-      setDashboardSaveState("Saving dashboard…");
-      let cloudSaved=false;
+      setDashboardSaveState("Saving your workspace to Supabase…");
       try{
-        if(!isCloudConnected || !activeUser?.auth_user_id) throw new Error("Supabase is unavailable. Dashboard preferences were not saved; reconnect and retry.");
-        {
-          const payload={auth_user_id:String(activeUser.auth_user_id),dashboard_prefs:nextPrefs,updated_at:new Date().toISOString()};
-          const {data,error}=await supabaseClient.from("portal_preferences").upsert([payload],{onConflict:"auth_user_id"}).select("dashboard_prefs,updated_at").single();
+        if(!isCloudConnected||!activeUser?.auth_user_id)throw new Error("You are not connected to Supabase. Sign in again and retry.");
+        let confirmed=null;
+        const rpc=await supabaseClient.rpc("gp_save_dashboard_prefs",{p_prefs:nextPrefs});
+        if(!rpc.error){confirmed=rpc.data;}
+        else if(rpc.error.code==="PGRST202"||rpc.error.code==="42883"){
+          // Backward compatibility while the focused preference RPC migration deploys.
+          const {data,error}=await supabaseClient.from("portal_preferences")
+            .upsert([{auth_user_id:String(activeUser.auth_user_id),dashboard_prefs:nextPrefs,updated_at:new Date().toISOString()}],{onConflict:"auth_user_id"})
+            .select("dashboard_prefs,updated_at").single();
           if(error)throw error;
-          if (!data) throw new Error("Supabase did not confirm the saved dashboard.");
-          cloudSaved=true;
-        }
-        dashboardPrefs={...nextPrefs,locked:true};
-        dashboardSavedPrefs={...dashboardPrefs};
+          confirmed=data?.dashboard_prefs;
+        }else throw rpc.error;
+        if(!confirmed||typeof confirmed!=="object")throw new Error("Supabase did not confirm the saved workspace.");
+        dashboardPrefs={...normalizeDashboardPreferences(confirmed),locked:true};
+        dashboardSavedPrefs=copyDashboardPreferences(dashboardPrefs);
         dashboardEditSnapshot=null;
         cacheDashboardPreferences(dashboardPrefs);
         applyDashboardPreferences();
-        setDashboardSaveState(cloudSaved?"Saved to Supabase":"Saved on this device");
-        showToast(cloudSaved?"Dashboard saved and locked":"Dashboard saved locally and locked");
-      }catch(e){
-        console.error("Dashboard preference save failed",e);
+        setDashboardSaveState("Saved and locked in Supabase — ready on your other devices");
+        showToast("Management workspace saved successfully");
+      }catch(err){
+        console.error("Workspace customization save failed",err);
         dashboardPrefs={...nextPrefs,locked:false};
         applyDashboardPreferences();
-        setDashboardSaveState(`Save failed: ${e?.message||"Supabase rejected the preference update"}`,true);
-        alert(`Dashboard preferences were not saved to Supabase. ${e?.message||"Please try again."}`);
+        setDashboardSaveState(`Save failed: ${err.message||err}`,true);
+        alert(`Your workspace was NOT saved. No existing layout was overwritten.\n\n${err.message||err}`);
       }finally{
         dashboardSaveInFlight=false;
         if(saveBtn){saveBtn.disabled=false;saveBtn.textContent="Save & Lock";}
       }
     };
-    function getDashboardButtonForPane(p){return document.getElementById(({adminOverviewPane:"adminSubBtnOverview",adminMOSPane:"adminSubBtnMOS",adminUsersPane:"adminSubBtnUsers",adminCommissionsPane:"adminSubBtnComm",adminTimePane:"adminSubBtnTime",adminFleetPane:"adminSubBtnAudits"})[p]||"adminSubBtnOverview");}
+    // Payroll period is stored as a canonical ISO Monday date, never a moving 7-day window.
+    // Overnight punches are assigned once to their work_date (clock-in date); we do not
+    // accidentally count the same time-log row in both weekly exports.
+    function payrollEmployeeMatches(recordName,profileName){
+      const a=normalizeName(recordName),b=normalizeName(profileName);
+      if(!a||!b)return false;
+      if(a===b)return true;
+      // Old imports sometimes contain only first names. Only resolve if that name
+      // identifies precisely one employee. Otherwise require admin clarification.
+      const aShort=a.split(" ").length===1,bShort=b.split(" ").length===1;
+      if(!aShort&&!bShort)return false;
+      const first=aShort?a:b;
+      if((aShort?a:b).split(" ")[0]!==first)return false;
+      const full=aShort?b:a;
+      if(full.split(" ")[0]!==first)return false;
+      return usersList.filter(u=>normalizeName(u.employee_name).split(" ")[0]===first).length===1;
+    }
+    function inSelectedPayrollWeek(value){return GP_PAYROLL_WEEKS.inWeek(value,payrollWeekMonday);}
+    function selectedPayrollShifts(){return timeLogs.filter(r=>inSelectedPayrollWeek(r.work_date));}
+    function renderPayrollWeekControl(){
+      const w=GP_PAYROLL_WEEKS.range(payrollWeekMonday);
+      const current=GP_PAYROLL_WEEKS.monday(GP_PAYROLL_WEEKS.today());
+      const same=w.monday===current;
+      const label=document.getElementById("gpPayrollWeekLabel");if(label)label.textContent=w.label;
+      const dates=document.getElementById("gpPayrollWeekDates");if(dates)dates.textContent=`Monday ${w.monday} through Sunday ${w.sunday}`;
+      const mode=document.getElementById("gpPayrollWeekMode");if(mode){mode.textContent=same?"Current week":"Historical week";mode.className=`badge ${same?"badge-navy":"badge-warn"}`;}
+      const picker=document.getElementById("gpPayrollWeekPicker");if(picker){picker.value=w.monday;picker.max=GP_PAYROLL_WEEKS.today();}
+      const next=document.getElementById("gpPayrollNext");if(next)next.disabled=w.monday>=current;
+      const shifts=selectedPayrollShifts();
+      const people=new Set(shifts.map(r=>normalizeName(r.employee_name))).size;
+      const hours=shifts.reduce((sum,r)=>sum+getShiftHours(r),0);
+      const exceptions=shifts.filter(r=>r.lunch_review_status==="pending"||r.lunch_review_status==="rejected").length;
+      const unmatched=shifts.filter(r=>!usersList.some(u=>payrollEmployeeMatches(r.employee_name,u.employee_name))).length;
+      const seen=new Set();let possibleDuplicates=0,overnightBoundary=0;
+      for(const row of shifts){
+        const key=[normalizeName(row.employee_name),row.work_date,row.clock_in,row.clock_out].join("|");
+        if(seen.has(key))possibleDuplicates++;else seen.add(key);
+        if(row.work_date===w.sunday && row.clock_in && row.clock_out && to24HourTime(row.clock_out)<to24HourTime(row.clock_in))overnightBoundary++;
+      }
+      const summary=document.getElementById("gpPayrollWeekSummary");
+      if(summary) summary.innerHTML=`<span><b>${shifts.length}</b> recorded shifts</span><span><b>${people}</b> employees</span><span><b>${format00(hours)}</b> paid hours</span><span><b>${exceptions}</b> lunch exceptions in this week</span>${unmatched?`<span class="gp-week-warning"><b>${unmatched}</b> unmatched employee shifts — review names</span>`:""}${possibleDuplicates?`<span class="gp-week-warning"><b>${possibleDuplicates}</b> possible duplicate shifts — review entries</span>`:""}${overnightBoundary?`<span class="gp-week-warning"><b>${overnightBoundary}</b> Sunday overnight shift(s) — payroll boundary review required</span>`:""}`;
+      const badge=document.getElementById("payrollWeekHeaderBadge");if(badge)badge.textContent=w.label;
+    }
+    window.choosePayrollWeek=function(date){
+      if(!GP_PAYROLL_WEEKS.validDate(date))return;
+      const monday=GP_PAYROLL_WEEKS.monday(date);
+      if(monday>GP_PAYROLL_WEEKS.monday(GP_PAYROLL_WEEKS.today()))return;
+      payrollWeekMonday=monday;GP_PAYROLL_WEEKS.saveWeek(monday);renderAdminUI();
+      if(currentModalEmployeeName && !document.getElementById("employeeBreakdownModal")?.classList.contains("hidden"))openEmployeeBreakdownModal(currentModalEmployeeName);
+    };
+    window.changePayrollWeek=function(weeks){
+      const next=GP_PAYROLL_WEEKS.shiftWeeks(payrollWeekMonday,Number(weeks)||0);
+      choosePayrollWeek(next);
+    };
+    window.jumpToCurrentPayrollWeek=function(){choosePayrollWeek(GP_PAYROLL_WEEKS.today());};
     function getOpenTimeGroups(){try{return JSON.parse(localStorage.getItem("gp_admin_time_groups_open")||"[]");}catch(e){return[];}}
     window.rememberTimeGroupState=function(el){const open=new Set(getOpenTimeGroups()),key=el.dataset.employee||"";if(!key)return;if(el.open)open.add(key);else open.delete(key);localStorage.setItem("gp_admin_time_groups_open",JSON.stringify([...open]))};
     window.setAllTimeGroups=function(openState){const keys=[];document.querySelectorAll(".time-group").forEach(el=>{el.open=openState;if(openState&&el.dataset.employee)keys.push(el.dataset.employee);});localStorage.setItem("gp_admin_time_groups_open",JSON.stringify(keys))};
     function renderGroupedTimeLogs(){
       const host=document.getElementById("adminTimeGroups");if(!host)return;const openGroups=new Set(getOpenTimeGroups()),grouped=new Map();
-      timeLogs.forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
-      const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No time logs recorded yet.</div>`;return;}
+      selectedPayrollShifts().forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
+      const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No shifts recorded for this Monday–Sunday week. Use Previous week or Jump to a date to view history.</div>`;return;}
       host.innerHTML=names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
         const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.lunch_out_time && r.lunch_in_time ? `<small style="display:block;white-space:nowrap;">${GP.escapeHtml(r.lunch_out_time)} → ${GP.escapeHtml(r.lunch_in_time)}</small>` : ""}${Number(r.break_minutes)||0}m${r.lunch_out_time && r.lunch_in_time ? " <small>(exact)</small>" : ""}</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${r.lunch_review_status==="pending"?'<span class="badge badge-warn">No Lunch — Pending Approval</span><br>':r.lunch_review_status==="rejected"?'<span class="badge badge-issue">No Lunch — Rejected</span><br>':r.lunch_review_status==="approved"?'<span class="badge badge-ok">No Lunch — Approved</span><br>':""}${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
         return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
@@ -1929,6 +2126,7 @@
     };
 
     window.renderAdminUI = function() {
+      renderPayrollWeekControl();
       const totalHrs = timeLogs.reduce((a, r) => a + getShiftHours(r), 0);
       const totalVol = commissionLogs.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
       const flaggedVeh = vehicleLogs.filter(v => (v.issues_count || 0) > 0).length;
@@ -1983,9 +2181,9 @@
 
       // Render Payroll Summary Table inside Time & Geotags Pane
       document.getElementById("adminPayrollTable").innerHTML = usersList.map(u => {
-        const hrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
+        const hrs = timeLogs.filter(t => payrollEmployeeMatches(t.employee_name, u.employee_name) && inSelectedPayrollWeek(t.work_date))
                             .reduce((a, r) => a + getShiftHours(r), 0);
-        const wosCount = commissionLogs.filter(c => isSameEmployee(c.employee_name, u.employee_name) && GP.isInCurrentWeek(c.work_date)).length;
+        const wosCount = commissionLogs.filter(c => payrollEmployeeMatches(c.employee_name, u.employee_name) && inSelectedPayrollWeek(c.work_date)).length;
         const regHrs = Math.min(40.0, hrs);
         const otHrs = Math.max(0, hrs - 40.0);
         const safeName = GP.escapeHtml(JSON.stringify(String(u.employee_name || "")));
@@ -2055,6 +2253,15 @@
         });
       });
 
+      // Reuse the Collections exception snapshot inside the MOS action queue.
+      // These are review flags only; they do not change accounting records.
+      const accounting = window.GP_ACCOUNTING_BRIDGE?.getSnapshot?.();
+      if (accounting) {
+        const c=accounting.counts;
+        if(c.pendingExternal)exList.push({cat:"ACCOUNTING FOLLOW-UP",subj:`${c.pendingExternal} pending correction(s)`,det:"Open Collections > End-of-day closeout to verify Mainstreet/QBO updates"});
+        if(c.variance)exList.push({cat:"BALANCE VARIANCE",subj:`${c.variance} invoice mismatch(es)`,det:"Open Collections > Source reconciliation and compare report as-of dates"});
+        if(c.oneSource)exList.push({cat:"SOURCE COVERAGE",subj:`${c.oneSource} one-source invoice(s)`,det:"Open Collections > Source reconciliation before assuming a payment or error"});
+      }
       // Render it all to the table
       document.getElementById("mosExceptionQueueTable").innerHTML = exList.map(x => `
         <tr>
@@ -2139,14 +2346,15 @@
     // ========================================================================
     window.openEmployeeBreakdownModal = function(empName) {
       currentModalEmployeeName = empName;
+      document.getElementById("modalEmpWeekLabel").textContent = "Payroll week: " + GP_PAYROLL_WEEKS.range(payrollWeekMonday).label;
       const userObj = usersList.find(u => isSameEmployee(u.employee_name, empName)) || {
         employee_name: empName,
         department: "Operations",
         employment_type: "Full-Time"
       };
 
-      const empShifts = timeLogs.filter(t => isSameEmployee(t.employee_name, userObj.employee_name) && GP.isInCurrentWeek(t.work_date));
-      const empWos = commissionLogs.filter(c => isSameEmployee(c.employee_name, userObj.employee_name));
+      const empShifts = timeLogs.filter(t => payrollEmployeeMatches(t.employee_name, userObj.employee_name) && inSelectedPayrollWeek(t.work_date));
+      const empWos = commissionLogs.filter(c => payrollEmployeeMatches(c.employee_name, userObj.employee_name) && inSelectedPayrollWeek(c.work_date));
 
       const totalHrs = empShifts.reduce((a, r) => a + getShiftHours(r), 0);
       const regHrs = Math.min(40.0, totalHrs);
@@ -2574,6 +2782,15 @@
     window.exportMOSSyncPayload = function() {
       const blob = new Blob([JSON.stringify({
         exported_at: new Date().toISOString(),
+        payroll_week: GP_PAYROLL_WEEKS.range(GP_PAYROLL_WEEKS.today()),
+        data_provenance: "GLASSPRO Supabase and manually imported Mainstreet/QBO collection snapshots; no external accounting writes performed",
+        accounting_snapshot: window.GP_ACCOUNTING_BRIDGE?.getSnapshot?.() ? {
+          mainstreet_as_of: window.GP_ACCOUNTING_BRIDGE.getSnapshot().mainstreet.latest?.report_as_of || null,
+          qbo_as_of: window.GP_ACCOUNTING_BRIDGE.getSnapshot().qbo.latest?.report_as_of || null,
+          pending_external_corrections: window.GP_ACCOUNTING_BRIDGE.getSnapshot().counts.pendingExternal,
+          balance_differences: window.GP_ACCOUNTING_BRIDGE.getSnapshot().counts.variance,
+          invoices_in_one_source: window.GP_ACCOUNTING_BRIDGE.getSnapshot().counts.oneSource
+        } : null,
         divisions: buildMOSScoreboard(),
         work_orders: commissionLogs
       }, null, 2)], { type: "application/json" });
@@ -2588,7 +2805,7 @@
         workspaceUrl: document.getElementById("mosWorkspaceUrlInput").value.trim(),
         webhookUrl: document.getElementById("mosWebhookUrlInput").value.trim()
       }));
-      showToast("MultiplyOS settings saved");
+      showToast("Local MOS shortcut saved on this browser. This does not transmit data to MultiplyOS.");
     };
 
     function downloadCSV(filename, headers, rows) {
@@ -2600,8 +2817,8 @@
     }
 
     window.exportTimeCSV = function() {
-      downloadCSV("GlassPro_TimeLogs.csv", ["Date", "Employee", "Department", "In", "Out", "Lunch Out", "Lunch Back", "Break Mins", "Hours", "Geotag", "Notes", "Lunch Review", "No-Lunch Reason", "Manager Note", "Reviewed At"],
-        timeLogs.map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.lunch_out_time || "", r.lunch_in_time || "", r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || "",r.lunch_review_status||"",r.no_lunch_reason||"",r.lunch_review_note||"",r.lunch_reviewed_at||""]));
+      downloadCSV(`GlassPro_TimeLogs_${payrollWeekMonday}_to_${GP_PAYROLL_WEEKS.range(payrollWeekMonday).sunday}.csv`, ["Date", "Employee", "Department", "In", "Out", "Lunch Out", "Lunch Back", "Break Mins", "Hours", "Geotag", "Notes", "Lunch Review", "No-Lunch Reason", "Manager Note", "Reviewed At", "Sunday overnight — review payroll boundary"],
+        selectedPayrollShifts().map(r => [r.work_date, r.employee_name, r.department, r.clock_in, r.clock_out, r.lunch_out_time || "", r.lunch_in_time || "", r.break_minutes || 0, format00(getShiftHours(r)), r.clock_in_location || "", r.notes || "",r.lunch_review_status||"",r.no_lunch_reason||"",r.lunch_review_note||"",r.lunch_reviewed_at||"",r.work_date===GP_PAYROLL_WEEKS.range(payrollWeekMonday).sunday&&r.clock_in&&r.clock_out&&to24HourTime(r.clock_out)<to24HourTime(r.clock_in)?"REVIEW":""]));
     };
 
     window.exportCommissionsCSV = function() {
@@ -2718,7 +2935,9 @@
       };
 
       await loadAdminData();
-      const pane = dashboardPrefs.defaultPane || "adminOverviewPane";
+      window.GP_ACCOUNTING_BRIDGE?.mount?.({supabaseClient,activeUser});
+      const hashPane = decodeURIComponent((window.location.hash||"").slice(1));
+      const pane = VALID_ADMIN_PANES.has(hashPane) ? hashPane : (dashboardPrefs.defaultPane || "adminOverviewPane");
       showAdminSubTab(pane, getDashboardButtonForPane(pane));
       startAdminLiveSync();
     });
