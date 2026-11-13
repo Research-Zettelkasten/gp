@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.13.1",
-  "notes": "Monday-Sunday management timecards, workspace customization, accounting snapshot review and read-only QBO OAuth sync connector.",
+  "version": "2026.11.13.2",
+  "notes": "Hierarchical Administration > Management sidebar navigation; retains QBO read-only integration and Monday-Sunday payroll.",
   "release_date": "2026-11-13",
   "released_at": "2026-11-13"
 }
