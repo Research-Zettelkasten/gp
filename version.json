@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.12.2",
-  "notes": "Collapsible role-based sidebar navigation, favorites and density preferences; exact server-timed lunch punches; mandatory no-lunch explanations and manager approval workflow.",
-  "release_date": "2026-11-12",
-  "released_at": "2026-11-12"
+  "version": "2026.11.13.1",
+  "notes": "Monday-Sunday management timecards, workspace customization, accounting snapshot review and read-only QBO OAuth sync connector.",
+  "release_date": "2026-11-13",
+  "released_at": "2026-11-13"
 }
