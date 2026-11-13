@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.13.2",
-  "notes": "Hierarchical Administration > Management sidebar navigation; retains QBO read-only integration and Monday-Sunday payroll.",
+  "version": "2026.11.13.3",
+  "notes": "Intuit production legal pages, secure OAuth credential encryption, verified admin disconnect, QBO connection guidance; retains hierarchical navigation and weekly payroll.",
   "release_date": "2026-11-13",
   "released_at": "2026-11-13"
 }
