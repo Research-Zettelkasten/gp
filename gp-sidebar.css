@@ -63,3 +63,41 @@ body.gp-side-collapsed .gp-side-collapse{font-size:14px}
 /* Hide the old horizontal bar before navigation initializes; avoid layout flash. */
 #mainNavBar:not(.gp-sidebar) {visibility:hidden}
 @media(max-width:1000px){body.gp-nav-open{overflow:hidden}.gp-sidebar{padding-top:calc(18px + env(safe-area-inset-top,0px))!important;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))!important}}
+/* v2026.11.13.2 — Administration > Management > [interior view] */
+.gp-management-row{display:flex;align-items:center;min-width:0;gap:2px}
+.gp-sidebar .gp-management-row>a.gp-side-link{flex:1!important;min-width:0!important;width:auto!important}
+.gp-sidebar .gp-management-row>a.hidden{display:none!important}
+.gp-management-toggle{flex:none;display:inline-grid;place-items:center;min-width:34px;min-height:39px;background:transparent;border:0;border-radius:9px;color:#b7cfe8;cursor:pointer}
+.gp-management-toggle:hover,.gp-management-toggle:focus-visible{background:rgba(255,255,255,.13);color:white}
+.gp-management-chevron{font-size:17px;display:inline-block;transform:rotate(-90deg);transition:transform .16s}
+.gp-management-chevron.is-open{transform:rotate(0)}
+.gp-management-submenu{margin:0 0 6px 17px;padding:3px 0 3px 11px;border-left:1px solid rgba(204,224,247,.27);display:flex;flex-direction:column;gap:3px}
+.gp-management-submenu[hidden]{display:none!important}
+.gp-sidebar a.gp-management-sub-link{display:flex;gap:9px;align-items:center;min-width:0;padding:10px 9px;color:#b7cfe2;text-decoration:none;font-size:12px;font-weight:600;border-radius:9px;border:1px solid transparent;line-height:1.25}
+.gp-sidebar a.gp-management-sub-link:hover,.gp-sidebar a.gp-management-sub-link:focus-visible{color:white;background:rgba(255,255,255,.11)}
+.gp-sidebar a.gp-management-sub-link.active,.gp-sidebar a.gp-management-sub-link[aria-current="page"]{color:white;background:rgba(240,84,107,.2);border-color:rgba(240,84,107,.22);font-weight:800}
+.gp-sidebar a.gp-management-sub-link[hidden]{display:none!important}
+.gp-management-sub-icon{flex:none;width:17px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+.gp-management-sub-title{min-width:0;overflow-wrap:anywhere}
+.gp-management-breadcrumb{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px;font-size:11px;font-weight:600;color:#557395}
+.gp-management-breadcrumb strong{color:#183657;font-weight:800}
+/* The old horizontal Management bar is replaced only when the live sidebar was built. */
+body.gp-hierarchical-nav .sub-bar{display:none!important}
+body.gp-side-collapsed .gp-management-submenu,body.gp-side-collapsed .gp-management-toggle{display:none!important}
+body.gp-side-collapsed .gp-management-row>a.gp-side-link{justify-content:center!important}
+@media(max-width:1000px){
+ body.gp-side-collapsed .gp-management-submenu:not([hidden]){display:flex!important}
+ body.gp-side-collapsed .gp-management-toggle{display:inline-grid!important}
+ body.gp-side-collapsed .gp-management-row>a.gp-side-link{justify-content:flex-start!important}
+}
+@media(max-width:560px){.gp-management-submenu{margin-left:11px}.gp-sidebar a.gp-management-sub-link{padding:12px 10px;min-height:42px}}
+/* Module links and their separate favorite buttons share one row. */
+.gp-side-link-row{display:flex;align-items:center;gap:2px;min-width:0;position:relative}
+.gp-side-link-row>a.gp-side-link{flex:1!important;width:auto!important;min-width:0!important}
+.gp-side-link-row>.gp-side-pin{flex:none;min-width:27px;min-height:32px;display:inline-grid;place-items:center}
+/* v2026.11.13.2: module-specific subpages use the same nested sidebar. */
+body.gp-module-hierarchical-nav .sub-bar{display:none!important}
+body.gp-module-hierarchical-nav .col-tab-bar{display:none!important}
+body.gp-module-hierarchical-nav #quoteInteriorTabBar{display:none!important}
+.gp-sidebar .gp-module-submenu{margin-bottom:7px}
+.gp-module-toggle[hidden]{display:none!important}
