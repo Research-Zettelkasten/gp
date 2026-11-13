@@ -968,8 +968,9 @@
           <strong>QuickBooks Online · Secure Account Connection</strong>
           <p class="gp-qbo-note">Read-only QBO invoice, customer, payment and credit imports. Intuit authorization and token storage occur on the Supabase server; this website never receives the QBO secret or tokens.</p>
           <div id="gpQboState" class="gp-qbo-readout">Checking connection status…</div>
-          <div class="gp-qbo-actions"><button type="button" class="gp-primary" id="gpQboConnect">Connect / Reconnect QuickBooks</button><button type="button" id="gpQboSync">Sync QBO Now</button></div>
+          <div class="gp-qbo-actions"><button type="button" class="gp-primary" id="gpQboConnect">Connect / Reconnect QuickBooks</button><button type="button" id="gpQboSync">Sync QBO Now</button><button type="button" class="gp-qbo-danger" id="gpQboDisconnect" hidden>Disconnect from QuickBooks</button></div>
           <div id="gpQboFeedback" class="gp-qbo-readout" role="status" aria-live="polite"></div>
+          <p class="gp-qbo-note">QuickBooks connection terms: <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="eula.html" target="_blank" rel="noopener">End-User Agreement</a> · <a href="qbo-disconnect.html" target="_blank" rel="noopener">Disconnect help</a></p>
           <p class="gp-qbo-note">Accounting information syncs into Collections; employee notes and statuses are not overwritten. Scheduled sync and webhook notices require the Supabase service configuration described in the setup guide.</p>
         </div>
         <div class="gp-accounting-sources">
