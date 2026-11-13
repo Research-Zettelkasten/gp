@@ -1,0 +1,4 @@
+/* Pure cross-system accounting summaries; no external credentials. */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.GPAccountingCore=api;})(typeof window!=='undefined'?window:globalThis,function(){'use strict';
+const cents=x=>Math.round((Number(x)||0)*100);function summarize(cases){const arr=Array.isArray(cases)?cases:[];const pending=arr.filter(c=>(c.needs_qbo_update&&!c.qbo_confirmed_at)||(c.needs_mainstreet_update&&!c.mainstreet_confirmed_at));const variance=arr.filter(c=>c.mainstreet_balance!=null&&c.qbo_balance!=null&&Math.abs(cents(c.mainstreet_balance)-cents(c.qbo_balance))>1);const oneSource=arr.filter(c=>(c.mainstreet_balance==null)!==(c.qbo_balance==null));const stale=arr.filter(c=>c.stale);return {pending,variance,oneSource,stale,counts:{pendingExternal:pending.length,variance:variance.length,oneSource:oneSource.length,stale:stale.length}};}
+return {summarize};});
