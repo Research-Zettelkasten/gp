@@ -56,6 +56,12 @@
       const el = document.getElementById(id);
       if (el) el.classList.toggle("hidden", !allowed);
     });
+    // Ensure the nested Administration menu follows the verified profile.
+    // This is for navigation only: Supabase RLS still enforces every permission.
+    if (typeof window !== "undefined") {
+      window.GP_SIDEBAR?.setUser?.(user);
+      window.GP_SIDEBAR?.refresh?.();
+    }
   };
 
   const sensitiveCacheKeys = [
