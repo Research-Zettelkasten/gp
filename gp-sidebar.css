@@ -101,3 +101,19 @@ body.gp-module-hierarchical-nav .col-tab-bar{display:none!important}
 body.gp-module-hierarchical-nav #quoteInteriorTabBar{display:none!important}
 .gp-sidebar .gp-module-submenu{margin-bottom:7px}
 .gp-module-toggle[hidden]{display:none!important}
+
+/* 2026.11.16 — consistent taskbar, workspace search, and touch targets. */
+.gp-side-search{display:flex;align-items:center;gap:8px;margin:6px 4px 7px;padding:9px 11px;border:1px solid #ffffff26;border-radius:10px;background:#ffffff09;color:#a8bfd8}
+.gp-side-search>span{font-size:21px;line-height:1}
+.gp-side-search input{width:100%;min-width:0;border:0!important;background:transparent!important;color:#edf5ff!important;padding:2px!important;font:inherit;font-size:12px!important;outline:none}
+.gp-side-search input::placeholder{color:#9fb5ce}
+.gp-side-search:focus-within{outline:2px solid #91bce8;outline-offset:2px}
+.gp-search-hidden,.gp-search-empty{display:none!important}
+.gp-searching .gp-side-group-links{display:flex!important}
+.gp-searching .gp-management-submenu:not(.gp-search-hidden){display:flex!important}
+body.gp-side-collapsed .gp-side-search{display:none}
+.gp-sidebar :focus-visible{outline:2px solid #a8d0f8;outline-offset:2px}
+.gp-side-foot .gp-side-settings-button{min-height:42px}
+@media(max-width:1000px){body.gp-side-collapsed .gp-side-search{display:flex}}
+
+.gp-permission-hidden{display:none!important}

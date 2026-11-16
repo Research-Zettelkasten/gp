@@ -1,0 +1,22 @@
+/* Audited admin clock-out dialog. */
+.gp-clock-action{border:1px solid var(--gp2-accent);border-radius:8px;background:var(--gp2-surface);color:var(--gp2-accent);padding:8px 12px;font-size:12px;font-weight:750;cursor:pointer;white-space:nowrap}
+.gp-clock-action:disabled{opacity:.45;cursor:default}
+#gpClockDialog{width:min(540px,calc(100vw - 28px));max-height:90vh;overflow:auto;border:1px solid var(--gp2-border);border-radius:19px;padding:26px;background:var(--gp2-surface);color:var(--gp2-text);box-shadow:0 24px 80px #05132645;margin:auto}
+#gpClockDialog::backdrop{background:#051326b3}
+#gpClockDialog h2{margin:0 0 9px;font-size:22px;letter-spacing:-.03em}
+#gpClockDialog p{font-size:13px;line-height:1.65;color:var(--gp2-muted);margin:10px 0 16px}
+#gpClockEmployee{display:block;font-size:16px;margin-bottom:5px}
+#gpClockSession{font-size:12px;color:var(--gp2-muted)}
+#gpClockDialog label{display:block;font-size:12px;text-transform:none;color:var(--gp2-text);font-weight:700;margin:16px 0 7px;letter-spacing:0}
+#gpClockDialog input,#gpClockDialog select,#gpClockDialog textarea{width:100%;padding:11px 12px;border:1px solid var(--gp2-border);border-radius:9px;background:var(--gp2-bg);color:var(--gp2-text);font:inherit;font-size:13px}
+#gpClockDialog [hidden]{display:none!important}
+#gpClockDialog .gp-clock-checkbox{display:flex;gap:9px;align-items:flex-start;font-weight:500;line-height:1.5}
+#gpClockCloseLunch{width:auto!important;margin-top:3px;accent-color:var(--gp2-accent)}
+#gpClockPreview{border:1px solid var(--gp2-border);padding:13px 15px;border-radius:10px;font-size:13px;margin-top:15px;background:var(--gp2-bg)}
+#gpClockTimezone{display:block;color:var(--gp2-muted);font-size:11px;line-height:1.5;margin:8px 0}
+#gpClockStatus{font-size:13px;line-height:1.6;color:var(--gp2-accent);min-height:22px;margin:12px 0}
+.gp-clock-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:17px}
+.gp-clock-dialog-actions button{padding:11px 16px;border-radius:9px;border:1px solid var(--gp2-border);background:var(--gp2-surface);color:var(--gp2-text);font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.gp-clock-dialog-actions #gpClockConfirm{color:white;background:var(--gp2-accent);border-color:var(--gp2-accent)}
+.gp-clock-dialog-actions button:disabled{opacity:.5;cursor:default}
+#gpClockDialog :focus-visible{outline:3px solid #609ddd;outline-offset:3px}
