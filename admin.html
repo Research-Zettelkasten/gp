@@ -743,6 +743,9 @@
 <link rel="stylesheet" href="gp-accounting-bridge.css?v=20261112e">
 <script src="gp-accounting-core.js?v=20261112e"></script>
 <script src="gp-accounting-bridge.js?v=20261112e"></script>
+<script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
+<link rel="stylesheet" href="gp-ux.css?v=20261113c">
+<script src="gp-ux.js?v=20261113c" defer></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -1058,10 +1061,35 @@
         </div>
 
         <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveEmployeeUser()">Save Employee Account</button>
+        <div class="gp2-provision-panel">
+          <strong>Administrator-created logins — no email signup required</strong>
+          <p>Save the employee profile first, then select <b>Create Login</b> beside their name in the roster. GLASSPRO creates a confirmed Supabase Auth account, links it to the selected employee, and generates a temporary password shown only once.</p>
+          <p>Employees still sign in with email/password initially, then create their own PIN if desired. Existing accounts must use password recovery instead of creating duplicates.</p>
+        </div>
+      </div>
+
+      <div id="gpProvisionModal" class="gp2-dialog-scrim hidden" role="presentation">
+        <div class="gp2-dialog" role="dialog" aria-modal="true" aria-labelledby="gpProvisionTitle">
+          <div class="gp2-dialog-head"><h2 id="gpProvisionTitle">Employee login provisioning</h2><button type="button" class="btn-outline" onclick="closeProvisionModal()" aria-label="Close login provisioning">✕</button></div>
+          <p id="gpProvisionDescription">Provision a confirmed, account-linked employee login.</p>
+          <div id="gpProvisionResult" class="hidden">
+            <div class="gp2-provision-panel"><strong>Temporary sign-in information — shown once</strong>
+              <p id="gpProvisionEmail"></p><code class="gp2-provision-secret" id="gpProvisionPassword"></code>
+              <p>Share this password privately, never through a public chat or repository. Employee signs in using Email & Password, chooses a personal password on first login, then can enable Quick PIN.</p>
+              <button type="button" class="btn-outline" onclick="copyProvisionPassword()">Copy temporary password</button>
+            </div>
+          </div>
+          <div class="gp2-status" role="status" id="gpProvisionStatus"></div>
+          <div class="gp2-editor-actions"><button type="button" class="btn-outline" onclick="closeProvisionModal()">Close</button><button type="button" class="btn btn-red" id="gpProvisionConfirm" onclick="submitProvisionLogin()">Create Confirmed Login</button></div>
+        </div>
       </div>
 
       <div id="gpWidgetUserRoster" class="card gp-widget-section">
         <div class="card-title">Employee Roster & Classification Directory</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;color:var(--muted);font-size:12px">
+          <label><input type="checkbox" id="gpShowArchivedStaff" onchange="renderAdminUI()"> Show archived employees</label>
+          <span>Inactive staff can be archived after their Auth login is permanently removed. Historical timecards and accounting records remain.</span>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -2272,7 +2300,7 @@
         </tr>
       `).join("") || `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Zero exceptions flagged.</td></tr>`;
 
-      document.getElementById("adminUsersTable").innerHTML = usersList.map(u => {
+      document.getElementById("adminUsersTable").innerHTML = usersList.filter(u => document.getElementById("gpShowArchivedStaff")?.checked || !u.archived_at).map(u => {
         let perms = [];
         if (u.perm_time) perms.push("Time");
         if (u.perm_quotes !== false) perms.push("Quotes");
@@ -2293,13 +2321,15 @@
             <td style="font-size:11px;">${GP.escapeHtml(u.auth_email || "Email not assigned")}</td>
             <td>
               <span class="badge ${u.auth_user_id ? "badge-ok" : "badge-warn"}">${u.auth_user_id ? "AUTH LINKED" : "UNCLAIMED"}</span>
-              <span class="badge ${u.active !== false ? "badge-ok" : "badge-issue"}" style="margin-top:3px;">${u.active !== false ? "ACTIVE" : "INACTIVE"}</span>
+              <span class="badge ${u.active !== false ? "badge-ok" : "badge-issue"}" style="margin-top:3px;">${u.archived_at ? "ARCHIVED" : (u.active !== false ? "ACTIVE" : "INACTIVE")}</span>
             </td>
             <td>${perms.map(p => `<span class="badge badge-navy" style="margin:1px;">${p}</span>`).join(" ")}</td>
             <td style="white-space:nowrap;">
-              <button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>
-              ${u.auth_user_id && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="resetProfileClaim('${u.id}')">Reset Auth</button>` : ""}
-              ${String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="color:${u.active!==false ? "var(--red)" : "var(--green)"};padding:4px 7px;" onclick="toggleUserActive('${u.id}', ${u.active!==false})">${u.active!==false ? "Deactivate" : "Activate"}</button>` : ""}
+              ${u.archived_at ? '<small>Archived — read-only</small>' : `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>`}
+              ${!u.archived_at && !u.auth_user_id && u.active !== false ? `<button type="button" class="btn-outline" style="padding:4px 7px; border-color:var(--green);" onclick="openProvisionLogin(${Number(u.id)})">Create Login</button>` : ""}
+              ${!u.archived_at && u.auth_user_id && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="resetProfileClaim('${u.id}')">Reset Auth</button>` : ""}
+              ${!u.archived_at && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="color:${u.active!==false ? "var(--red)" : "var(--green)"};padding:4px 7px;" onclick="toggleUserActive('${u.id}', ${u.active!==false})">${u.active!==false ? "Deactivate" : "Activate"}</button>` : ""}
+              ${u.active===false && !u.archived_at && String(u.auth_user_id||"")!==String(activeUser?.auth_user_id||"") ? `<button type="button" class="btn-outline" style="border-color:var(--red);color:var(--red);padding:4px 7px" onclick="archiveInactiveEmployee(${Number(u.id)})">Delete Login &amp; Archive</button>` : ""}
             </td>
           </tr>
         `;
@@ -2605,6 +2635,55 @@
       } catch (e) { alert(`Time punch was NOT deleted: ${e.message || e}`); }
     };
 
+    // Secure administrator provisioning: service role exists ONLY in Supabase.
+    let pendingProvisionId=null,visibleProvisionPassword='';
+    window.openProvisionLogin=function(id){
+      const u=usersList.find(x=>Number(x.id)===Number(id));
+      if(!u||u.auth_user_id||u.active===false)return alert('Choose an active unclaimed employee profile.');
+      pendingProvisionId=Number(id);visibleProvisionPassword='';
+      const panel=document.getElementById('gpProvisionModal');
+      panel.classList.remove('hidden');
+      document.getElementById('gpProvisionResult').classList.add('hidden');
+      document.getElementById('gpProvisionPassword').textContent='';
+      document.getElementById('gpProvisionEmail').textContent='';
+      document.getElementById('gpProvisionStatus').textContent='';
+      document.getElementById('gpProvisionConfirm').classList.remove('hidden');
+      document.getElementById('gpProvisionDescription').textContent=`Create a confirmed login for ${u.employee_name} (${u.auth_email})? The employee will not need to self-register or click a confirmation email.`;
+    };
+    window.closeProvisionModal=function(){
+      visibleProvisionPassword='';pendingProvisionId=null;
+      document.getElementById('gpProvisionPassword').textContent='';
+      document.getElementById('gpProvisionModal').classList.add('hidden');
+    };
+    window.copyProvisionPassword=async function(){
+      if(!visibleProvisionPassword)return;
+      try{await navigator.clipboard.writeText(visibleProvisionPassword);document.getElementById('gpProvisionStatus').textContent='Copied. Share privately and have the employee change it immediately.';}
+      catch{document.getElementById('gpProvisionStatus').textContent='Clipboard blocked. Select and copy the password directly, then close this window.';}
+    };
+    window.submitProvisionLogin=async function(){
+      if(!Number.isSafeInteger(pendingProvisionId)||!isCloudConnected||!activeUser?.perm_admin)return;
+      const id=pendingProvisionId,btn=document.getElementById('gpProvisionConfirm');btn.disabled=true;
+      const status=document.getElementById('gpProvisionStatus');status.textContent='Creating secured Supabase login…';
+      try{
+        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+        if(sessionError||!session?.access_token)throw new Error('Your administrator session expired. Sign in again.');
+        const response=await fetch(`${SUPABASE_URL}/functions/v1/gp-admin-provision`,{
+          method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_ANON_KEY},
+          body:JSON.stringify({action:'create',profileId:id})
+        });
+        const data=await response.json().catch(()=>({message:'Provisioning server did not respond correctly.'}));
+        if(!response.ok||!data.ok)throw new Error(data.message||'Account creation failed.');
+        visibleProvisionPassword=String(data.temporaryPassword||'');
+        document.getElementById('gpProvisionEmail').textContent='Email: '+String(data.email||'');
+        document.getElementById('gpProvisionPassword').textContent=visibleProvisionPassword;
+        document.getElementById('gpProvisionResult').classList.remove('hidden');
+        document.getElementById('gpProvisionConfirm').classList.add('hidden');
+        status.textContent='Confirmed Auth login linked successfully. Copy the password before closing; it will not be shown again.';
+        await loadAdminData();
+      }catch(e){status.textContent='Not created: '+(e.message||e);}
+      finally{btn.disabled=false;}
+    };
+
     // ========================================================================
     // USER & ROLE MANAGEMENT CRUD
     // ========================================================================
@@ -2719,6 +2798,7 @@
     window.toggleUserActive = async function(id, currentlyActive) {
       const target = usersList.find(u => String(u.id) === String(id));
       if (!target) return;
+      if (target.archived_at) return alert("Archived employees cannot be reactivated from this screen.");
       if (String(target.auth_user_id || "") === String(activeUser?.auth_user_id || "")) return alert("You cannot deactivate your own signed-in admin account.");
       const next = !currentlyActive;
       if (!confirm(`${next ? "Activate" : "Deactivate"} ${target.employee_name}?${next ? "" : " Their Supabase Auth login will remain, but RLS will immediately block portal data access."}`)) return;
@@ -2729,6 +2809,29 @@
       }
       await logAudit("USER_STATUS", `${next ? "Activated" : "Deactivated"} ${target.employee_name}`);
       await loadAdminData();
+    };
+
+    window.archiveInactiveEmployee = async function(id) {
+      const target=usersList.find(u=>Number(u.id)===Number(id));
+      if(!target||target.active!==false||target.archived_at)return alert('Deactivate the employee before archiving the account.');
+      if(!isCloudConnected || !activeUser?.perm_admin)return alert('An authenticated Management administrator is required.');
+      if(target.auth_user_id && String(target.auth_user_id)===String(activeUser.auth_user_id))return alert('You cannot delete your own login.');
+      const expected='DELETE '+String(target.employee_name||'').trim();
+      const answer=prompt('WARNING: This permanently deletes the employee Supabase Auth login, if linked, and archives the inactive profile. Historical shifts, commissions, and audit records are retained.\n\nTo confirm, type exactly:\n'+expected);
+      if(answer===null)return;
+      if(answer!==expected)return alert('Confirmation did not match. No changes made.');
+      try{
+        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+        if(sessionError||!session?.access_token)throw new Error('Administrator session expired. Sign in again.');
+        const res=await fetch(`${SUPABASE_URL}/functions/v1/gp-admin-archive`,{
+          method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_ANON_KEY},
+          body:JSON.stringify({profileId:Number(id)})
+        });
+        const body=await res.json().catch(()=>({message:'Server returned an unreadable response.'}));
+        if(!res.ok||!body.ok)throw new Error(body.message||'Archive failed.');
+        showToast('Employee account archived. Payroll and audit history retained.');
+        await loadAdminData();
+      }catch(e){alert('Account was not fully archived: '+String(e.message||e)+'\nCheck the Edge Function logs before retrying.');}
     };
 
     window.resetProfileClaim = async function(id) {
@@ -2833,6 +2936,7 @@
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
       GP.applyNavPermissions(activeUser);
+      window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
       await loadDashboardPreferences();
 
       window.handleAdminCsvUpload = function(event) {
