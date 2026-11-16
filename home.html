@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLASSPRO 2.0 | My Home</title>
+<meta name="theme-color" content="#102944">
+<script src="portal-utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="glasspro-theme.css?v=20261113c">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261113b">
+<link rel="stylesheet" href="gp-ux.css?v=20261113c">
+<script>try { document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light'; }catch(e){}</script>
+<script src="gp-sidebar.js?v=20261113b" defer></script>
+<script src="gp-employee-home.js?v=20261113c" defer></script>
+<script src="gp-ux.js?v=20261113c" defer></script>
+<style>
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.gp-home-outer{max-width:1400px;margin:auto;padding:25px 24px}
+.gp-home-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 2px}
+.gp-home-intro h1{font-size:18px;color:var(--gp2-text)}
+.gp-home-intro p{font-size:12px;color:var(--gp2-muted)}
+#homeLoadMessage{font-size:12px;color:var(--gp2-muted)}
+header .header-right{display:flex;align-items:center;gap:9px}
+@media(max-width:650px){.gp-home-outer{padding:16px 13px}}
+</style>
+</head>
+<body class="gp-app">
+<header class="gp-exec-header">
+  <div class="brand"><div class="brand-badge">GLASSPRO</div><div class="brand-text"><h1>GLASS PRO BY AMERICAN GLASS</h1><p>YOUR PERSONAL TEAM WORKSPACE</p></div></div>
+  <div class="header-right"><span id="activeUserName" class="user-pill">Checking account…</span>
+  <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()">Account &amp; PIN</button>
+  <button type="button" class="logout-btn" id="gp2HomeSignOut">Sign Out</button></div>
+</header>
+<nav id="mainNavBar" class="nav-bar hidden" aria-label="GLASSPRO navigation">
+ <a href="index.html" id="navLinkTime" class="nav-btn">Time Clock</a>
+ <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
+ <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission &amp; WOs</a>
+ <a href="fleet.html" id="navLinkFleet" class="nav-btn">Vehicle Check &amp; Safety</a>
+ <a href="admin.html" id="navLinkAdmin" class="nav-btn">Management &amp; MOS Hub</a>
+ <a href="collections.html" id="navLinkCollections" class="nav-btn">Collections</a>
+</nav>
+<main class="gp-home-outer">
+  <div class="gp-home-intro"><div><h1>My GLASSPRO workspace</h1><p>Your personalized, permission-aware home. Choose your appearance and rearrange the cards below.</p></div><span id="homeLoadMessage">Verifying account…</span></div>
+  <div id="gp2StandaloneHome"></div>
+</main>
+<script>
+  const SUPABASE_URL='https://ohddwksazinynqlynycm.supabase.co';
+  const SUPABASE_ANON_KEY='sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j';
+  const supabaseClient=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_ANON_KEY)||null;
+  document.getElementById('gp2HomeSignOut').addEventListener('click',()=>GP.signOut(supabaseClient));
+  document.addEventListener('DOMContentLoaded',async()=>{
+    const me=await GP.requireAuth(supabaseClient,null);
+    if(!me)return;
+    document.getElementById('activeUserName').textContent=me.employee_name;
+    document.getElementById('mainNavBar').classList.remove('hidden');
+    GP.applyNavPermissions(me);
+    await window.GP_UX?.onSignedIn?.(me,supabaseClient);
+    let logs=[];
+    if(me.perm_time||me.perm_admin){
+      try{
+        const {data,error}=await supabaseClient.from('time_logs').select('auth_user_id,employee_name,work_date,decimal_hours,lunch_review_status').eq('auth_user_id',me.auth_user_id).order('work_date',{ascending:false}).limit(500);
+        if(error)throw error;
+        logs=data||[];
+        document.getElementById('homeLoadMessage').textContent='Updated from Supabase';
+      }catch(e){document.getElementById('homeLoadMessage').textContent='Timecard summary unavailable — retry later';}
+    }else document.getElementById('homeLoadMessage').textContent='Your assigned workspace';
+    window.GP_HOME?.mount?.(me,()=>logs,supabaseClient);
+  });
+</script>
+<script src="gp-pin.js?v=20261112"></script>
+</body></html>
