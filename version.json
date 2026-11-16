@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.13.3",
-  "notes": "Intuit production legal pages, secure OAuth credential encryption, verified admin disconnect, QBO connection guidance; retains hierarchical navigation and weekly payroll.",
-  "release_date": "2026-11-13",
-  "released_at": "2026-11-13"
+  "version": "2026.11.16.1",
+  "notes": "GLASSPRO 2.0 theme, employee home, admin provisioning, and secure delete-login/archive of inactive employee profiles; historical payroll retained.",
+  "release_date": "2026-11-16",
+  "released_at": "2026-11-16"
 }
