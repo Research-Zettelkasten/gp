@@ -1086,9 +1086,11 @@
 
       <div id="gpWidgetUserRoster" class="card gp-widget-section">
         <div class="card-title">Employee Roster & Classification Directory</div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;color:var(--muted);font-size:12px">
-          <label><input type="checkbox" id="gpShowArchivedStaff" onchange="renderAdminUI()"> Show archived employees</label>
-          <span>Inactive staff can be archived after their Auth login is permanently removed. Historical timecards and accounting records remain.</span>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <small style="color:var(--muted);">Deactivate first, then Delete Login &amp; Archive to remove an inactive employee from the main roster without erasing their payroll or customer history.</small>
+          <label style="display:flex;align-items:center;gap:7px;white-space:nowrap;font-weight:700;font-size:12px;">
+            <input type="checkbox" id="gpShowArchived" onchange="gpToggleArchived(this.checked)" /> Show archived employees
+          </label>
         </div>
         <div class="table-wrap">
           <table>
@@ -2300,7 +2302,7 @@
         </tr>
       `).join("") || `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Zero exceptions flagged.</td></tr>`;
 
-      document.getElementById("adminUsersTable").innerHTML = usersList.filter(u => document.getElementById("gpShowArchivedStaff")?.checked || !u.archived_at).map(u => {
+      document.getElementById("adminUsersTable").innerHTML = usersList.filter(u => gpShowArchivedUsers || !u.archived_at).map(u => {
         let perms = [];
         if (u.perm_time) perms.push("Time");
         if (u.perm_quotes !== false) perms.push("Quotes");
@@ -2325,11 +2327,16 @@
             </td>
             <td>${perms.map(p => `<span class="badge badge-navy" style="margin:1px;">${p}</span>`).join(" ")}</td>
             <td style="white-space:nowrap;">
-              ${u.archived_at ? '<small>Archived — read-only</small>' : `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>`}
-              ${!u.archived_at && !u.auth_user_id && u.active !== false ? `<button type="button" class="btn-outline" style="padding:4px 7px; border-color:var(--green);" onclick="openProvisionLogin(${Number(u.id)})">Create Login</button>` : ""}
+              ${!u.archived_at ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Edit</button>` : ""}
+              ${!u.archived_at && !u.auth_user_id && u.active !== false ? (
+                u.auth_email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(u.auth_email).trim())
+                  ? `<button type="button" class="btn-outline" style="padding:4px 7px; border-color:var(--green);" onclick="openProvisionLogin(${Number(u.id)})">Create Login</button>`
+                  : `<button type="button" class="btn-outline" style="padding:4px 7px; border-color:var(--red);" onclick="loadUserEditor('${GP.escapeHtml(u.pin_code)}')">Assign Email First</button>`
+                ) : ""}
               ${!u.archived_at && u.auth_user_id && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="resetProfileClaim('${u.id}')">Reset Auth</button>` : ""}
               ${!u.archived_at && String(u.auth_user_id)!==String(activeUser?.auth_user_id) ? `<button type="button" class="btn-outline" style="color:${u.active!==false ? "var(--red)" : "var(--green)"};padding:4px 7px;" onclick="toggleUserActive('${u.id}', ${u.active!==false})">${u.active!==false ? "Deactivate" : "Activate"}</button>` : ""}
-              ${u.active===false && !u.archived_at && String(u.auth_user_id||"")!==String(activeUser?.auth_user_id||"") ? `<button type="button" class="btn-outline" style="border-color:var(--red);color:var(--red);padding:4px 7px" onclick="archiveInactiveEmployee(${Number(u.id)})">Delete Login &amp; Archive</button>` : ""}
+              ${!u.archived_at && u.active === false && String(u.auth_user_id || '')!==String(activeUser?.auth_user_id || '') ? `<button type="button" class="btn-outline" style="padding:4px 7px;border-color:var(--red);color:var(--red);" onclick="archiveInactiveUser(${Number(u.id)})">Delete Login &amp; Archive</button>` : ""}
+              ${u.archived_at ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="restoreArchivedUser(${Number(u.id)})">Restore Profile</button>` : ""}
             </td>
           </tr>
         `;
@@ -2637,9 +2644,46 @@
 
     // Secure administrator provisioning: service role exists ONLY in Supabase.
     let pendingProvisionId=null,visibleProvisionPassword='';
+    let gpShowArchivedUsers = false;
+    window.gpToggleArchived = function(checked){
+      gpShowArchivedUsers = !!checked;
+      const roster = document.getElementById('gpShowArchived');
+      if (roster) roster.checked = gpShowArchivedUsers;
+      renderAdminUI();
+    };
+    const gpValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email||'').trim());
+    async function gpAdminAccountRequest(action, profileId){
+      if(!isCloudConnected||!supabaseClient) throw new Error('Supabase is not connected. Sign in again.');
+      const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+      if(sessionError||!session?.access_token)throw new Error('Your administrator session expired. Sign in again.');
+      let response;
+      try {
+        response=await fetch(`${SUPABASE_URL}/functions/v1/gp-admin-provision`,{
+          method:'POST',mode:'cors',cache:'no-store',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_ANON_KEY},
+          body:JSON.stringify({action,profileId})
+        });
+      } catch(networkError) {
+        throw new Error('Cannot reach gp-admin-provision. In Supabase → Edge Functions, deploy gp-admin-provision, verify its allowed website origin, and check its Logs.');
+      }
+      const result=await response.json().catch(()=>({message:'Function did not return JSON. Inspect Edge Function logs.'}));
+      if(!response.ok||!result.ok) {
+        const fallback=response.status===404?'gp-admin-provision is not deployed (404).':
+          response.status===401?'Your session was rejected. Sign out and sign in again.':
+          response.status===403?'Your account lacks administrator permission or the website origin is blocked.':
+          `Account operation failed (HTTP ${response.status}).`;
+        throw new Error(result.message||fallback);
+      }
+      return result;
+    }
     window.openProvisionLogin=function(id){
       const u=usersList.find(x=>Number(x.id)===Number(id));
-      if(!u||u.auth_user_id||u.active===false)return alert('Choose an active unclaimed employee profile.');
+      if(!u||u.auth_user_id||u.active===false||u.archived_at)return alert('Choose an active, unclaimed employee profile.');
+      if(!gpValidEmail(u.auth_email)){
+        alert(`Assign a valid Auth email to ${u.employee_name} before creating a login. The profile currently has no usable email.`);
+        loadUserEditor(u.pin_code);
+        return;
+      }
       pendingProvisionId=Number(id);visibleProvisionPassword='';
       const panel=document.getElementById('gpProvisionModal');
       panel.classList.remove('hidden');
@@ -2661,27 +2705,51 @@
       catch{document.getElementById('gpProvisionStatus').textContent='Clipboard blocked. Select and copy the password directly, then close this window.';}
     };
     window.submitProvisionLogin=async function(){
-      if(!Number.isSafeInteger(pendingProvisionId)||!isCloudConnected||!activeUser?.perm_admin)return;
-      const id=pendingProvisionId,btn=document.getElementById('gpProvisionConfirm');btn.disabled=true;
+      if(!Number.isSafeInteger(pendingProvisionId)||!activeUser?.perm_admin)return;
+      const id=pendingProvisionId;
+      const btn=document.getElementById('gpProvisionConfirm');btn.disabled=true;
       const status=document.getElementById('gpProvisionStatus');status.textContent='Creating secured Supabase login…';
       try{
-        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
-        if(sessionError||!session?.access_token)throw new Error('Your administrator session expired. Sign in again.');
-        const response=await fetch(`${SUPABASE_URL}/functions/v1/gp-admin-provision`,{
-          method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_ANON_KEY},
-          body:JSON.stringify({action:'create',profileId:id})
-        });
-        const data=await response.json().catch(()=>({message:'Provisioning server did not respond correctly.'}));
-        if(!response.ok||!data.ok)throw new Error(data.message||'Account creation failed.');
+        const profile=usersList.find(u=>Number(u.id)===id);
+        if(!profile||!gpValidEmail(profile.auth_email))throw new Error('Assign a valid Auth email in Users & Roles and save it before creating a login.');
+        const data=await gpAdminAccountRequest('create',id);
         visibleProvisionPassword=String(data.temporaryPassword||'');
+        if(!visibleProvisionPassword)throw new Error('The login was created, but no temporary password was returned. Do not retry; contact the administrator.');
         document.getElementById('gpProvisionEmail').textContent='Email: '+String(data.email||'');
         document.getElementById('gpProvisionPassword').textContent=visibleProvisionPassword;
         document.getElementById('gpProvisionResult').classList.remove('hidden');
         document.getElementById('gpProvisionConfirm').classList.add('hidden');
-        status.textContent='Confirmed Auth login linked successfully. Copy the password before closing; it will not be shown again.';
+        status.textContent='Confirmed Auth login linked. Copy the password before closing; it will not be shown again.';
         await loadAdminData();
       }catch(e){status.textContent='Not created: '+(e.message||e);}
       finally{btn.disabled=false;}
+    };
+
+    window.archiveInactiveUser=async function(id){
+      const employee=usersList.find(u=>Number(u.id)===Number(id));
+      if(!employee || employee.active!==false || employee.archived_at)
+        return alert('Deactivate the employee first. Active accounts cannot be deleted.');
+      if(String(employee.auth_user_id || '')===String(activeUser?.auth_user_id || ''))
+        return alert('You cannot delete your own administrator login.');
+      const authScope=employee.auth_user_id ? 'Their linked Supabase Auth login will be deleted.' : 'No Auth login is currently linked; this archives the profile only. A previously unlinked login must be reviewed separately in Supabase Authentication.';
+      const confirmation=prompt(`DELETE INACTIVE LOGIN & ARCHIVE PROFILE\n\nEmployee: ${employee.employee_name}\n\n${authScope} Their profile will be hidden from the roster. Payroll, quotes, commissions and audit history remain.\n\nType ARCHIVE to continue:`);
+      if(confirmation!=='ARCHIVE')return;
+      try{
+        const result=await gpAdminAccountRequest('archive',Number(id));
+        showToast(result.message||'Inactive login deleted and profile archived.');
+        await loadAdminData();
+      }catch(e){alert(`Not archived: ${e.message||e}`);}
+    };
+
+    window.restoreArchivedUser=async function(id){
+      const employee=usersList.find(u=>Number(u.id)===Number(id));
+      if(!employee?.archived_at)return;
+      if(!confirm(`Restore ${employee.employee_name} to the inactive roster? This does not restore the deleted Auth login.`))return;
+      try{
+        const result=await gpAdminAccountRequest('restore',Number(id));
+        showToast(result.message||'Employee profile restored as inactive.');
+        await loadAdminData();
+      }catch(e){alert(`Restore failed: ${e.message||e}`);}
     };
 
     // ========================================================================
@@ -2798,7 +2866,6 @@
     window.toggleUserActive = async function(id, currentlyActive) {
       const target = usersList.find(u => String(u.id) === String(id));
       if (!target) return;
-      if (target.archived_at) return alert("Archived employees cannot be reactivated from this screen.");
       if (String(target.auth_user_id || "") === String(activeUser?.auth_user_id || "")) return alert("You cannot deactivate your own signed-in admin account.");
       const next = !currentlyActive;
       if (!confirm(`${next ? "Activate" : "Deactivate"} ${target.employee_name}?${next ? "" : " Their Supabase Auth login will remain, but RLS will immediately block portal data access."}`)) return;
@@ -2809,29 +2876,6 @@
       }
       await logAudit("USER_STATUS", `${next ? "Activated" : "Deactivated"} ${target.employee_name}`);
       await loadAdminData();
-    };
-
-    window.archiveInactiveEmployee = async function(id) {
-      const target=usersList.find(u=>Number(u.id)===Number(id));
-      if(!target||target.active!==false||target.archived_at)return alert('Deactivate the employee before archiving the account.');
-      if(!isCloudConnected || !activeUser?.perm_admin)return alert('An authenticated Management administrator is required.');
-      if(target.auth_user_id && String(target.auth_user_id)===String(activeUser.auth_user_id))return alert('You cannot delete your own login.');
-      const expected='DELETE '+String(target.employee_name||'').trim();
-      const answer=prompt('WARNING: This permanently deletes the employee Supabase Auth login, if linked, and archives the inactive profile. Historical shifts, commissions, and audit records are retained.\n\nTo confirm, type exactly:\n'+expected);
-      if(answer===null)return;
-      if(answer!==expected)return alert('Confirmation did not match. No changes made.');
-      try{
-        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
-        if(sessionError||!session?.access_token)throw new Error('Administrator session expired. Sign in again.');
-        const res=await fetch(`${SUPABASE_URL}/functions/v1/gp-admin-archive`,{
-          method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_ANON_KEY},
-          body:JSON.stringify({profileId:Number(id)})
-        });
-        const body=await res.json().catch(()=>({message:'Server returned an unreadable response.'}));
-        if(!res.ok||!body.ok)throw new Error(body.message||'Archive failed.');
-        showToast('Employee account archived. Payroll and audit history retained.');
-        await loadAdminData();
-      }catch(e){alert('Account was not fully archived: '+String(e.message||e)+'\nCheck the Edge Function logs before retrying.');}
     };
 
     window.resetProfileClaim = async function(id) {
