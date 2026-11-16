@@ -286,6 +286,10 @@
 <script src="gp-sidebar.js?v=20261113b" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
+<script src="gp-employee-home.js?v=20261113c" defer></script>
+<script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
+<link rel="stylesheet" href="gp-ux.css?v=20261113c">
+<script src="gp-ux.js?v=20261113c" defer></script>
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -397,6 +401,13 @@
           </div>
           <div class="auth-field"><label for="claimPin">Original four-digit employee PIN</label><input type="password" id="claimPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" /></div>
           <button type="button" class="btn btn-red" onclick="claimPortalProfile()">Link My Employee Profile</button>
+          <button type="button" class="btn-outline" style="margin-top:10px;width:100%;" onclick="logoutPortal()">Sign Out</button>
+        </div>
+        <div id="authFirstPasswordPane" class="hidden">
+          <div class="auth-help"><strong>Administrator-created account</strong><br>Your GLASSPRO profile is already linked. For your security, replace the temporary password with your own before entering the workspace.</div>
+          <div class="auth-field"><label for="firstPersonalPassword">New personal password (12+ characters)</label><input type="password" id="firstPersonalPassword" autocomplete="new-password" minlength="12" placeholder="Create a strong password" /></div>
+          <div class="auth-field"><label for="confirmPersonalPassword">Confirm personal password</label><input type="password" id="confirmPersonalPassword" autocomplete="new-password" minlength="12" placeholder="Type it again" /></div>
+          <button type="button" id="btnSavePersonalPassword" class="btn btn-red" onclick="completeProvisionedPassword()">Save Password &amp; Open GLASSPRO</button>
           <button type="button" class="btn-outline" style="margin-top:10px;width:100%;" onclick="logoutPortal()">Sign Out</button>
         </div>
         <div id="authRecoveryPane" class="hidden">
@@ -628,12 +639,12 @@
     }
 
     window.showAuthPane = function(mode) {
-      ["authPinPane","authSignInPane","authSetupPane","authClaimPane","authRecoveryPane"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
-      document.getElementById("authStandardTabs")?.classList.toggle("hidden", mode === "claim" || mode === "recovery");
+      ["authPinPane","authSignInPane","authSetupPane","authClaimPane","authRecoveryPane","authFirstPasswordPane"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+      document.getElementById("authStandardTabs")?.classList.toggle("hidden", mode === "claim" || mode === "recovery" || mode === "firstPassword");
       document.getElementById("authTabPin")?.classList.toggle("active", mode === "pin");
       document.getElementById("authTabSignIn")?.classList.toggle("active", mode === "signIn");
       document.getElementById("authTabSetup")?.classList.toggle("active", mode === "setup");
-      const map = { pin:"authPinPane", signIn:"authSignInPane", setup:"authSetupPane", claim:"authClaimPane", recovery:"authRecoveryPane" };
+      const map = { pin:"authPinPane", signIn:"authSignInPane", setup:"authSetupPane", claim:"authClaimPane", recovery:"authRecoveryPane", firstPassword:"authFirstPasswordPane" };
       document.getElementById(map[mode] || "authPinPane")?.classList.remove("hidden");
       setAuthMessage("");
     };
@@ -644,6 +655,12 @@
       if (!authState.profile) {
         document.getElementById("claimSignedInEmail").textContent = `Signed in as ${authState.user.email || "this Auth account"}.`;
         showAuthPane("claim");
+        return false;
+      }
+      // Admin-provisioned accounts are confirmed and linked server-side; the
+      // employee must replace their one-time password before using the portal.
+      if (authState.user.user_metadata?.gp_password_change_required === true) {
+        showAuthPane("firstPassword");
         return false;
       }
       if (authState.profile.active === false) {
@@ -692,7 +709,7 @@
         }
         const { error } = await supabaseClient.auth.verifyOtp({ token_hash: result.token_hash, type:'magiclink' });
         if (error) return setAuthMessage('PIN verified, but sign-in could not be completed. Use email and password.');
-        await finishAuthenticatedEntry();
+        if (await finishAuthenticatedEntry()) window.location.assign('home.html');
       } catch (e) {
         setAuthMessage('PIN sign-in is unavailable right now. Use Email & Password.');
       } finally {
@@ -709,7 +726,7 @@
       try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) return setAuthMessage(error.message || "Sign-in failed.");
-        await finishAuthenticatedEntry();
+        if (await finishAuthenticatedEntry()) window.location.assign('home.html');
       } catch (e) { setAuthMessage(e.message || "Sign-in failed."); }
       finally { btn.disabled = false; btn.textContent = "Sign In"; }
     };
@@ -744,7 +761,7 @@
         if (!data?.ok) return setAuthMessage(data?.message || "Profile claim failed.");
         document.getElementById("claimPin").value = "";
         setAuthMessage(data.message || "Profile claimed.", true);
-        await finishAuthenticatedEntry();
+        if (await finishAuthenticatedEntry()) window.location.assign('home.html');
       } catch (e) { setAuthMessage(e.message || "Profile claim failed."); }
     };
 
@@ -759,6 +776,27 @@
       } catch (e) { setAuthMessage(e.message || "Unable to send reset email."); }
     };
 
+    window.completeProvisionedPassword = async function() {
+      const password = document.getElementById("firstPersonalPassword").value;
+      const confirm = document.getElementById("confirmPersonalPassword").value;
+      if (password.length < 12) return setAuthMessage("Use at least 12 characters for your new personal password.");
+      if (password !== confirm) return setAuthMessage("The passwords do not match.");
+      const btn = document.getElementById("btnSavePersonalPassword");
+      btn.disabled = true;
+      try {
+        const {data:userResult,error:userError} = await supabaseClient.auth.getUser();
+        if (userError || !userResult?.user) throw new Error("Your login expired. Sign in again.");
+        const data = {...(userResult.user.user_metadata || {}),gp_password_change_required:false};
+        const {error} = await supabaseClient.auth.updateUser({password,data});
+        if (error) throw error;
+        document.getElementById("firstPersonalPassword").value = "";
+        document.getElementById("confirmPersonalPassword").value = "";
+        setAuthMessage("Personal password saved. You can enable Quick PIN in Account & PIN.",true);
+        if (await finishAuthenticatedEntry()) window.location.assign('home.html');
+      } catch(e) {setAuthMessage("Unable to finish setup: "+(e.message||e));}
+      finally {btn.disabled = false;}
+    };
+
     window.completePasswordRecovery = async function() {
       const password = document.getElementById("recoveryPassword").value;
       if (password.length < 8) return setAuthMessage("New password must be at least 8 characters.");
@@ -767,7 +805,7 @@
         if (error) return setAuthMessage(error.message || "Password update failed.");
         document.getElementById("recoveryPassword").value = "";
         setAuthMessage("Password updated.", true);
-        await finishAuthenticatedEntry();
+        if (await finishAuthenticatedEntry()) window.location.assign('home.html');
       } catch (e) { setAuthMessage(e.message || "Password update failed."); }
     };
 
@@ -846,6 +884,7 @@
         return;
       }
       GP.applyNavPermissions(activeUser);
+      window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
 
       document.body.classList.remove('gp-auth-mode');
       document.getElementById("loginScreen").classList.add("hidden");
@@ -884,6 +923,8 @@
 
       await fetchTimeLogs();
       await resumeClockState();
+      window.GP_HOME?.mount?.(activeUser,()=>timeLogs,supabaseClient);
+      window.GP_HOME?.render?.();
     };
 
     window.showCurrentSopModal = function(idx) { return window.showSopModal(activeUser?.department || "Operations", idx); };
@@ -1343,6 +1384,7 @@
       }
       updateOvertimeBanner();
       renderHistoryTable();
+      window.GP_HOME?.render?.();
     }
 
     function updateOvertimeBanner() {
