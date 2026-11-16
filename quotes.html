@@ -164,6 +164,9 @@
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261113b">
 <script src="gp-sidebar.js?v=20261113b" defer></script>
+<script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
+<link rel="stylesheet" href="gp-ux.css?v=20261113c">
+<script src="gp-ux.js?v=20261113c" defer></script>
 </head>
 <body class="min-h-screen flex flex-col gp-app">
 
@@ -1187,6 +1190,7 @@
       document.getElementById("tab-btn-admin-review").classList.toggle("hidden", !activePortalUser.perm_admin);
       document.getElementById("activeUserName").textContent = `${activePortalUser.employee_name} (${activePortalUser.department})`;
       GP.applyNavPermissions(activePortalUser);
+      window.GP_UX?.onSignedIn?.(activePortalUser,supabaseClient);
 
       // Derive the employee's Mainstreet-style CSR stamp without embedding a
       // static staff directory in the publicly delivered HTML. Historical CSR
