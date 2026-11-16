@@ -175,6 +175,9 @@
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261113b">
 <script src="gp-sidebar.js?v=20261113b" defer></script>
+<script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
+<link rel="stylesheet" href="gp-ux.css?v=20261113c">
+<script src="gp-ux.js?v=20261113c" defer></script>
 </head>
 <body class="gp-app">
 
@@ -863,6 +866,7 @@
       document.getElementById("activeUserName").textContent = `${activeUser.employee_name} (${activeUser.department})`;
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
       GP.applyNavPermissions(activeUser);
+      window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
 
       const canSubmit = !!(activeUser.perm_admin || activeUser.perm_vehicle_submit);
       const canView = !!(activeUser.perm_admin || activeUser.perm_vehicle_view);
