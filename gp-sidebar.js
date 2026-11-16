@@ -336,6 +336,7 @@
     addIconButton(brand,'Close menu','gp-side-close','×',closeMobile);
     nav.append(brand);
     const heading=document.createElement('div');heading.className='gp-side-workspace';heading.textContent='Workspace';nav.append(heading);
+    const homeLink=document.createElement('a');homeLink.href='home.html';homeLink.className='gp-side-link';homeLink.innerHTML='<span class="gp-side-icon" aria-hidden="true">⌂</span><span class="gp-side-title">My Home</span>';nav.append(homeLink);
     pins=new Set((Array.isArray(storage.read('gp_nav_pins',[]))?storage.read('gp_nav_pins',[]):[]).filter(x=>typeof x==='string'));
     favouriteGroup=document.createElement('section');favouriteGroup.className='gp-side-group hidden';
     const favHeading=document.createElement('div');favHeading.className='gp-side-group-toggle';favHeading.textContent='★ YOUR FAVORITES';
