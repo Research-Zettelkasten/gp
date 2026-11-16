@@ -45,7 +45,7 @@
     write(k,value){try{localStorage.setItem(k,JSON.stringify(value));}catch{}}
   };
   let nav=null, adminLink=null, adminGroup=null, adminExpander=null, adminSubmenu=null;
-  let mobileTrigger=null, breadcrumb=null, currentPane=null, activeUserId=null;
+  let mobileTrigger=null, breadcrumb=null, currentPane=null, activeUserId=null, searchInput=null, homeLink=null;
   let prefs=null, moduleLinks=new Map(), adminSubLinks=new Map(), groupRecords=[];
   const moduleMenus=new Map();let verifiedProfile=null;
   let pins=new Set(), favourites=null, favouriteGroup=null;
@@ -281,7 +281,31 @@
     // controls have their employee permissions assigned.
     setTimeout(()=>{renderVisibility();applyModuleHash();},100);
   }
-  function closeMobile(){document.body.classList.remove('gp-nav-open');mobileTrigger?.setAttribute('aria-expanded','false');}
+  function closeMobile(){
+    const wasOpen=document.body.classList.contains('gp-nav-open');
+    document.body.classList.remove('gp-nav-open');mobileTrigger?.setAttribute('aria-expanded','false');
+    if(wasOpen)mobileTrigger?.focus();
+  }
+  function filterNavigation(){
+    if(!nav)return;const query=String(searchInput?.value||'').trim().toLowerCase();
+    const matches=el=>!query||String(el?.textContent||'').toLowerCase().includes(query);
+    homeLink?.classList.toggle('gp-search-hidden',!matches(homeLink));
+    for(const [id,link] of moduleLinks){
+      const row=link.closest('.gp-side-link-row')||link.closest('.gp-management-row');
+      if(!row)continue;const menu=id==='navLinkAdmin'?adminSubmenu:moduleMenus.get(id)?.submenu;
+      const parentMatch=matches(link);
+      const children=menu?[...menu.querySelectorAll('a')]:[];
+      for(const child of children)child.classList.toggle('gp-search-hidden',!!query&&!parentMatch&&!matches(child));
+      const childMatch=children.some(child=>!child.hidden&&matches(child));
+      row.classList.toggle('gp-search-hidden',!!query&&!parentMatch&&!childMatch);
+      menu?.classList.toggle('gp-search-hidden',!!query&&!parentMatch&&!childMatch);
+    }
+    for(const {section,content} of groupRecords){
+      const visible=[...content.querySelectorAll('.gp-side-link-row,.gp-management-row')].some(row=>!row.classList.contains('gp-search-hidden')&&!!row.querySelector('a:not(.hidden)'));
+      section.classList.toggle('gp-search-empty',!!query&&!visible);
+    }
+    if(favourites)for(const a of favourites.querySelectorAll('a'))a.classList.toggle('gp-search-hidden',!matches(a));
+  }
   function renderVisibility(){
     if(!nav)return;
     const available=!nav.classList.contains('hidden');
@@ -292,6 +316,7 @@
       const visible=key==='administration'?adminEnabled():[...content.querySelectorAll('a.gp-side-link')].some(a=>!a.classList.contains('hidden'));
       section.classList.toggle('hidden',!visible);
     }
+    for(const link of moduleLinks.values())link.closest('.gp-side-link-row')?.classList.toggle('gp-permission-hidden',link.classList.contains('hidden'));
     // The enclosing group is permission-gated. Do not mutate the nested open
     // state here: a profile refresh must not permanently close the submenu.
     for(const [moduleKey,menu] of moduleMenus){
@@ -315,10 +340,11 @@
         const fav=document.createElement('a');fav.className='gp-side-link';fav.href=link.href;fav.title=label;
         const span=document.createElement('span');span.className='gp-side-icon';span.textContent=glyph;span.setAttribute('aria-hidden','true');
         const title=document.createElement('span');title.className='gp-side-title';title.textContent=label;
-        fav.append(span,title);favourites.append(fav);
+        fav.append(span,title);if(link.classList.contains('active')){fav.classList.add('active');fav.setAttribute('aria-current','page');}favourites.append(fav);
       }}
       if(favouriteGroup)favouriteGroup.classList.toggle('hidden',favourites.children.length===0);
     }
+    filterNavigation();
   }
   function init(){
     nav=document.getElementById('mainNavBar');if(!nav||nav.dataset.gpSidebarReady)return;
@@ -331,12 +357,18 @@
     const copy=document.createElement('span');copy.className='gp-side-brand-copy';copy.innerHTML='<strong>GLASSPRO</strong><span>TEAM WORKSPACE</span>';
     brand.append(logo,copy);
     const collapse=addIconButton(brand,'Collapse or expand sidebar','gp-side-collapse','‹',()=>{
-      const collapsed=document.body.classList.toggle('gp-side-collapsed');storage.write('gp_nav_collapsed',collapsed);collapse.textContent=collapsed?'›':'‹';
+      const collapsed=document.body.classList.toggle('gp-side-collapsed');if(collapsed&&searchInput){searchInput.value='';nav.classList.remove('gp-searching');filterNavigation();}storage.write('gp_nav_collapsed',collapsed);collapse.textContent=collapsed?'›':'‹';collapse.setAttribute('aria-expanded',String(!collapsed));
     });
     addIconButton(brand,'Close menu','gp-side-close','×',closeMobile);
     nav.append(brand);
     const heading=document.createElement('div');heading.className='gp-side-workspace';heading.textContent='Workspace';nav.append(heading);
-    const homeLink=document.createElement('a');homeLink.href='home.html';homeLink.className='gp-side-link';homeLink.innerHTML='<span class="gp-side-icon" aria-hidden="true">⌂</span><span class="gp-side-title">My Home</span>';nav.append(homeLink);
+    homeLink=document.createElement('a');homeLink.href='home.html';homeLink.className='gp-side-link';homeLink.innerHTML='<span class="gp-side-icon" aria-hidden="true">⌂</span><span class="gp-side-title">My Home</span>';nav.append(homeLink);
+    if(/(^|\/)home\.html$/i.test(location.pathname)){homeLink.classList.add('active');homeLink.setAttribute('aria-current','page');}
+    const searchBox=document.createElement('label');searchBox.className='gp-side-search';
+    const searchIcon=document.createElement('span');searchIcon.textContent='⌕';searchIcon.setAttribute('aria-hidden','true');
+    searchInput=document.createElement('input');searchInput.type='search';searchInput.placeholder='Find a workspace…';searchInput.setAttribute('aria-label','Find a workspace or Management section');
+    searchBox.append(searchIcon,searchInput);nav.append(searchBox);
+    searchInput.addEventListener('input',()=>{nav.classList.toggle('gp-searching',!!searchInput.value.trim());filterNavigation();});
     pins=new Set((Array.isArray(storage.read('gp_nav_pins',[]))?storage.read('gp_nav_pins',[]):[]).filter(x=>typeof x==='string'));
     favouriteGroup=document.createElement('section');favouriteGroup.className='gp-side-group hidden';
     const favHeading=document.createElement('div');favHeading.className='gp-side-group-toggle';favHeading.textContent='★ YOUR FAVORITES';
@@ -358,17 +390,30 @@
     const check=document.createElement('input');check.type='checkbox';check.checked=storage.read('gp_nav_compact',false)===true;
     compact.append(check,document.createTextNode('Compact cards and tables'));options.append(compact);
     check.addEventListener('change',()=>{storage.write('gp_nav_compact',check.checked);document.body.classList.toggle('gp-density-compact',check.checked);});
-    const hint=document.createElement('small');hint.textContent='Expand Administration → Management for section links. Sidebar changes are visual only; access still follows employee roles.';options.append(hint);
+    const hint=document.createElement('small');hint.textContent='Expand Administration → Management for section links. Pin the tools you use most. Your display settings stay saved on this browser.';options.append(hint);
     settings.addEventListener('click',()=>{const expanded=options.classList.toggle('is-open');settings.setAttribute('aria-expanded',String(expanded));});
     footer.append(settings,options);nav.append(footer);
     const scrim=document.createElement('div');scrim.className='gp-nav-scrim';scrim.addEventListener('click',closeMobile);document.body.append(scrim);
     mobileTrigger=document.createElement('button');mobileTrigger.type='button';mobileTrigger.className='gp-mobile-nav-trigger';mobileTrigger.innerHTML='<span aria-hidden="true">☰</span> Menu';
-    mobileTrigger.setAttribute('aria-label','Open GLASSPRO navigation');mobileTrigger.setAttribute('aria-expanded','false');
+    mobileTrigger.setAttribute('aria-label','Open GLASSPRO navigation');mobileTrigger.setAttribute('aria-expanded','false');mobileTrigger.setAttribute('aria-controls','mainNavBar');
     const header=document.querySelector('header');header?.prepend(mobileTrigger);
-    mobileTrigger.addEventListener('click',()=>{const open=document.body.classList.toggle('gp-nav-open');mobileTrigger.setAttribute('aria-expanded',String(open));});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile();});
+    mobileTrigger.addEventListener('click',()=>{
+      const open=document.body.classList.toggle('gp-nav-open');mobileTrigger.setAttribute('aria-expanded',String(open));
+      if(open)(nav.querySelector('.gp-side-close')||nav.querySelector('a'))?.focus();
+    });
+document.addEventListener('keydown',e=>{
+      if(!document.body.classList.contains('gp-nav-open'))return;
+      if(e.key==='Escape'){e.preventDefault();closeMobile();return;}
+      if(e.key==='Tab'){
+        const items=[...nav.querySelectorAll('a[href],button,input')].filter(el=>!el.disabled&&el.getClientRects().length>0);
+        const first=items[0],last=items[items.length-1];
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+      }
+    });
+    window.addEventListener('resize',()=>{if(window.innerWidth>1000)closeMobile();});
     const savedCollapsed=storage.read('gp_nav_collapsed',false)===true;
-    document.body.classList.toggle('gp-side-collapsed',savedCollapsed);collapse.textContent=savedCollapsed?'›':'‹';
+    document.body.classList.toggle('gp-side-collapsed',savedCollapsed);collapse.textContent=savedCollapsed?'›':'‹';collapse.setAttribute('aria-expanded',String(!savedCollapsed));
     document.body.classList.toggle('gp-density-compact',check.checked);
     makeBreadcrumb();
     if(currentModule()&&moduleMenus.has(currentModule())){

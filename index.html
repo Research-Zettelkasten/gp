@@ -282,14 +282,16 @@
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261113b">
-<script src="gp-sidebar.js?v=20261113b" defer></script>
+<link rel="stylesheet" href="gp-sidebar.css?v=20261116d">
+<script src="gp-sidebar.js?v=20261116d" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
-<script src="gp-employee-home.js?v=20261113c" defer></script>
+<script src="gp-employee-home.js?v=20261116d" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
+<script src="gp-clock.js?v=20261116d"></script>
+<script src="gp-home-core.js?v=20261116d"></script>
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -1096,17 +1098,23 @@
     }
 
     async function restoreActiveTimeSession() {
-      if (!activeUser || !isCloudConnected) return;
+      if (!activeUser || !isCloudConnected) return false;
       try {
-        const result = await supabaseClient.from("active_time_sessions").select("*").eq("auth_user_id", String(activeUser.auth_user_id)).limit(1);
-        const row = !result.error && result.data ? result.data[0] : null;
-        if (!row || !row.started_at_ms) return;
-        localStorage.setItem(getClockKey(), String(row.started_at_ms));
-        localStorage.setItem(getClockLocKey(), row.clock_in_location || "Location Not Recorded");
-        localStorage.setItem(getClockCoordsKey(), row.clock_in_coords || "");
-        activeLunchState = lunchStateFromRow(row);
-        renderLunchState();
-      } catch (e) {}
+        const row = await GP_CLOCK.readActive(supabaseClient, String(activeUser.auth_user_id));
+        if (!row) {
+          // A confirmed absent session also clears punches ended by a manager on another device.
+          localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
+          localStorage.removeItem('gp_clock_out_saved_'+activeUser.auth_user_id);
+          activeLunchState=null;window.GP_HOME?.updateData?.({session:null,shiftReady:true});
+          return true;
+        }
+        localStorage.setItem(getClockKey(),String(row.started_at_ms));
+        localStorage.setItem(getClockLocKey(),row.clock_in_location||"Location Not Recorded");
+        localStorage.setItem(getClockCoordsKey(),row.clock_in_coords||"");
+        activeLunchState=lunchStateFromRow(row);
+        window.GP_HOME?.updateData?.({session:row,shiftReady:true});
+        renderLunchState();return true;
+      } catch (e) { return false; } // A failed read never erases an active punch.
     }
 
     // No employee-editable break minutes. Exact lunch punches are stored by Supabase.
@@ -1199,97 +1207,26 @@
     };
 
     window.clockOutNow = async function() {
-      if (!activeUser) return;
-      const savedStart = localStorage.getItem(getClockKey());
-      if (!savedStart) return;
-      const btn = document.getElementById("btnClockOut");
-      if (btn.disabled) return;
-      btn.disabled = true;
-      btn.textContent = "Capturing Clock-Out Geotag...";
-      try {
-        if (!isCloudConnected) throw new Error("Supabase is unavailable. Your active clock-in is preserved; reconnect and retry.");
-        const pendingKey = `gp_clock_out_saved_${activeUser.auth_user_id}`;
-        if (localStorage.getItem(pendingKey) === savedStart) {
-          // This shift was already saved; retry cleanup without creating
-          // another payroll row or requiring elapsed time to remain <=24h.
-          const {data,error} = await supabaseClient.from("active_time_sessions").delete()
-            .eq("auth_user_id",String(activeUser.auth_user_id))
-            .eq("started_at_ms",Number(savedStart)).select("auth_user_id");
-          if (error || !data?.length) throw new Error("Shift saved, but clock cleanup still needs attention: " + (error?.message || "active session missing or permission denied"));
-          localStorage.removeItem(pendingKey);
-          localStorage.removeItem(getClockKey());
-          localStorage.removeItem(getClockLocKey());
-          localStorage.removeItem(getClockCoordsKey());
-          if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
-          await resumeClockState();
-          showToast("Saved shift finalized; clocked out successfully.");
-          return;
-        }
-        const lunch = await refreshLunchState();
-        if(lunch.lunch_out_at && !lunch.lunch_in_at){
-          throw new Error("Lunch is still in progress. Select Return from Lunch before clocking out.");
-        }
-        const noLunchReason = !lunch.lunch_out_at ? document.getElementById("noLunchReason").value.trim() : "";
-        if(!lunch.lunch_out_at && noLunchReason.length<10){
-          document.getElementById("noLunchReason").focus();
-          throw new Error("No lunch was recorded. Enter a reason (at least 10 characters) for manager approval before clock-out.");
-        }
-        const outGeo = await captureGeotag();
-        const inLoc = localStorage.getItem(getClockLocKey()) || "Unknown";
-        const inCoords = localStorage.getItem(getClockCoordsKey()) || "";
-        const startObj = new Date(Number(savedStart));
-        const endObj = new Date();
-        const breakMins = lunch.lunch_out_at ? GP_LUNCH.minutesBetween(lunch.lunch_out_at,lunch.lunch_in_at) : 0;
-        const elapsed = (endObj.getTime() - startObj.getTime()) / 3600000;
-        const netDecimal = Math.max(0, elapsed - (breakMins / 60));
-        if (!Number.isFinite(elapsed) || elapsed <= 0 || elapsed > 24 || breakMins > elapsed * 60) {
-          throw new Error("Invalid shift duration or break minutes. Ask a manager to review this punch.");
-        }
-        // If a prior upload succeeded but session cleanup failed, only retry
-        // cleanup. Never submit the same completed shift a second time.
-        const pending = localStorage.getItem(pendingKey);
-        if (!pending || pending !== savedStart) {
-          const record = {
-            employee_name: activeUser.employee_name, department: activeUser.department,
-            work_date: GP.localDate(startObj),
-            clock_in: startObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
-            clock_out: endObj.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}),
-            break_minutes: breakMins, decimal_hours: format00(netDecimal),
-            lunch_out_time: GP_LUNCH.localTime(lunch.lunch_out_at),
-            lunch_in_time: GP_LUNCH.localTime(lunch.lunch_in_at),
-            lunch_out_at: lunch.lunch_out_at, lunch_in_at: lunch.lunch_in_at,
-            no_lunch_reason: noLunchReason || null,
-            lunch_review_status: noLunchReason ? "pending" : "not_required",
-            clock_in_location: inLoc, clock_out_location: outGeo.address,
-            clock_in_coords: inCoords, clock_out_coords: outGeo.coords,
-            notes: `In: ${inLoc} | Out: ${outGeo.address}`
-          };
-          await saveShiftRecord(record);
-          localStorage.setItem(pendingKey, savedStart);
-          await recordTimePresence("TIME_CLOCK_OUT", {
-            employee_name: activeUser.employee_name, department: activeUser.department,
-            started_at_ms: Number(savedStart), ended_at_ms: endObj.getTime(),
-            ended_at: endObj.toISOString(), location: outGeo.address,
-            coords: outGeo.coords, decimal_hours: format00(netDecimal)
-          });
-        }
-        const {data:deleted,error} = await supabaseClient.from("active_time_sessions")
-          .delete().eq("auth_user_id", String(activeUser.auth_user_id))
-          .eq("started_at_ms",Number(savedStart)).select("auth_user_id");
-        if (error || !deleted?.length) throw new Error("Shift saved, but active-clock cleanup failed: " + (error?.message || "session missing or permission denied") + ". Retry Clock Out to finish cleanup without creating another shift.");
-        localStorage.removeItem(pendingKey);
-        localStorage.removeItem(getClockKey());
-        localStorage.removeItem(getClockLocKey());
-        localStorage.removeItem(getClockCoordsKey());
-        if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
-        await resumeClockState();
-        showToast(noLunchReason ? "Clocked out — no-lunch explanation pending manager approval." : "Shift saved to Supabase and clocked out.");
-      } catch (e) {
-        alert(`Clock-out not fully completed: ${e.message || e}. Your active punch remains available.`);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Clock Out & Sync Shift";
-      }
+      if(!activeUser)return;
+      const savedStart=localStorage.getItem(getClockKey());if(!savedStart)return;
+      const btn=document.getElementById("btnClockOut");if(btn.disabled)return;
+      btn.disabled=true;btn.textContent="Saving Clock-Out…";
+      try{
+        if(!isCloudConnected)throw new Error("Reconnect before clocking out. Your active shift has been preserved.");
+        const lunch=await refreshLunchState();
+        if(lunch.lunch_out_at&&!lunch.lunch_in_at)throw new Error("Select Return from Lunch before clocking out.");
+        const reason=!lunch.lunch_out_at?document.getElementById("noLunchReason").value.trim():"";
+        if(!lunch.lunch_out_at&&reason.length<10){document.getElementById("noLunchReason").focus();throw new Error("Enter a no-lunch explanation of at least 10 characters for manager review.");}
+        const geo=await captureGeotag();
+        const result=await GP_CLOCK.finishShift(supabaseClient,{startedAtMs:Number(savedStart),noLunchReason:reason,location:geo.address,coords:geo.coords});
+        localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
+        localStorage.removeItem("gp_clock_out_saved_"+activeUser.auth_user_id);
+        activeLunchState=null;
+        if(liveInterval){clearInterval(liveInterval);liveInterval=null;}
+        await resumeClockState();await fetchTimeLogs();
+        showToast(result.already_closed?"This shift was already clocked out; your clock is now up to date.":reason?"Clocked out. Your no-lunch explanation is pending manager review.":"Shift saved and clocked out.");
+      }catch(e){alert("Clock-out was not confirmed: "+String(e.message||e));await resumeClockState();}
+      finally{btn.disabled=false;btn.textContent="Clock Out & Sync Shift";}
     };
 
     window.calcManualHours = function() {
@@ -1507,6 +1444,8 @@
       document.getElementById("pinLoginEmail")?.addEventListener("keydown", e => { if(e.key === 'Enter') document.getElementById('pinLoginCode')?.focus(); });
       document.getElementById("authEmail")?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("authPassword")?.focus(); });
       await initializeAuthPortal();
+      setInterval(()=>{if(activeUser&&!document.hidden&&!document.getElementById("btnClockOut").disabled)resumeClockState();},15000);
+      document.addEventListener("visibilitychange",()=>{if(activeUser&&!document.hidden&&!document.getElementById("btnClockOut").disabled)resumeClockState();});
     });
   </script>
 <script src="gp-pin.js?v=20261112"></script>
