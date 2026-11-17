@@ -66,6 +66,9 @@ drop trigger gp_time_exact_lunch on public.time_logs;
 alter table public.time_logs alter column decimal_hours type numeric(10,2) using decimal_hours::numeric;
 create trigger gp_time_exact_lunch before insert or update of clock_in,clock_out,lunch_out_time,lunch_in_time,break_minutes,decimal_hours
   on public.time_logs for each row execute function public.gp_apply_exact_lunch();
+-- Treat the restored numeric schema as a separate installation. Reinstalling
+-- clears PL/pgSQL row-field plans cached against the previous text fixture.
+\ir ../supabase/migrations/2026-11-17-clock-out-text-hours-fix.sql
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 select public.test_seed_shift('22222222-2222-4222-8222-222222222222',10) as numeric_start \gset
 select public.gp_finish_active_shift(:numeric_start,'22222222-2222-4222-8222-222222222222',
