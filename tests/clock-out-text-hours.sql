@@ -5,7 +5,12 @@ do $$ begin
 end $$;
 
 select set_config('request.jwt.claim.sub','',false);
+-- PostgreSQL requires recreating the UPDATE OF trigger when a fixture column
+-- type changes. The production repair does not change any column or trigger.
+drop trigger gp_time_exact_lunch on public.time_logs;
 alter table public.time_logs alter column decimal_hours type text using decimal_hours::text;
+create trigger gp_time_exact_lunch before insert or update of clock_in,clock_out,lunch_out_time,lunch_in_time,break_minutes,decimal_hours
+  on public.time_logs for each row execute function public.gp_apply_exact_lunch();
 select public.test_seed_shift('22222222-2222-4222-8222-222222222222',2) as short_start \gset
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 
@@ -57,7 +62,10 @@ select public.gp_finish_active_shift(:text_rollback_start,'22222222-2222-4222-82
 
 -- The same replacement remains compatible with a standard numeric column.
 select set_config('request.jwt.claim.sub','',false);
+drop trigger gp_time_exact_lunch on public.time_logs;
 alter table public.time_logs alter column decimal_hours type numeric(10,2) using decimal_hours::numeric;
+create trigger gp_time_exact_lunch before insert or update of clock_in,clock_out,lunch_out_time,lunch_in_time,break_minutes,decimal_hours
+  on public.time_logs for each row execute function public.gp_apply_exact_lunch();
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 select public.test_seed_shift('22222222-2222-4222-8222-222222222222',10) as numeric_start \gset
 select public.gp_finish_active_shift(:numeric_start,'22222222-2222-4222-8222-222222222222',
@@ -69,3 +77,4 @@ select public.test_assert((select bool_and(relrowsecurity) from pg_class c join 
   where n.nspname='public' and c.relname in ('app_users','time_logs','active_time_sessions','audit_logs')),'repair retains RLS');
 
 \echo 'Exact text=numeric regression reproduced and repaired; text and numeric schemas passed.'
+
