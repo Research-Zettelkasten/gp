@@ -117,3 +117,5 @@ body.gp-side-collapsed .gp-side-search{display:none}
 @media(max-width:1000px){body.gp-side-collapsed .gp-side-search{display:flex}}
 
 .gp-permission-hidden{display:none!important}
+.gp-sidebar a.gp-side-link.gp-search-hidden{display:none!important}
+

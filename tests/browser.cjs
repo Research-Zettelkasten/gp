@@ -41,6 +41,10 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     assert.equal(await page.locator('.gp-side-link-row:not(.gp-search-hidden)').count(),1,'navigation search filters modules');
     await page.getByRole('searchbox').fill('');
     await page.setViewportSize({width:390,height:844});
+    await page.waitForFunction(()=>document.documentElement.scrollWidth<=window.innerWidth,{},{timeout:3000}).catch(async error=>{
+      console.error('Mobile overflow details:',await page.evaluate(()=>[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,id:el.id,className:String(el.className),right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).filter(x=>x.right>innerWidth+1).slice(0,15)));
+      throw error;
+    });
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'mobile home has no horizontal overflow');
     await page.getByRole('button',{name:'Open GLASSPRO navigation'}).click();
     await page.getByRole('button',{name:'Close menu',exact:true}).waitFor({state:'visible'});
