@@ -1,6 +1,7 @@
 {
-  "version": "2026.11.16.1",
-  "notes": "GLASSPRO 2.0 theme, employee home, admin provisioning, and secure delete-login/archive of inactive employee profiles; historical payroll retained.",
-  "release_date": "2026-11-16",
-  "released_at": "2026-11-16"
+  "version": "2026.11.17.1",
+  "notes": "Consistent employee home and navigation, saved card ordering, and audited atomic administrator clock-out. Install the included SQL migration before deploying.",
+  "release_date": "2026-11-17",
+  "released_at": "2026-11-17"
 }
+

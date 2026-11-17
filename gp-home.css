@@ -17,6 +17,8 @@ body.gp-home-page{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSys
 .gp-home-page .gp-page-intro p{color:var(--gp2-muted);margin:0;font-size:14px}
 .gp-home-date{display:flex;flex-direction:column;gap:7px;align-items:flex-end;font-size:12px;color:var(--gp2-muted);padding-top:5px}
 #homeLoadMessage{font-size:11px}
+.gp-home-refresh{min-height:34px;padding:8px 12px;border:1px solid var(--gp2-border);border-radius:9px;background:var(--gp2-surface);color:var(--gp2-text);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.gp-home-refresh:disabled{opacity:.5;cursor:default}
 .gp-home-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:32px}
 .gp-home-stat{background:var(--gp2-surface);border:1px solid var(--gp2-border);border-radius:18px;padding:23px 24px;box-shadow:var(--gp2-shadow);min-width:0}
 .gp-home-eyebrow{display:block;font-size:10px;font-weight:800;letter-spacing:.11em;color:var(--gp2-muted);margin-bottom:15px}
@@ -55,3 +57,4 @@ body.gp-home-page{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSys
 .gp-home-empty h3{color:var(--gp2-text);font-size:17px}
 .gp-home-page :focus-visible{outline:3px solid #4e97de;outline-offset:4px}
 @media(max-width:750px){.gp-home-page header{gap:14px}.gp-home-page .header-right{justify-content:flex-start}.gp-home-summary{grid-template-columns:1fr}.gp-home-date{align-items:flex-start}.gp-home-editor-list{grid-template-columns:1fr}.gp-home-page a.gp-home-tool{padding:21px}.gp-home-page .gp-home-outer{padding-top:22px}}
+

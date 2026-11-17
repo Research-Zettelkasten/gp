@@ -1,5 +1,5 @@
 # GLASSPRO home, navigation and administrator clock-out
-Release 2026.11.16.4
+Release 2026.11.17.1
 
 ## What changed
 - Home now shares the program's navy header, red accents, card spacing and light/dark appearance.
@@ -42,3 +42,4 @@ The PostgreSQL fixture is restricted to a database named gp_clock_test. **Never 
 
 ## Rollback
 The migration is additive and can remain installed if the website is rolled back. Prefer keeping the new atomic employee clock-out code while reverting only appearance changes. Reverting all clock code restores the older non-atomic submission path; do so only during a maintenance window with administrators no longer using the new action.
+
