@@ -10,7 +10,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   let browser;
   try{
     for(let i=0;i<40;i++){try{await fetch(base+'/home.html');break;}catch{await pause(100);}}
-    browser=await chromium.launch({headless:true});
+    browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});
     const context=await browser.newContext({viewport:{width:1440,height:1000}});
     await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',route=>route.fulfill({contentType:'application/javascript',body:fakeSupabase}));
     await context.route('https://cdnjs.cloudflare.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.Papa={parse(){}};'}));
@@ -72,3 +72,4 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     console.log('Browser checks passed: home, card ordering, dark mode, responsive navigation, remote clock clearing, and admin clock-out.');
   }finally{await browser?.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
