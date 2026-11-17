@@ -6,7 +6,7 @@
 <script src="portal-utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="glasspro-theme.css?v=20261113c">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261116d">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script>try { document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light'; }catch(e){}</script>
 <script src="gp-sidebar.js?v=20261116d" defer></script>
@@ -14,7 +14,7 @@
 <script src="gp-home-core.js?v=20261116d"></script>
 <script src="gp-employee-home.js?v=20261116d" defer></script>
 <script src="gp-ux.js?v=20261113c" defer></script>
-<link rel="stylesheet" href="gp-home.css?v=20261116d">
+<link rel="stylesheet" href="gp-home.css?v=20261117a">
 </head>
 <body class="gp-app gp-home-page">
 <header class="gp-exec-header">
@@ -32,7 +32,7 @@
  <a href="collections.html" id="navLinkCollections" class="nav-btn">Collections</a>
 </nav>
 <main class="gp-home-outer">
-<section class="gp-page-intro" aria-label="Your workspace"><div><span class="gp-page-kicker">MY GLASSPRO</span><h2 id="gpHomeGreeting">Your workday, in one place</h2><p>A clear view of your day, with the tools you use most.</p></div><div class="gp-home-date"><span id="gpHomeDate"></span><span id="homeLoadMessage" role="status">Verifying your account…</span><button type="button" id="gpHomeRefresh" class="gp2-display-switch" disabled>Refresh</button></div></section>
+<section class="gp-page-intro" aria-label="Your workspace"><div><span class="gp-page-kicker">MY GLASSPRO</span><h2 id="gpHomeGreeting">Your workday, in one place</h2><p>A clear view of your day, with the tools you use most.</p></div><div class="gp-home-date"><span id="gpHomeDate"></span><span id="homeLoadMessage" role="status">Verifying your account…</span><button type="button" id="gpHomeRefresh" class="gp-home-refresh" disabled>Refresh</button></div></section>
   <div id="gp2StandaloneHome"></div>
 </main>
 <script>
@@ -40,6 +40,7 @@
   const SUPABASE_URL='https://ohddwksazinynqlynycm.supabase.co';
   const SUPABASE_ANON_KEY='sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j';
   const client=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_ANON_KEY)||null;
+  window.supabaseClient=client; // Shared Account & PIN controls use this client.
   let me=null,logs=[],loading=false;
   const status=document.getElementById('homeLoadMessage'),refresh=document.getElementById('gpHomeRefresh');
   document.getElementById('gp2HomeSignOut').addEventListener('click',()=>GP.signOut(client));
@@ -75,3 +76,4 @@
 </script>
 <script src="gp-pin.js?v=20261112"></script>
 </body></html>
+

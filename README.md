@@ -1,3 +1,5 @@
+> **Current release:** See [INSTALL-HOME-NAV-CLOCK-OUT.md](INSTALL-HOME-NAV-CLOCK-OUT.md) for the home, navigation and administrator clock-out update. Run its SQL migration before publishing the website. The notes below describe the original reviewed prototype and are retained as historical documentation.
+
 [README.md](https://github.com/user-attachments/files/34202396/README.md)
 # GLASSPRO Portal — reviewed edition
 
@@ -49,3 +51,4 @@ Original browser storage records are not modified by unzipping this ZIP. Before 
 The browser tests deliberately mock online CDNs and Supabase; they **do not** exercise actual cloud access, CSV import through a live PapaParse CDN, geolocation, or production network permissions.
 
 See `REVIEW.md` for findings and remaining work.
+

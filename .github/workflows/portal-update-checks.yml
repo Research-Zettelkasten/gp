@@ -14,7 +14,7 @@ permissions:
   contents: read
 jobs:
   portal:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       postgres:
@@ -52,3 +52,4 @@ jobs:
           name: portal-layout-previews
           path: test-results/
           if-no-files-found: ignore
+

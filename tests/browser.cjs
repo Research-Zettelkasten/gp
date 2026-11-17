@@ -10,7 +10,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   let browser;
   try{
     for(let i=0;i<40;i++){try{await fetch(base+'/home.html');break;}catch{await pause(100);}}
-    browser=await chromium.launch({headless:true});
+    browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});
     const context=await browser.newContext({viewport:{width:1440,height:1000}});
     await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',route=>route.fulfill({contentType:'application/javascript',body:fakeSupabase}));
     await context.route('https://cdnjs.cloudflare.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.Papa={parse(){}};'}));
@@ -32,12 +32,19 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     await page.reload();await page.getByRole('heading',{name:/Good (morning|afternoon|evening), Sam/}).waitFor();
     await page.locator('.gp2-home-cards.gp2-one').waitFor();
     assert.equal(await page.locator('.gp-home-tool h3').nth(1).textContent(),'Vehicle Check & Safety','card order survives refresh');
+    await page.getByRole('button',{name:'Account & PIN',exact:true}).click();
+    await page.getByRole('heading',{name:'Your Quick PIN',exact:true}).waitFor();
+    await page.locator('#gp-pin-close').click();
     await page.getByRole('button',{name:/Dark mode/}).click();
     assert.equal(await page.locator('html').getAttribute('data-gp-theme'),'dark');
     await page.getByRole('searchbox',{name:'Find a workspace or Management section'}).fill('time');
     assert.equal(await page.locator('.gp-side-link-row:not(.gp-search-hidden)').count(),1,'navigation search filters modules');
     await page.getByRole('searchbox').fill('');
     await page.setViewportSize({width:390,height:844});
+    await page.waitForFunction(()=>document.documentElement.scrollWidth<=window.innerWidth,{},{timeout:3000}).catch(async error=>{
+      console.error('Mobile overflow details:',await page.evaluate(()=>[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,id:el.id,className:String(el.className),right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).filter(x=>x.right>innerWidth+1).slice(0,15)));
+      throw error;
+    });
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'mobile home has no horizontal overflow');
     await page.getByRole('button',{name:'Open GLASSPRO navigation'}).click();
     await page.getByRole('button',{name:'Close menu',exact:true}).waitFor({state:'visible'});
@@ -72,3 +79,4 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     console.log('Browser checks passed: home, card ordering, dark mode, responsive navigation, remote clock clearing, and admin clock-out.');
   }finally{await browser?.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
