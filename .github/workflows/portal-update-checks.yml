@@ -1,13 +1,13 @@
 name: Portal update checks
 on:
   push:
-    branches: [codex/home-navigation-admin-clock-out-20261116]
+    branches: [codex/home-navigation-admin-clock-out-20261116, codex/fix-clock-out-text-hours-20261117]
   pull_request:
     paths:
       - '**.html'
       - '**.js'
       - '**.css'
-      - 'supabase/migrations/2026-11-16-admin-clock-out.sql'
+      - 'supabase/migrations/**'
       - 'tests/**'
       - '.github/workflows/portal-update-checks.yml'
 permissions:
@@ -40,6 +40,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out.sql
       - name: Concurrent employee and administrator clock-out
         run: node tests/clock-race.cjs
+      - name: Legacy text-hours compatibility regression
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out-text-hours.sql
       - name: Install browser test runner
         run: |
           npm install --no-save --package-lock=false playwright@1.58.2
