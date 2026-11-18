@@ -1195,7 +1195,6 @@
       const savedQuotes = null;
       const savedCompetitors = null;
       const savedExemptions = null;
-      const hadSavedQuotes = !!savedQuotes;
 
       quotesState = savedQuotes ? JSON.parse(savedQuotes) : JSON.parse(JSON.stringify(INITIAL_QUOTES_FROM_CSV));
       competitorsState = savedCompetitors ? JSON.parse(savedCompetitors) : JSON.parse(JSON.stringify(INITIAL_COMPETITORS));
@@ -1203,13 +1202,6 @@
 
       if (isCloudConnected) {
         try {
-          const qRes = { data: await GP.fetchAllRows(supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false })) };
-          if (!qRes.error && Array.isArray(qRes.data)) {
-            // Authenticated cloud state is authoritative. Never merge old
-            // browser-cached customer records back into a protected dataset.
-            quotesState = qRes.data.map(quoteFromCloudRow).sort((a, b) => Number(b.quote_number) - Number(a.quote_number));
-          }
-
           const cRes = await supabaseClient.from("quote_competitors").select("*").order("name", { ascending: true });
           if (!cRes.error && cRes.data && cRes.data.length > 0) {
             competitorsState = cRes.data.map(c => ({id:c.id,name:c.name,specialty:c.specialty||"Auto & Flat",active:c.active!==false}));
@@ -1237,9 +1229,8 @@
     }
 
     function saveState() {
-      localStorage.setItem("glasspro_quotes_v1", JSON.stringify(quotesState));
-      localStorage.setItem("glasspro_competitors_v1", JSON.stringify(competitorsState));
-      localStorage.setItem("glasspro_quote_exemptions_v1", JSON.stringify([...exemptedCustomerNames]));
+      // Supabase is authoritative. Large quote histories must not fail to render
+      // because browser storage is full or unavailable.
     }
 
     function refreshAllViews() {

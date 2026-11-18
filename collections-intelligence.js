@@ -100,7 +100,8 @@ function assess(c,index,today){
  const coverageStart=[c.invoice_date,ms?.import?.report_as_of,gq?.import?.report_as_of].filter(Boolean).sort().at(-1)||'';
  const missing=!!(open&&open.report_as_of>=coverageStart&&(!qbo||rank(open)>rank(qbo.import))&&!rows.some(r=>r.import_id===open.id));
  const verified=!!(qbo&&!qbo.fallback&&kind(qbo.import)==='invoice_verification'&&qbo.raw?.balance_present===true&&Number(qbo.open_balance)===0&&(!c.invoice_date||qbo.import.report_as_of>=c.invoice_date)&&(!gq?.import||qbo.import.report_as_of>=gq.import.report_as_of)&&(!ms||Number(ms.open_balance)<=0||rank(qbo.import)>=rank(ms.import)));
- const reappeared=!!(c.cleared_at&&qbo&&Number(qbo.open_balance)>0&&qbo.import?.report_as_of>=(c.cleared_report_as_of||String(c.cleared_at).slice(0,10))&&qbo.import?.completed_at>c.cleared_at);
+ const clearedImport=index?.byImport.get(c.cleared_import_id);
+ const reappeared=!!(c.cleared_at&&qbo&&Number(qbo.open_balance)>0&&qbo.import&&(clearedImport?rank(qbo.import)>rank(clearedImport):qbo.import.report_as_of>=(c.cleared_report_as_of||String(c.cleared_at).slice(0,10))&&qbo.import.completed_at>c.cleared_at));
  let category=c.legacy_unmatched?'unmatched':reappeared?'reappeared':c.status==='reconciled'?'archived':verified?'verified':missing?'missing':qbo&&Number(qbo.open_balance)>0?'open':qbo&&Number(qbo.open_balance)<0?'credit':'unverified';
  const labels={unmatched:'Match customer',reappeared:'Balance reappeared',archived:'Archived',verified:'Verified zero balance',missing:'Missing from QBO · verify',open:'Open in QBO',credit:'Credit / adjustment review',unverified:'Needs invoice evidence'};
  const balances=[ms,qbo,gq].filter(Boolean).map(r=>Number(r.open_balance)).filter(Number.isFinite);
