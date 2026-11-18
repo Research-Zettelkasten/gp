@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="theme-color" content="#091426" />
   <title>GLASSPRO | Collections & Reconciliation</title>
-  <script src="portal-utils.js"></script>
+  <script src="portal-utils.js?v=20261118c"></script>
   <script src="collections-core.js"></script>
-  <script src="collections-intelligence.js?v=20261118"></script>
+  <script src="collections-intelligence.js?v=20261118c"></script>
   <script src="collections-files.js?v=20261118"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112" />
   <link rel="stylesheet" href="collections.css?v=20261118" />
 <link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
-<script src="gp-sidebar.js?v=20261118" defer></script>
+<script src="gp-sidebar.js?v=20261118c" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
@@ -36,7 +36,7 @@
   <main class="collection-shell" id="collectionMain">
     <div class="collection-intro">
       <div><div class="col-kicker">ACCOUNTS RECEIVABLE</div><h2>Collections</h2><p>A clear next step for every invoice. Current report evidence, complete account notes, and a path to clear the GlassQuest backlog.</p></div>
-      <div class="col-intro-actions"><button type="button" class="gp-col-button gp-col-button-quiet" id="refreshBtn">↻ Refresh data</button><span class="col-status" id="syncStatus" role="status">Connecting…</span></div>
+      <div class="col-intro-actions"><button type="button" class="gp-col-button gp-col-button-quiet hidden" id="reconcileVerifiedBtn">Reconcile verified balances</button><button type="button" class="gp-col-button gp-col-button-quiet" id="refreshBtn">↻ Refresh data</button><span class="col-status" id="syncStatus" role="status">Connecting…</span></div>
     </div>
     <div id="sourceFreshness" class="col-source-strip" aria-label="Report freshness"></div>
     <details class="col-guidance"><summary>How payment verification works</summary><p>Reports are dated snapshots. A missing invoice in a complete QBO Collections Report enters the verification queue. Upload QBO <strong>Invoice List</strong> (all dates; paid and unpaid; Customer / Name, Num, Date, Amount, Open Balance, A/R Paid) to verify an invoice's remaining balance. A verified zero balance can be cleared with an audited note; it may reflect a payment, credit or write-off. Customer totals and unlinked payments never clear an invoice.</p></details>
@@ -63,7 +63,7 @@
       <div id="queueList" class="col-customer-list"><p class="col-empty">Sign in to load your queue.</p></div><button type="button" class="gp-col-button gp-col-button-quiet col-show-more hidden" id="showMore">Show more customers</button>
     </section>
     <section class="col-section hidden" data-pane="reconcile"><div class="col-section-title"><div><h3>Cross-system exceptions</h3><p>Prioritize balance differences, one-source invoices, and negative credit balances. These are review flags—not proof that a system is wrong.</p></div></div>
-      <div class="col-recon-summary" id="reconSummary"></div><div class="col-panel"><h4>Balances requiring review</h4><div class="col-table-wrap"><table><thead><tr><th>Customer / invoice</th><th>Mainstreet</th><th>QBO</th><th>Difference</th><th>Next step</th></tr></thead><tbody id="mismatchTable"></tbody></table></div></div>
+      <div class="col-recon-summary" id="reconSummary"></div><div class="col-panel"><h4>Automatic reconciliation</h4><p class="col-secondary">Verified zero-balance invoices are archived on import. These records need further review; original notes and balances remain available.</p><div id="automaticReview"></div></div><div class="col-panel"><h4>Balances requiring review</h4><div class="col-table-wrap"><table><thead><tr><th>Customer / invoice</th><th>Mainstreet</th><th>QBO</th><th>Difference</th><th>Next step</th></tr></thead><tbody id="mismatchTable"></tbody></table></div></div>
       <div class="col-panel"><h4>Invoices present in only one source</h4><p class="col-secondary">Review mismatched report dates, partially paid invoices, or different customer naming before assuming one system is wrong.</p><div class="col-table-wrap"><table><thead><tr><th>Customer / invoice</th><th>Present in</th><th>Balance</th><th>Next step</th></tr></thead><tbody id="onlySourceTable"></tbody></table></div></div>
       <div class="col-panel"><h4>Possible invoice-number matches with different customer names</h4><p class="col-secondary">These records are intentionally NOT merged. Only reconcile after checking the invoice and customer identity manually.</p><div class="col-table-wrap"><table><thead><tr><th>Invoice</th><th>Mainstreet customer</th><th>QBO customer</th><th>Review</th></tr></thead><tbody id="possibleMatchesTable"></tbody></table></div></div>
       <div class="col-panel"><h4>Negative QBO balances: payments, credit memos and adjustments</h4><p class="col-secondary">A negative open balance may be an unapplied credit or valid accounting entry. Verify how it is applied before contacting customers or correcting records.</p><div class="col-table-wrap"><table><thead><tr><th>Customer</th><th>Transaction</th><th>Reference</th><th>Open credit</th></tr></thead><tbody id="creditsTable"></tbody></table></div></div>
@@ -112,7 +112,7 @@
       </div>
     </section>
   </div>
-  <script src="collections.js?v=20261118"></script>
+  <script src="collections.js?v=20261118c"></script>
   <script src="gp-pin.js?v=20261112"></script>
 </body>
 </html>

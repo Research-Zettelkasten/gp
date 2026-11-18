@@ -11,7 +11,7 @@ const clock=sandbox.GP_CLOCK,home=sandbox.GP_HOME_CORE;
 test('unknown and unassigned permissions do not create home links',()=>assert.equal(home.allowed({active:true}).length,0));
 test('inactive administrators have no assigned modules',()=>assert.equal(home.allowed({active:false,perm_admin:true}).length,0));
 test('safety-only users retain their assigned fleet access',()=>assert.equal(home.allowed({active:true,perm_safety:true}).map(x=>x.id).join(','),'fleet'));
-test('saved layout removes unknown IDs and duplicates',()=>{const p=home.normalize({layout:'bad',hidden:['time','bad','time'],order:['admin','bad','admin']});assert.equal(p.layout,'two');assert.equal(p.hidden.join(','),'time');assert.equal(p.order.length,6);assert.equal(p.order[0],'admin');});
+test('saved layout removes unknown IDs and duplicates',()=>{const p=home.normalize({layout:'bad',hidden:['time','bad','time'],order:['admin','bad','admin']});assert.equal(p.layout,'two');assert.equal(p.hidden.join(','),'time');assert.equal(p.order.length,7);assert.equal(p.order[0],'admin');});
 test('weekly totals exclude other weeks and malformed dates',()=>{const p=home.weekly([{work_date:'2026-11-16',decimal_hours:'8',lunch_review_status:'pending'},{work_date:'2026-11-22',decimal_hours:'7'},{work_date:'2026-11-15',decimal_hours:'100'},{work_date:'bad',decimal_hours:'100'}],new Date('2026-11-18T12:00:00'));assert.equal(p.hours,15);assert.equal(p.shifts,2);assert.equal(p.pending,1);});
 const now=Date.parse('2026-11-16T22:00:00Z'),start=Date.parse('2026-11-16T14:00:00Z'),uid='22222222-2222-4222-8222-222222222222';
 test('employee end time comes from the server',()=>assert.equal(clock.validate({startedAtMs:start},now).p_ended_at,null));
@@ -39,3 +39,4 @@ test('all frontend scripts parse and local assets exist',()=>{
     }
   }
 });
+

@@ -8,7 +8,7 @@ body.gp-home-page{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSys
 .gp-home-page .brand-text h1{color:#f8fafc;margin:0;font-weight:800;line-height:1.35}
 .gp-home-page .brand-text p{margin:5px 0 0}
 .gp-home-page .header-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.gp-home-page .user-pill{font-size:12px;font-weight:700;color:#f4f8ff;padding:9px 12px;border:1px solid #ffffff28;background:#ffffff0d;border-radius:9px}
+.gp-home-page .user-pill{font-size:12px;font-weight:700;color:#142b45;padding:9px 12px;border:1px solid #ffffff28;background:#ffffff0d;border-radius:9px}
 .gp-home-page .gp-account-btn,.gp-home-page .logout-btn{min-height:36px;border-radius:9px;padding:8px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;color:#f4f8ff;background:#ffffff0d;border:1px solid #ffffff35}
 .gp-home-page .logout-btn{background:#c72e40;border-color:transparent}
 .gp-home-page .gp-home-outer{max-width:1440px;margin:0 auto;padding:30px clamp(16px,3vw,36px) 48px}
