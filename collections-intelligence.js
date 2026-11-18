@@ -3,6 +3,7 @@
 const header=v=>String(v??'').toLowerCase().replace(/[\\#._/()-]/g,' ').replace(/\s+/g,' ').trim();
 const date=v=>{
  const s=String(v??'').trim();if(!s)return null;
+ const withTime=s.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?$/i);if(withTime)return date(withTime[1]);
  if(/^\d{5}(?:\.\d+)?$/.test(s)){const n=Number(s);if(n<20000||n>80000)return null;return new Date(Date.UTC(1899,11,30)+Math.floor(n)*86400000).toISOString().slice(0,10);}
  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);if(m)return C.iso(`${m[1]}/${m[2]}/20${m[3]}`);
  m=s.match(/^(\d{4}-\d{2}-\d{2})(?:[ T].*)?$/);if(m){const d=new Date(m[1]+'T00:00:00Z');return Number.isFinite(+d)&&d.toISOString().slice(0,10)===m[1]?m[1]:null;}
@@ -48,7 +49,7 @@ function parseReport(source,input){
    customer=String(pick(r,['customer'])).trim();invoice=String(pick(r,['inv'])).trim();const t=String(pick(r,['type'])).trim().toUpperCase();type=({I:'invoice',P:'payment',D:'debit',C:'credit memo'})[t]||t.toLowerCase();
    if(!customer||!type||/^total/i.test(customer))continue;
    day=date(pick(r,['date']));due=null;balance=amount(pick(r,['balance']),type==='invoice');original=amount(pick(r,['amt','amount']));
-   raw={...raw,balance_present:balance!==null,transaction_ref:String(pick(r,['tran','transaction number'])),address:pick(r,['address']),city:pick(r,['city']),state:pick(r,['state']),zip_code:pick(r,['zip code']),contact:pick(r,['contact']),phone:pick(r,['phone']),collection_notes:pick(r,['collection notes']),last_payment:pick(r,['last payment']),last_purchase:pick(r,['last purchase']),edi_status:pick(r,['edi status']),edi_activity:pick(r,['edi activity'])};
+   raw={...raw,balance_present:balance!==null,transaction_ref:String(pick(r,['tran','transaction number'])),ref1:pick(r,['ref 1']),ref2:pick(r,['ref 2']),ref3:pick(r,['ref 3']),address:pick(r,['address']),city:pick(r,['city']),state:pick(r,['state']),zip_code:pick(r,['zip code']),contact:pick(r,['contact']),phone:pick(r,['phone']),collection_notes:pick(r,['collection notes']),last_payment:pick(r,['last payment']),last_purchase:pick(r,['last purchase']),edi_status:pick(r,['edi status']),edi_activity:pick(r,['edi activity'])};
   }else{
    type=String(pick(r,['transaction type','type'])).trim().toLowerCase();
    const named=String(pick(r,['customer','customer name','customer full name','name'])).trim();
@@ -61,6 +62,7 @@ function parseReport(source,input){
    const b=pick(r,['open balance','balance','remaining balance','remaining amount','amount due']);balance=amount(b,type==='invoice');original=amount(pick(r,['amount','amt','original amount','total']));
    raw={...raw,balance_present:balance!==null,ar_paid:String(pick(r,['a r paid','paid','status'])).trim(),store_full_name:pick(r,['store full name']),source_customer_heading:customer};
   }
+  raw.exported_fields=JSON.stringify(bareQuest?{invoice:r[0],original_date:r[1],type:r[2],original_amount:r[3],remaining_buckets:r.slice(4,8)}:Object.fromEntries(rows[hi].map((label,n)=>[String(label||'column_'+(n+1)),r[n]??''])));
   if(!day)throw Error(`Row ${ix+1} has an invalid transaction date.`);
   if(type==='invoice'&&!invoice)throw Error(`Row ${ix+1} has no invoice number. Invoice matching requires a number.`);
   if(type==='invoice'&&raw.ar_paid&&/^(paid|yes)$/i.test(raw.ar_paid)&&balance>0)throw Error(`Row ${ix+1} says paid but still has a positive balance. Review the report.`);
@@ -80,7 +82,7 @@ function makeRow(source,customer,invoice,type,day,due,original,balance,ix,raw){
 }
 function finish(result){
  const keys=new Map();result.rows=result.rows.filter(r=>{
-  if(r.transaction_type!=='invoice')return true;const fingerprint=JSON.stringify([r.transaction_date,r.original_amount,r.open_balance,r.due_date,r.raw.ar_paid||'']);
+  if(r.transaction_type!=='invoice')return true;const fingerprint=JSON.stringify([r.transaction_date,r.original_amount,r.open_balance,r.due_date,r.raw.ar_paid||'',r.raw.exported_fields]);
   if(keys.has(r.case_key)){if(keys.get(r.case_key)!==fingerprint)throw Error('The same customer/invoice has conflicting rows. Export one invoice per row; do not upload a line-item sales report.');result.duplicates++;return false;}keys.set(r.case_key,fingerprint);return true;
  });
  if(!result.rows.length)throw Error('The report contains no recognized records. Nothing was imported.');
