@@ -1,7 +1,7 @@
 name: Portal update checks
 on:
   push:
-    branches: [codex/home-navigation-admin-clock-out-20261116, codex/fix-clock-out-text-hours-20261117, codex/collections-and-quote-import-20261118]
+    branches: [codex/home-navigation-admin-clock-out-20261116, codex/fix-clock-out-text-hours-20261117]
   pull_request:
     paths:
       - '**.html'
@@ -47,9 +47,12 @@ jobs:
       - name: Legacy text-hours compatibility regression
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out-text-hours.sql
       - name: Install browser test runner
+        timeout-minutes: 3
         run: |
           npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install --with-deps chromium
+          gp_browser_path="$(command -v google-chrome || command -v google-chrome-stable)"
+          test -n "$gp_browser_path"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE=$gp_browser_path" >> "$GITHUB_ENV"
       - name: Responsive browser checks
         run: node tests/browser.cjs
       - name: Collections and quote browser workflows

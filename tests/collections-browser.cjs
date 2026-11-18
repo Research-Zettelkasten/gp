@@ -37,7 +37,7 @@ const mock=`(()=>{
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const server=spawn('python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});let browser,page;try{
  for(let n=0;n<40;n++){try{await fetch(base+'/collections.html');break;}catch{await pause(100);}}
- browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1050}});
+ browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});const context=await browser.newContext({viewport:{width:1440,height:1050}});
  await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',r=>r.fulfill({contentType:'application/javascript',body:mock}));
  await context.route('https://unpkg.com/lucide@latest',r=>r.fulfill({contentType:'application/javascript',body:'window.lucide={createIcons(){}};'}));
  await context.route('https://cdn.tailwindcss.com',r=>r.fulfill({contentType:'application/javascript',body:'window.tailwind={};'}));
