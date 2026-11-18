@@ -1,5 +1,8 @@
 > **Current release:** See [INSTALL-HOME-NAV-CLOCK-OUT.md](INSTALL-HOME-NAV-CLOCK-OUT.md) for the home, navigation and administrator clock-out update. Run its SQL migration before publishing the website. The notes below describe the original reviewed prototype and are retained as historical documentation.
 
+Current update (2026-11-18): see [Collections and Quote Call-Backs installation and usage](INSTALL-COLLECTIONS-AND-QUOTES.md). Install its two additive SQL migrations before deploying the updated site. Earlier release notes below describe the original prototype.
+
+
 [README.md](https://github.com/user-attachments/files/34202396/README.md)
 # GLASSPRO Portal — reviewed edition
 

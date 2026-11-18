@@ -35,7 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: JavaScript, permissions, and asset checks
-        run: node --test tests/portal-core.test.cjs
+        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs
+      - name: Collections and quote database integration
+        run: |
+          createdb gp_collections_test
+          PGDATABASE=gp_collections_test psql -X -v ON_ERROR_STOP=1 -f tests/collections.sql
       - name: Atomic clock-out and rollback tests
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out.sql
       - name: Concurrent employee and administrator clock-out
@@ -43,11 +47,16 @@ jobs:
       - name: Legacy text-hours compatibility regression
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out-text-hours.sql
       - name: Install browser test runner
+        timeout-minutes: 3
         run: |
           npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install --with-deps chromium
+          gp_browser_path="$(command -v google-chrome || command -v google-chrome-stable)"
+          test -n "$gp_browser_path"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE=$gp_browser_path" >> "$GITHUB_ENV"
       - name: Responsive browser checks
         run: node tests/browser.cjs
+      - name: Collections and quote browser workflows
+        run: node tests/collections-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
