@@ -1,57 +1,27 @@
-> **Current release:** See [INSTALL-HOME-NAV-CLOCK-OUT.md](INSTALL-HOME-NAV-CLOCK-OUT.md) for the home, navigation and administrator clock-out update. Run its SQL migration before publishing the website. The notes below describe the original reviewed prototype and are retained as historical documentation.
+# GLASSPRO team portal
 
-Current update (2026-11-18): see [Collections and Quote Call-Backs installation and usage](INSTALL-COLLECTIONS-AND-QUOTES.md). Install its two additive SQL migrations before deploying the updated site. Earlier release notes below describe the original prototype.
+Current release: **2026.11.18.2 — customer registry and automatic Collections reconciliation**.
 
+See [installation and usage](INSTALL-CUSTOMERS-AND-AUTO-COLLECTIONS.md) for the combined SQL install, private customer-directory import, note permissions, identity review and payment-verification behavior.
 
-[README.md](https://github.com/user-attachments/files/34202396/README.md)
-# GLASSPRO Portal — reviewed edition
+The static portal uses Supabase Auth, role-controlled database functions and row-level security. Customer records stay in the protected database; the public repository and automated tests do not contain the supplied customer directory.
 
-This ZIP contains the five original HTML modules, their existing styling and data, plus a small shared `portal-utils.js` helper, tests, and a review report. It is a **client-side prototype**, **not a production-secure employee/customer portal**.
+## Workspaces
 
-## Pages
+- My Home: customizable module cards, shared navigation and light/dark themes.
+- Customers: contact directory, linked quotes and invoices, scoped notes, source history and identity review.
+- Collections: Mainstreet/QBO/GlassQuest reports, detailed filtering, notes and audited invoice reconciliation.
+- Quote Call-Backs: quote import, follow-up conversations and active-board refresh.
+- Time Clock, Commission & WOs, Vehicle Check & Safety, and Management retain their assigned-role workflows.
 
-- `index.html`: demo PIN login, shift entry, live time clock, hours summary
-- `quotes.html`: quote board, follow-up workflow, competitor registry, CSV import
-- `commissions.html`: work-order logs
-- `fleet.html`: inspections and vehicle assignment
-- `admin.html`: administrative reports and configuration
+Install SQL before deploying the website. The update does not apply migrations to the live project automatically. Existing portal Auth and Collections tables are prerequisites.
 
-## Preview
+## Earlier setup guides
 
-Unzip without separating files and run `python -m http.server 8000` from the extracted folder. Open `http://localhost:8000/index.html`. The HTML also has inline styles/scripts but references online CDNs for several UI/data libraries, so an internet connection may be needed for full functionality.
+- [Collections and Quote Call-Backs](INSTALL-COLLECTIONS-AND-QUOTES.md)
+- [Home, navigation and administrator clock-out](INSTALL-HOME-NAV-CLOCK-OUT.md)
+- [Original prototype review](REVIEW.md), retained as historical findings rather than current release instructions.
 
-Original browser storage records are not modified by unzipping this ZIP. Before replacing a deployed site, **back up your databases and browser records**. These files do not include a database schema, a Supabase project export, server code, or RLS policies.
+## Checks
 
-## Critical security requirements before production
-
-1. **Replace demo PIN login** and all localStorage-managed user/role permissions with server-authenticated identities (e.g., Supabase Auth with unique users, MFA where appropriate, secure session management and recovery). The four-digit PINs and user permissions in JavaScript are public and forgeable.
-2. **Audit Supabase row-level security on every table** (`app_users`, `time_logs`, `commission_logs`, `vehicle_inspections`, `fleet_vehicles`, `outstanding_quotes`, `audit_logs`) with rules keyed to the authenticated user and enforced server-side. Never rely on client UI checks or publish a service-role secret. The existing key is a *publishable* key, not proof of access controls.
-3. **Remove real client and employee sample data from public HTML** and import it only behind a secure backend. `quotes.html` contains records in its initial fixture. Anyone who can fetch the public HTML can read those records, even without logging in.
-4. **Avoid sensitive personal data in localStorage**, including PINs, location history and customer details. Browser storage is accessible to scripts running in the origin and should not be a confidential source of truth.
-5. Establish an **authoritative server-side workflow** for timecards, payroll, commission approvals, audit logs, and employee roles. Offline local-only records currently require reconciliation, and client time/role data can be edited by end users.
-6. Validate business rules (overtime period, break handling, employee identity, rates and approvals) with the business owner before using data for pay decisions.
-
-**Do not publicly deploy this prototype with real business/customer data until these controls are implemented and audited.**
-
-## Behavior changes in this edition
-
-- Current-week hours and overtime warnings use **Monday–Sunday, local timezone** instead of adding every historical shift. Payroll summaries in the time clock and the relevant admin watchlist, payroll table, and employee modal now use the current week. Other historical dashboards can still show all-time values.
-- The time clock's date fields use local dates, not UTC ISO dates (avoids midnight timezone shifts); the clock-out record uses the clock-in work date.
-- Invalid manual shift dates/durations, duplicate work orders, and invalid vehicle mileage have additional validation.
-- Manual shifts, work orders and vehicle inspection records are preserved locally even when Supabase returns an error. The UI distinguishes 'saved locally only' from 'saved to cloud and locally'. Cloud read refresh no longer silently overwrites these unsynced local records; **there is not yet a reliable automatic retry/synchronization queue**.
-- HTML escaping protects a variety of imported/user-entered strings in main tables, print views, admin tables and quote cards; a regression test checks representative malicious-looking content. This is not a comprehensive penetration test.
-- CSV exports guard against spreadsheet formula injection and escape quotes; temporary download URLs are revoked.
-- The visible role checks hide the quote admin tab and redirect non-admin users from the admin page. **These are UX checks only**; enforce security on the backend.
-- The Supabase label now states 'configured (not verified)' when the library loads. It never certifies connectivity or RLS.
-- The quote follow-up target date uses three calendar days from today instead of a hardcoded 2026 date; CSR stamps no longer print PIN codes.
-
-## Tests
-
-- `node tests/helpers.test.cjs` (six deterministic utility checks)
-- `python tests/browser_smoke.py` (offline simulated-browser rendering/injection and permissions, requires `playwright` and `beautifulsoup4` and Chromium)
-- `python tests/form_smoke.py` (offline browser form submission for time, commissions and fleet)
-
-The browser tests deliberately mock online CDNs and Supabase; they **do not** exercise actual cloud access, CSV import through a live PapaParse CDN, geolocation, or production network permissions.
-
-See `REVIEW.md` for findings and remaining work.
-
+Run `node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs`. GitHub Actions additionally runs PostgreSQL permission/transaction tests, clock-out concurrency regressions and browser workflows with synthetic data. Preview screenshots cover desktop/mobile and both themes.

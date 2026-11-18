@@ -118,4 +118,40 @@ values(:'alias_verification_id','qbo','INV|EXAMPLE CUSTOMER|200','INV|EXAMPLE CU
 select public.gp_collections_commit_snapshot(:'alias_verification_id');
 select pg_temp.check_that((select status='reconciled' from public.collection_cases where id=:'alias_case_id'),'verified customer alias permits matching same numbered dated invoice');
 reset role;
-select 'PASS: customer identities, unified history, RLS, automatic verified-zero archival, retained notes and positive-balance reopening';
+-- Reimports retain every administrator-verified contact field.
+set role authenticated;
+select id as second_customer_id from public.gp_customers where directory_key='legacy-directory:002' \gset
+select public.gp_customer_save(:'second_customer_id','{"display_name":"Second Customer","customer_number":"002-verified","category":"Verified category","home_phone":"555-010-1111","work_phone":"555-010-2222","fax":"555-010-3333","billing_code":"VERIFIED","sales_person":"Verified salesperson"}','Confirmed all contact fields with the customer');
+select public.gp_import_customer_directory('[{"import_key":"legacy-directory:002","customer_number":"002","customer_name":"Second Customer","category":"OLD","home_phone":"old","work_phone":"old","fax":"old","billing_code":"OLD","sales_person":"Old name"}]','Old contact data.csv',repeat('f',64));
+select pg_temp.check_that((select customer_number='002-verified' and category='Verified category' and home_phone='555-010-1111' and work_phone='555-010-2222' and fax='555-010-3333' and billing_code='VERIFIED' and sales_person='Verified salesperson' from public.gp_customers where id=:'second_customer_id'),'verified contact fields survive old directory reimport');
+reset role;
+-- Explicit zeros still require consistent identity, date and original amount.
+insert into public.collection_cases(case_key,customer_name,normalized_customer,invoice_number,invoice_date,mainstreet_balance,status) values
+('INV|EXAMPLE CUSTOMER|400','Example Customer','EXAMPLE CUSTOMER','400','2026-01-01',50,'disputed'),
+('INV|EXAMPLE CUSTOMER|401','Example Customer','EXAMPLE CUSTOMER','401','2026-01-01',50,'open'),
+('INV|EXAMPLE CUSTOMER|402','Example Customer','EXAMPLE CUSTOMER','402','2026-01-01',50,'open'),
+('INV|UNCERTAIN OCR|403','Uncertain OCR','UNCERTAIN OCR','403','2026-01-01',50,'open'),
+('INV|EXAMPLE CUSTOMER|404','Example Customer','EXAMPLE CUSTOMER','404','2026-01-01',50,'open');
+set role authenticated;
+select public.gp_collections_begin_snapshot('mainstreet','original-amount.csv','2026-11-17','open_invoices','partial',repeat('1',64),1) as amount_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
+values(:'amount_id','mainstreet','INV|EXAMPLE CUSTOMER|402','INV|EXAMPLE CUSTOMER|402','Example Customer','EXAMPLE CUSTOMER','402','invoice','2026-01-01',50,50,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'amount_id');
+select public.gp_collections_begin_snapshot('qbo','safeguards.csv','2026-11-18','invoice_verification','partial',repeat('2',64),5) as safeguards_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw) values
+(:'safeguards_id','qbo','INV|EXAMPLE CUSTOMER|400','INV|EXAMPLE CUSTOMER|400','Example Customer','EXAMPLE CUSTOMER','400','invoice','2026-01-01',50,0,'{"balance_present":true}'),
+(:'safeguards_id','qbo','INV|EXAMPLE CUSTOMER|401','INV|EXAMPLE CUSTOMER|401','Example Customer','EXAMPLE CUSTOMER','401','invoice','2026-02-01',50,0,'{"balance_present":true}'),
+(:'safeguards_id','qbo','INV|EXAMPLE CUSTOMER|402','INV|EXAMPLE CUSTOMER|402','Example Customer','EXAMPLE CUSTOMER','402','invoice','2026-01-01',500,0,'{"balance_present":true}'),
+(:'safeguards_id','qbo','INV|UNCERTAIN OCR|403','INV|UNCERTAIN OCR|403','Uncertain OCR','UNCERTAIN OCR','403','invoice','2026-01-01',50,0,'{"balance_present":true}'),
+(:'safeguards_id','qbo','INV|EXAMPLE CUSTOMER|404','INV|EXAMPLE CUSTOMER|404','Example Customer','EXAMPLE CUSTOMER','404','invoice','2026-01-01',50,0,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'safeguards_id');
+select pg_temp.check_that((select count(*)=0 from public.collection_cases where invoice_number in ('400','401','402','403') and status='reconciled'),'disputed, date mismatch, amount mismatch and uncertain identities remain active');
+select pg_temp.check_that((select auto_review_count=4 and auto_archived_count=1 from public.collection_imports where id=:'safeguards_id'),'safeguard reasons and successful decisions counted separately');
+reset role;
+update public.collection_cases set status='open' where invoice_number='404';
+insert into public.collection_actions(case_id,action_type,note,recorded_by,created_at) select c.id,'reopen','Collector reopened after the verification report','11111111-1111-4111-8111-111111111111',i.completed_at+interval '1 second' from public.collection_cases c cross join public.collection_imports i where c.invoice_number='404' and i.id=:'safeguards_id';
+set role authenticated;
+select public.gp_collections_reconcile_now();
+select pg_temp.check_that((select status='open' from public.collection_cases where invoice_number='404'),'old evidence cannot undo a later collector reopening');
+reset role;
+select 'PASS: customer identities, unified history, RLS, verified contacts, audited archival safeguards and positive-balance reopening';

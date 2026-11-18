@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.18.1",
-  "notes": "Collections filters, GlassQuest baseline, report evidence and notes registry; Quote Call-Backs refresh and returning-customer import fix. Install both 2026-11-18 SQL migrations.",
+  "version": "2026.11.18.2",
+  "notes": "Customer registry, unified scoped notes and source history, protected directory import, and automatic audited verified-zero Collections archival with positive-balance reopening. Run the combined Customers and Collections SQL install before deploying.",
   "release_date": "2026-11-18",
   "released_at": "2026-11-18"
 }
