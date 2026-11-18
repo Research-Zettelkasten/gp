@@ -16,7 +16,7 @@ const formatDate = d => d ? new Date(`${String(d).slice(0,10)}T12:00:00`).toLoca
 const relative = d => d ? new Date(d).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
 const activeStatuses = new Set(['open','contacted','promise','disputed']);
 const readableStatus = s => ({open:'Open',contacted:'Contacted',promise:'Promise to pay',disputed:'Disputed',resolved_pending:'Accounting follow-up',reconciled:'Reconciled'})[s]||s;
-const state={profile:null, authId:null, cases:[],imports:[],credits:[],staff:[],todayActions:[],todayAccountNotes:[],currentCase:null,currentEvidence:[],historicalEvidence:[],currentActivities:[],currentAccountNotes:[],evidence:[],index:null,assessment:new Map(),registry:[],notesShown:100,pendingImport:null,loadToken:0,shown:100,tab:'queue',busy:false,day:null,channel:null};
+const state={profile:null, authId:null, cases:[],imports:[],credits:[],staff:[],todayActions:[],todayAccountNotes:[],currentCase:null,currentEvidence:[],historicalEvidence:[],currentActivities:[],currentAccountNotes:[],evidence:[],index:null,assessment:new Map(),registry:[],notesShown:100,pendingImport:null,loadToken:0,reconciliationRuns:[],shown:100,tab:'queue',busy:false,day:null,channel:null};
 function message(text,isError=false){const el=$('colMessage');el.textContent=text||'';el.classList.toggle('error',!!isError);const dialog=$('caseMessage');if(dialog&&state.currentCase){dialog.textContent=text||'';dialog.classList.toggle('error',!!isError);}}
 function setLoading(text){$('syncStatus').textContent=text;}
 function exceptionDiff(c){const a=assessment(c);return a.mainstreet&&a.qbo?+(Number(a.mainstreet.open_balance)-Number(a.qbo.open_balance)).toFixed(2):null;}
@@ -43,7 +43,8 @@ async function loadAll(){
  state.assessment=new Map(cases.map(c=>[c.id,I.assess(c,state.index,localDay())]));
  const latestQbo=chosen.find(i=>i.source==='qbo'&&I.kind(i)==='open_invoices')||chosen.find(i=>i.source==='qbo'&&I.kind(i)==='legacy');
  state.credits=evidence.filter(r=>r.import_id===latestQbo?.id&&Number(r.open_balance)<0);
- renderMetrics();renderQueue();renderReconciliation();renderImportHistory();renderFreshness();
+ const runs=await supabaseClient.from('gp_collection_reconciliation_runs').select('*').order('created_at',{ascending:false}).limit(10);if(runs.error&&!['42P01','PGRST205'].includes(runs.error.code))throw runs.error;state.reconciliationRuns=runs.data||[];
+ renderMetrics();renderQueue();renderReconciliation();renderImportHistory();renderFreshness();renderAutomaticReview();
  if(state.tab==='closeout')await loadCloseout();if(state.tab==='notes')await loadRegistry();
  setLoading(`${cases.filter(c=>!c.legacy_linked_to).length.toLocaleString()} tracked invoices · reports loaded`);
 }
@@ -187,6 +188,7 @@ function exportCloseout(){const {pending,diffs}=closeoutData();const date=state.
  for(const r of state.credits)rows.push(['NEGATIVE QBO BALANCE - REVIEW',date,r.customer_name,r.invoice_number||'',dollars(r.open_balance),'QBO','Verify credit/payment application',r.transaction_type,'','','','','','','','','','']);
  const text=C.toCsv(['Category','Report Date','Customer','Invoice','Amount / Difference','System','Next Step','Status / Recorded Time','Notes','Contact method','Outcome','Person','Contact used','Promised date','Promised amount','Payment reference','Next action','Tags'],rows);
  const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`GLASSPRO-Collections-Closeout-${date}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);message(`Exported ${rows.length} closeout entries. No changes were sent to accounting systems.`);}
+function renderAutomaticReview(){const seen=new Set(),rows=[];for(const run of state.reconciliationRuns){for(const item of run.review_details||[]){if(seen.has(item.case_id))continue;seen.add(item.case_id);const c=caseById(item.case_id);if(c&&c.status!=='reconciled')rows.push({...item,c});}}$('automaticReview').innerHTML=rows.length?rows.map(r=>`<div class="col-flag"><strong>${safe(r.c.customer_name)} · ${safe(r.invoice||r.c.invoice_number||'')}</strong><p>${safe(r.reason)}</p><button type="button" class="col-open-case" data-case-id="${safe(r.case_id)}">Review invoice</button></div>`).join(''):'<p class="col-secondary">No outstanding review items in the last ten reconciliation runs. Import a QBO Invoice List or use Reconcile verified balances to check current evidence.</p>';}
 function renderFreshness(){
  const sources=['mainstreet','qbo','glassquest'];
  $('sourceFreshness').innerHTML=sources.map(src=>{const i=state.imports.find(i=>i.source===src&&i.status==='complete'&&i.report_kind!=='account_summary');return `<div><strong>${sourceName(src)}</strong><span>${i?`As of ${safe(formatDate(i.report_as_of))} · ${safe((i.report_kind||'legacy report').replace(/_/g,' '))}`:'No report loaded'}</span></div>`;}).join('');

@@ -61,6 +61,8 @@ jobs:
         run: node tests/browser.cjs
       - name: Collections and quote browser workflows
         run: node tests/collections-browser.cjs
+      - name: Customer registry browser workflows
+        run: node tests/customers-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
