@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112" />
   <link rel="stylesheet" href="collections.css?v=20261118" />
 <link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
-<script src="gp-sidebar.js?v=20261116d" defer></script>
+<script src="gp-sidebar.js?v=20261118" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
@@ -87,7 +87,7 @@
   <div id="caseOverlay" class="col-overlay hidden" role="presentation">
     <section class="col-case-dialog" role="dialog" aria-modal="true" aria-labelledby="caseTitle">
       <div class="col-dialog-head"><div><span class="col-kicker">COLLECTION RECORD</span><h3 id="caseTitle">Customer</h3><p id="caseSubtitle"></p></div><button type="button" id="closeCase" class="col-close" aria-label="Close case">×</button></div>
-      <div class="col-dialog-body"><div class="col-panel" id="caseIntelligence"></div><div class="col-case-facts" id="caseFacts"></div>
+      <div class="col-dialog-body"><div id="caseMessage" class="col-message" role="alert"></div><div class="col-panel" id="caseIntelligence"></div><div class="col-case-facts" id="caseFacts"></div>
         <form id="legacyLinkForm" class="hidden"><h4>Match this GlassQuest invoice</h4><p class="col-secondary">Check the invoice/customer in your source system. A matching number is a suggestion only. This saves an audited link and retains the original record.</p><label>Existing customer invoice<select id="legacyTarget"><option value="">Create a case for a verified customer below</option></select></label><label>Verified customer name (when creating a case)<input id="legacyCustomer" maxlength="250"></label><label>How was identity verified?<textarea id="legacyLinkNote" maxlength="8000" required rows="3"></textarea></label><button type="submit" class="gp-col-button gp-col-button-primary">Save verified customer link</button></form>
         <form id="clearVerifiedForm" class="hidden"><h4>Clear this verified item</h4><p class="col-secondary">The newest invoice evidence shows zero remaining QBO balance. Clearing archives the case and preserves all notes and source records. Confirm whether this was a payment, credit or write-off in your note.</p><label>Verification / resolution note<textarea id="clearVerifiedNote" required minlength="4" maxlength="8000" rows="3"></textarea></label><button type="submit" class="gp-col-button gp-col-button-primary">Archive verified settlement</button></form>
         <div class="col-panel col-source-evidence"><div class="col-evidence-head"><div><h4>Source evidence · full imported detail</h4><p class="col-secondary">Latest Mainstreet/QBO snapshot fields, invoice references, aging, payments and credits. Read-only; the original exports are authoritative.</p></div><button type="button" class="gp-col-button gp-col-button-quiet" id="exportCaseEvidence">Export evidence CSV</button></div><div id="caseSourceEvidence" class="col-evidence-body">Opening accounting records…</div></div>

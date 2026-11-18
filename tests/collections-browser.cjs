@@ -35,7 +35,7 @@ const mock=`(()=>{
  window.supabase={createClient:()=>client};
 })();`;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
-(async()=>{const server=spawn('python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});let browser;try{
+(async()=>{const server=spawn('python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});let browser,page;try{
  for(let n=0;n<40;n++){try{await fetch(base+'/collections.html');break;}catch{await pause(100);}}
  browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1050}});
  await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',r=>r.fulfill({contentType:'application/javascript',body:mock}));
@@ -43,15 +43,15 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  await context.route('https://cdn.tailwindcss.com',r=>r.fulfill({contentType:'application/javascript',body:'window.tailwind={};'}));
  await context.route('https://cdnjs.cloudflare.com/**',r=>r.fulfill({contentType:'application/javascript',body:`window.Papa={parse:async(file,o)=>{const rows=(await file.text()).trim().split(/\\r?\\n/).map(s=>s.split(','));const h=rows.shift();o.complete({data:rows.map(r=>Object.fromEntries(h.map((v,i)=>[v,r[i]||'']))),errors:[]});}};`}));
  await context.route('https://fonts.googleapis.com/**',r=>r.fulfill({contentType:'text/css',body:''}));
- const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page=await context.newPage();const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
  await page.goto(base+'/collections.html');await page.locator('#syncStatus').filter({hasText:'tracked invoices'}).waitFor();
  await page.locator('#queueSource').selectOption('glassquest');assert.match(await page.locator('#queueCount').textContent(),/2 invoices/);
  await page.locator('#queueEvidence').selectOption('verified');assert.match(await page.locator('#queueCount').textContent(),/1 invoices/);
  await page.locator('.col-customer summary').click();await page.getByRole('button',{name:'Review invoice',exact:true}).click();
  await page.locator('#clearVerifiedForm').waitFor({state:'visible'});await page.locator('#clearVerifiedNote').fill('Confirmed payment and zero balance in Invoice List.');await page.getByRole('button',{name:'Archive verified settlement'}).click();await page.locator('#caseOverlay').waitFor({state:'hidden'});assert.match(await page.locator('#colMessage').textContent(),/archived/);
- await page.getByRole('tab',{name:'Notes registry',exact:true}).click();await page.locator('#notesCount').filter({hasText:'matching records'}).waitFor();
+ await page.getByRole('link',{name:'Notes Registry',exact:true}).click();await page.locator('#notesCount').filter({hasText:'matching records'}).waitFor();
  await page.locator('#notesSearch').fill('CHECK-101');assert.match(await page.locator('#notesCount').textContent(),/1 matching/);assert.match(await page.locator('#notesRegistry').textContent(),/accounts payable/);await page.locator('#notesSearch').fill('');await page.locator('#notesType').selectOption('account');assert.match(await page.locator('#notesRegistry').textContent(),/AP instructions/);
- await page.getByRole('tab',{name:'Import center',exact:true}).click();assert.equal(await page.locator('#uploadGlassquest').isDisabled(),true);
+ await page.getByRole('link',{name:'Import Center',exact:true}).click();assert.equal(await page.locator('#uploadGlassquest').isDisabled(),true);
  // Exercise compressed XLSX decoding, including the old Quest workbook metadata typo.
  const quest=workbook([['INV001','46200','Invoice','192.06','0','0','0','7.75']]);
  const decoded=await page.evaluate(async data=>{const file=new File([Uint8Array.from(atob(data),c=>c.charCodeAt(0))],'Report.xlsx');const r=await GPCollectionFiles.readFile(file);const p=GPCollectionIntelligence.parseReport('glassquest',r.rows);return{rows:p.rows.length,balance:p.rows[0].open_balance,missing:p.rows[0].raw.customer_missing};},quest.toString('base64'));
@@ -59,7 +59,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  const ms=workbook([['Customer','Inv #','Type','Date','Balance','Amt'],['Example Customer','200','I','46200','25','50']]);
  await page.locator('#uploadMainstreet').setInputFiles({name:'mainstreet.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:ms});await page.locator('#importPreview').waitFor({state:'visible'});
  await page.locator('#importAsOf').fill('2026-11-18');await page.locator('#importScope').selectOption('full');await page.getByRole('button',{name:'Save reviewed snapshot'}).click();await page.locator('#importPreview').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>window.__rpc.some(r=>r.name==='gp_collections_commit_snapshot')),true);
- await page.getByRole('tab',{name:'Collection queue',exact:true}).click();await page.locator('#resetFilters').click();
+ await page.getByRole('link',{name:'Collection Queue',exact:true}).click();await page.locator('#resetFilters').click();
  fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/collections-desktop-light.png',fullPage:true});
  await page.evaluate(()=>document.documentElement.dataset.gpTheme='dark');await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'collections mobile fits');await page.screenshot({path:'test-results/collections-mobile-dark.png',fullPage:true});
  await page.goto(base+'/quotes.html');await page.locator('#quoteSyncStatus').filter({hasText:'records loaded'}).waitFor();await page.locator('#quoteCsvUploadButton').click();
@@ -68,4 +68,4 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  await page.evaluate(()=>{window.__failQuotes=true;});await page.locator('#csvUploadModal button').first().click();await page.locator('#refreshQuotesButton').click();await page.locator('#quoteSyncStatus').filter({hasText:'Refresh failed'}).waitFor();assert.equal(await page.locator('#quoteTableBody tr').count(),2,'load error retains previously fetched quotes');
  await page.evaluate(()=>{window.__failQuotes=false;window.__tables.outstanding_quotes.push({quote_number:103,customer_name:'Another Customer',status:'open',parts:[],module:'Auto',total:20});});await page.locator('#refreshQuotesButton').click();await page.locator('#quoteSyncStatus').filter({hasText:'3 records loaded'}).waitFor();assert.equal(await page.locator('#quoteTableBody tr').count(),3,'refresh reads new quotes');
  assert.deepEqual(errors,[],'no uncaught browser errors');console.log('PASS: collections evidence, notes registry, XLSX preview, clearance, mobile layout, returning-customer quotes, fresh reads and error recovery');
- }finally{await browser?.close();server.kill('SIGTERM');}})().catch(e=>{console.error(e);process.exitCode=1;});
+ }catch(error){if(page){fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/collections-workflow-failure.png',fullPage:true}).catch(()=>{});fs.writeFileSync('test-results/collections-workflow-failure.html',await page.content().catch(()=>''));console.error('Visible error messages:',await page.locator('#colMessage,#caseMessage,#quoteSyncStatus').allTextContents().catch(()=>[]));}throw error;}finally{await browser?.close();server.kill('SIGTERM');}})().catch(e=>{console.error(e);process.exitCode=1;});

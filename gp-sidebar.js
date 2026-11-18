@@ -23,7 +23,8 @@
       ['queue','Collection Queue','col-tab:queue'],
       ['reconcile','Source Reconciliation','col-tab:reconcile'],
       ['closeout','End-of-Day Closeout','col-tab:closeout'],
-      ['imports','Import Center','col-tab:imports']]},
+      ['imports','Import Center','col-tab:imports'],
+      ['notes','Notes Registry','col-tab:notes']]},
     navLinkFleet:{path:'fleet.html',views:[
       ['inspectPane','Vehicle Check','subBtnInspect'],
       ['historyPane','Inspection History','subBtnHistory'],
@@ -444,3 +445,4 @@ document.addEventListener('keydown',e=>{
   window.GP_SIDEBAR={setAdminPane,setAdminPrefs,setModuleSection,setUser,refresh:renderVisibility};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
