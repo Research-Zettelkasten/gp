@@ -40,6 +40,10 @@ jobs:
         run: |
           createdb gp_collections_test
           PGDATABASE=gp_collections_test psql -X -v ON_ERROR_STOP=1 -f tests/collections.sql
+      - name: Customer registry and reconciliation integration
+        run: |
+          createdb gp_customer_test
+          PGDATABASE=gp_customer_test psql -X -v ON_ERROR_STOP=1 -f tests/customers.sql
       - name: Atomic clock-out and rollback tests
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-out.sql
       - name: Concurrent employee and administrator clock-out
