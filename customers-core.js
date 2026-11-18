@@ -22,7 +22,9 @@ function parseDirectory(input){
  return{rows:out,review:out.filter(r=>r.review_required).length,identityReview:out.filter(r=>r.identity_review_required).length};
 }
 function filterCustomer(c,f){
- const n=normalize(f.search||'');if(n&&!normalize([c.display_name,c.customer_number,c.phone,c.cell,c.email,c.city,c.postal_code].join(' ')).includes(n))return false;
+ const search=String(f.search||''),n=normalize(search),digits=search.replace(/\D/g,'');
+ const phoneMatch=digits.length>=4&&/^[\d\s()+.\-]+$/.test(search)&&[c.phone,c.home_phone,c.work_phone,c.cell,c.fax].some(v=>String(v||'').replace(/\D/g,'').includes(digits));
+ if(n&&!normalize([c.display_name,c.customer_number,c.phone,c.home_phone,c.work_phone,c.cell,c.fax,c.email,c.address,c.city,c.state_code,c.postal_code].join(' ')).includes(n)&&!phoneMatch)return false;
  if(f.status==='review'&&!c.review_required&&c.identity_status!=='review')return false;
  if(f.status==='verified'&&c.identity_status!=='verified')return false;
  if(f.category&&f.category!=='all'&&c.category!==f.category)return false;

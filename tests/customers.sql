@@ -135,8 +135,9 @@ insert into public.collection_cases(case_key,customer_name,normalized_customer,i
 set role authenticated;
 select public.gp_collections_begin_snapshot('mainstreet','original-amount.csv','2026-11-17','open_invoices','partial',repeat('1',64),1) as amount_id \gset
 insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
-values(:'amount_id','mainstreet','INV|EXAMPLE CUSTOMER|402','INV|EXAMPLE CUSTOMER|402','Example Customer','EXAMPLE CUSTOMER','402','invoice','2026-01-01',50,50,'{"balance_present":true}');
+values(:'amount_id','mainstreet','INV|EXAMPLE CUSTOMER|402','INV|EXAMPLE CUSTOMER|402','Example Customer','EXAMPLE CUSTOMER','402','invoice','2026-01-01',50,50,'{"balance_present":true,"collection_notes":"Original Mainstreet note CHECK-402"}');
 select public.gp_collections_commit_snapshot(:'amount_id');
+select pg_temp.check_that((select count(*)=1 from public.gp_customer_timeline where customer_id=:'customer_id' and kind='source_note' and body like '%CHECK-402%'),'imported Mainstreet notes appear once in the searchable customer timeline');
 select public.gp_collections_begin_snapshot('qbo','safeguards.csv','2026-11-18','invoice_verification','partial',repeat('2',64),5) as safeguards_id \gset
 insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw) values
 (:'safeguards_id','qbo','INV|EXAMPLE CUSTOMER|400','INV|EXAMPLE CUSTOMER|400','Example Customer','EXAMPLE CUSTOMER','400','invoice','2026-01-01',50,0,'{"balance_present":true}'),

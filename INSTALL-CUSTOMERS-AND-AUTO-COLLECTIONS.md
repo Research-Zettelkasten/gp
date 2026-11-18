@@ -29,7 +29,7 @@ The directory combines customer numbers and contact details with linked quotes, 
 
 Each customer has three views:
 
-- **Timeline & notes:** customer notes, original collection actions and account notes, quote conversation snapshots, linked work-order notes and optional report snapshots. Notes retain authors, timestamps, source references and structured details. Search payment references or other text, filter the source, and export the visible history.
+- **Timeline & notes:** customer notes, original collection actions and account notes, quote conversation snapshots, linked work-order notes and imported Mainstreet notes and optional report snapshots. Notes retain authors, timestamps, source references and structured details. Search payment references or other text, filter the source, and export the visible history.
 - **Quotes & invoices:** current linked records with direct links to the original workflow, invoice balances by source, follow-up dates and verified-clearance history.
 - **Profile & matching:** contact information, original PDF provenance, alternate report names confirmed by an administrator, and explicit links for records whose identity cannot be determined automatically. Every profile edit and identity decision requires a reason and produces an attributed audit entry.
 
@@ -90,4 +90,4 @@ Leading zero customer numbers and multiline addresses are preserved as text. Eac
 
 ## Validation
 
-The update has 40 core/asset checks plus PostgreSQL integration and browser workflows in GitHub Actions. Coverage includes rerunnable migrations, role and note visibility, append-only histories, manual identity decisions, preserved verified contacts, zero-balance archival, disputed/date/amount/identity safeguards, manual reopening, newer positive-balance reopening, duplicate import protection, desktop/mobile layouts, filters, note saves, profile edits, aliases and directory upload. All automated customer fixtures are synthetic. Live Supabase installation and the private directory import remain the administrator's setup steps.
+The update has 41 core/asset checks plus PostgreSQL integration and browser workflows in GitHub Actions. Coverage includes rerunnable migrations, role and note visibility, append-only histories, manual identity decisions, preserved verified contacts, zero-balance archival, disputed/date/amount/identity safeguards, manual reopening, newer positive-balance reopening, duplicate import protection, desktop/mobile layouts, filters, note saves, profile edits, aliases and directory upload. All automated customer fixtures are synthetic. Live Supabase installation and the private directory import remain the administrator's setup steps.
