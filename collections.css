@@ -67,6 +67,10 @@
 /* Workspace surfaces follow the shared light/dark setting. */
 .gp-collections{--col-surface:#fff;--col-soft:#f5f7fb;--col-border:#dce4ee;--col-ink:#18324e;--col-muted:#61758b}
 html[data-gp-theme="dark"] .gp-collections{--col-surface:#142238;--col-soft:#192a42;--col-border:#30435d;--col-ink:#e0eafa;--col-muted:#adbed3;background:#0c1727;color:var(--col-ink)}
+.collection-header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.collection-header .gp-brand{display:flex;align-items:center;gap:13px;min-width:0}
+.collection-header .gp-brand-badge{background:linear-gradient(145deg,#ed4a58,#c7283f);padding:13px 11px;border-radius:10px;color:#fff;font-size:11px;font-weight:850;letter-spacing:.03em;flex-shrink:0}
+.collection-header .gp-brand p{line-height:1.5}.collection-header .gp-brand h1{line-height:1.35}
 .collection-shell{max-width:1440px}.collection-intro{margin-bottom:22px}.collection-intro h2{font-size:32px}
 .col-source-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--col-border);background:var(--col-surface);border-radius:12px;margin-bottom:12px}
 .col-source-strip>div{padding:13px 16px;display:grid;gap:5px;min-width:0}.col-source-strip>div+div{border-left:1px solid var(--col-border)}.col-source-strip strong{font-size:12px}.col-source-strip span{font-size:11px;color:var(--col-muted);overflow-wrap:anywhere}

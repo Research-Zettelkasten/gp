@@ -56,7 +56,7 @@ The queue supports customer/invoice/phone/source-note search, source (including 
 
 ## Quote Call-Backs repair
 
-The old importer rejected every returning customer name, even with a new quote number. New quote numbers for returning customers are now accepted. Existing quote numbers are skipped in the database transaction, preserving callback status, receipt details and notes even if two administrators import concurrently. Mainstreet part rows group under one quote.
+The CSR selector called an undefined `escapeHtml` helper, which stopped the board from rendering loaded quotes. It now uses the shared `GP.escapeHtml` helper. The old importer also rejected every returning customer name, even with a new quote number. New quote numbers for returning customers are now accepted. Existing quote numbers are skipped in the database transaction, preserving callback status, receipt details and notes even if two administrators import concurrently. Mainstreet part rows group under one quote.
 
 Quote reads paginate through all permitted records and show refresh success/failure in the board. The board refreshes on visibility changes and every minute while visible, so it does not depend solely on a Realtime publication being configured. A failed refresh retains the last successfully loaded records and shows an error. Quote rendering no longer writes the full customer dataset to browser storage, so a full or unavailable browser cache cannot prevent loading. CSV uploads recheck current server records before saving, then read the saved records back. No test-data upload controls are included in the production UI.
 

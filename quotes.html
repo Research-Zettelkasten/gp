@@ -1020,14 +1020,14 @@
       const activeSelect = document.getElementById("activeCsrSelect");
       if (activeSelect) {
         const choices = activePortalUser?.perm_admin ? sorted : [activeCsr];
-        activeSelect.innerHTML = choices.map(v => `<option value="${escapeHtml(v)}" class="bg-slate-900 text-white">${escapeHtml(v)}</option>`).join("");
+        activeSelect.innerHTML = choices.map(v => `<option value="${GP.escapeHtml(v)}" class="bg-slate-900 text-white">${GP.escapeHtml(v)}</option>`).join("");
         activeSelect.value = activeCsr;
       }
 
       const filter = document.getElementById("boardCsrFilter");
       if (filter) {
         const previous = filter.value || "ALL";
-        filter.innerHTML = `<option value="ALL">All CSRs</option>` + sorted.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+        filter.innerHTML = `<option value="ALL">All CSRs</option>` + sorted.map(v => `<option value="${GP.escapeHtml(v)}">${GP.escapeHtml(v)}</option>`).join("");
         filter.value = sorted.includes(previous) ? previous : "ALL";
       }
     }
