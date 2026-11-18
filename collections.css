@@ -87,7 +87,7 @@ html[data-gp-theme="dark"] .gp-collections{--col-surface:#142238;--col-soft:#192
 .col-badge.verified{background:#e1f3ec;color:#17614b}.col-badge.missing,.col-badge.unmatched,.col-badge.reappeared{background:#fff0d4;color:#86540d}.col-badge.archived{background:#edf0f5;color:#59697c}
 html[data-gp-theme="dark"] .gp-collections :is(.col-section,.col-panel,.col-metrics article,.col-case-fact,.col-dialog-body form,.col-customer,.col-source-field,.gp-col-button-quiet){background:var(--col-surface);color:var(--col-ink);border-color:var(--col-border)}
 html[data-gp-theme="dark"] .gp-collections :is(.col-case-dialog,.col-history-entry,.col-source-block,.col-mini-stat,.col-empty){background:var(--col-soft);color:var(--col-ink);border-color:var(--col-border)}
-html[data-gp-theme="dark"] .gp-collections :is(h2,h3,h4,h5,.metric-value,.col-customer-name,.col-case-fact b,.col-mini-stat b,td){color:var(--col-ink)}
+html[data-gp-theme="dark"] .gp-collections :is(h2,h3,h4,h5,.metric-value,.col-customer-name,.col-customer-totals,.col-case-fact b,.col-mini-stat b,td){color:var(--col-ink)}
 html[data-gp-theme="dark"] .gp-collections :is(.col-secondary,.collection-intro p,.col-section-title p,.metric-label,.metric-foot,.col-filterbar label,th,.col-dialog-body label){color:var(--col-muted)}
 html[data-gp-theme="dark"] .gp-collections :is(input:not([type=checkbox]):not([type=file]),select,textarea){background:#0f1d31;color:var(--col-ink);border-color:var(--col-border)}
 html[data-gp-theme="dark"] .gp-collections :is(td,th){border-color:var(--col-border)}

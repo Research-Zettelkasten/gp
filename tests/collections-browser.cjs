@@ -62,7 +62,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  await page.getByRole('link',{name:'Collection Queue',exact:true}).click();await page.locator('#resetFilters').click();
  fs.mkdirSync('test-results',{recursive:true});await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:'test-results/collections-desktop-light.png',fullPage:true});
  await page.evaluate(()=>document.documentElement.dataset.gpTheme='dark');await page.setViewportSize({width:390,height:844});
- await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth,{},{timeout:3000});
+ await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth&&parseFloat(getComputedStyle(document.body).paddingLeft)===0&&document.querySelector('.gp-sidebar').getBoundingClientRect().right<=0,{},{timeout:3000});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'collections mobile fits after the shared sidebar transition');await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:'test-results/collections-mobile-dark.png',fullPage:true});
  await page.addInitScript(()=>{if(location.pathname.endsWith('/quotes.html')){const set=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='glasspro_quotes_v1')throw new DOMException('Synthetic full cache','QuotaExceededError');return set.call(this,key,value);};}});
  await page.goto(base+'/quotes.html');await page.locator('#quoteSyncStatus').filter({hasText:'records loaded'}).waitFor();await page.locator('#quoteCsvUploadButton').click();
