@@ -1,7 +1,6 @@
 {
-  "version": "2026.11.17.1",
-  "notes": "Consistent employee home and navigation, saved card ordering, and audited atomic administrator clock-out. Install the included SQL migration before deploying.",
-  "release_date": "2026-11-17",
-  "released_at": "2026-11-17"
+  "version": "2026.11.18.1",
+  "notes": "Collections filters, GlassQuest baseline, report evidence and notes registry; Quote Call-Backs refresh and returning-customer import fix. Install both 2026-11-18 SQL migrations.",
+  "release_date": "2026-11-18",
+  "released_at": "2026-11-18"
 }
-

@@ -2,7 +2,7 @@
    No customer data or credentials are bundled in this file. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.GPCollectionsCore=api;})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
- const money=v=>{let s=String(v??'').trim();if(!s||s==='—'||s==='-')return 0;const neg=/^\(.*\)$/.test(s);s=s.replace(/[$,()\s]/g,'');const n=Number(s);return Number.isFinite(n)?Math.round(n*100)*(neg?-1:1)/100:0;};
+ const money=v=>{let s=String(v??'').trim();if(!s||s==='—'||s==='-')return 0;const neg=/^\(.*\)$/.test(s)||/-$/.test(s);s=s.replace(/-$/,'').replace(/[$,()\s]/g,'');const n=Number(s);return Number.isFinite(n)?Math.round(n*100)*(neg?-1:1)/100:0;};
  const name=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' AND ').replace(/[^a-zA-Z0-9]+/g,' ').replace(/\b(LLC|INC|CORP|CO|LTD)\b/g,'').replace(/\s+/g,' ').trim().toUpperCase();
  const num=v=>String(v||'').trim().toUpperCase().replace(/\s+/g,'');
  const cell=v=>{let s=String(v??'');if(/^[\s\x00-\x1f]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
@@ -20,3 +20,4 @@
  const toCsv=(head,rows)=>[head,...rows].map(r=>r.map(cell).join(',')).join('\r\n')+'\r\n';
  return {money,name,num,iso,csv,parseMainstreet,parseQbo,stableKey,invoiceRows,caseRows,mergeLatest,priority,toCsv};
 });
+

@@ -762,10 +762,6 @@
     </div>
     <div class="header-right">
       <div id="dbStatus" class="hidden"></div>
-      <label class="logout-btn" style="background:var(--mos-indigo); cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:0; color:#FFF;">
-        <span>☁️ Upload Mainstreet CSV</span>
-        <input type="file" accept=".csv" class="hidden" onchange="handleAdminCsvUpload(event)" />
-      </label>
       <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
         <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
         <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
@@ -3000,106 +2996,6 @@
       GP.applyNavPermissions(activeUser);
       window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
       await loadDashboardPreferences();
-
-      window.handleAdminCsvUpload = function(event) {
-        const file = event.target.files[0];
-        if (!file || typeof Papa === "undefined") return;
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: async function(results) {
-            let existingQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
-            if(isCloudConnected){
-              try{
-                const {data,error}=await supabaseClient.from("outstanding_quotes").select("quote_number,customer_name,quote_date,module,phone,has_cell,subtotal,tax,total,original_csr,parts,status,contact_attempts,call_data,admin_coaching_note");
-                if(!error&&Array.isArray(data)&&data.length){
-                  const merged=new Map(existingQuotes.map(q=>[Number(q.quote_number),q]));
-                  data.forEach(r=>merged.set(Number(r.quote_number),{quote_number:r.quote_number,customer_name:r.customer_name,quote_date:r.quote_date,module:r.module,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""}));
-                  existingQuotes=[...merged.values()];
-                }
-              }catch(e){}
-            }
-            const existingNums = new Set(existingQuotes.map(q => Number(q.quote_number)));
-            const existingNames = new Set(existingQuotes.map(q => String(q.customer_name || "").trim().toUpperCase().replace(/\s+/g," ")));
-            const grouped = new Map();
-
-            results.data.forEach(row => {
-              const rawNum = row["Quote #"] || row["quote_number"];
-              if (!rawNum) return;
-              const qNum = parseInt(String(rawNum).replace(/\D/g, ""), 10);
-              if (isNaN(qNum)) return;
-              const cleanCurr = v => typeof v === "number" ? v : (parseFloat(String(v || "0").replace(/[^0-9.-]+/g, "")) || 0);
-
-              if (!grouped.has(qNum)) {
-                const cellVal = String(row["Cell"] || "").trim();
-                const phoneVal = String(row["Phone"] || "").trim();
-                grouped.set(qNum, {
-                  quote_number: qNum,
-                  quote_date: String(row["Quote Date"] || new Date().toLocaleDateString()).trim(),
-                  module: String(row["Module"] || "Auto").trim(),
-                  customer_name: String(row["Customer"] || "UNKNOWN CUSTOMER").trim(),
-                  phone: cellVal || phoneVal || "N/A",
-                  has_cell: Boolean(cellVal),
-                  subtotal: cleanCurr(row["Subtotal"]),
-                  tax: cleanCurr(row["Tax"]),
-                  total: cleanCurr(row["Total"]),
-                  csr: String(row["CSR"] || "SC: CALHOUN, STEPHANIE").trim(),
-                  parts: [],
-                  status: "open",
-                  contact_attempts: 0,
-                  call_data: null
-                });
-              }
-              const partCode = String(row["Part"] || "").trim();
-              const partDesc = String(row["Desc."] || "").trim();
-              if (partCode || partDesc) {
-                grouped.get(qNum).parts.push({
-                  category: String(row["Category"] || "").trim(),
-                  part: partCode,
-                  desc: partDesc,
-                  qty: parseFloat(row["Qty."]) || 1.0,
-                  total: cleanCurr(row["Part Total"])
-                });
-              }
-            });
-
-            let added = 0, rejected = 0;
-            const acceptedCloudRows = [];
-            const acceptedQuotes = [];
-            grouped.forEach(cand => {
-              const normName = cand.customer_name.trim().toUpperCase().replace(/\s+/g," ");
-              if (existingNums.has(cand.quote_number) || existingNames.has(normName)) {
-                rejected++;
-              } else {
-                acceptedQuotes.push(cand);
-                existingNums.add(cand.quote_number);
-                existingNames.add(normName);
-                acceptedCloudRows.push({quote_number:cand.quote_number,normalized_customer_name:normName,customer_name:cand.customer_name,quote_date:cand.quote_date,module:cand.module,phone:cand.phone,has_cell:cand.has_cell,subtotal:cand.subtotal,tax:cand.tax,total:cand.total,original_csr:cand.csr,parts:cand.parts||[],status:cand.status||"open",contact_attempts:cand.contact_attempts||0,call_data:cand.call_data||{},admin_coaching_note:cand.admin_coaching_note||""});
-                added++;
-              }
-            });
-
-            try {
-              requireManagementCloud();
-              if (acceptedCloudRows.length) {
-                // Never upsert existing quote numbers while importing fresh
-                // callbacks; no CRM state or notes may be overwritten.
-                const {error} = await supabaseClient.from("outstanding_quotes").insert(acceptedCloudRows);
-                if (error) throw error;
-              }
-              existingQuotes.unshift(...acceptedQuotes);
-              localStorage.setItem("glasspro_quotes_v1", JSON.stringify(existingQuotes));
-              await logAudit("CSV_UPLOAD", `Uploaded ${file.name}: +${added} new quotes in Supabase, ${rejected} duplicates skipped`);
-              showToast(`CSV imported: ${added} quotes saved in Supabase; ${rejected} duplicates skipped`);
-              event.target.value = "";
-            } catch (e) {
-              alert(`Quotes were NOT imported: ${e.message || e}. Existing quotes were not changed. Refresh your data before retrying.`);
-              return;
-            }
-            await loadAdminData();
-          }
-        });
-      };
 
       await loadAdminData();
       window.GP_ACCOUNTING_BRIDGE?.mount?.({supabaseClient,activeUser});

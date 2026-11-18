@@ -296,6 +296,10 @@
     <!-- TAB 1: ACTIVE CALL-BACK BOARD                                       -->
     <!-- =================================================================== -->
     <section id="tab-panel-board" class="space-y-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div><strong>Quote records</strong><p id="quoteSyncStatus" class="text-xs text-slate-500 mt-1" role="status">Loading current quotes…</p></div>
+        <div class="flex flex-wrap gap-2"><button type="button" id="refreshQuotesButton" onclick="refreshQuoteRecords(true)" class="bg-slate-100 text-slate-800 text-xs font-bold px-4 py-2 rounded-lg">Refresh quotes</button><button type="button" id="quoteCsvUploadButton" onclick="openCsvUploadModal()" class="hidden bg-glasspro-red text-white text-xs font-bold px-4 py-2 rounded-lg">Upload Mainstreet Quotes CSV</button></div>
+      </div>
       <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <div class="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200">
@@ -492,18 +496,8 @@
               <span class="px-2 py-0.5 rounded text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-700">ACTIVE</span>
             </div>
             <p class="text-xs text-slate-300 mt-1">
-              Automatically blocks any returning customer name or duplicate Quote # when uploading Mainstreet CSV exports.
+              Existing quote numbers are protected. Returning customers can have new quotes; their earlier callbacks and notes stay intact.
             </p>
-          </div>
-
-          <div class="p-4 bg-emerald-50/70 border-b border-emerald-200 flex items-center justify-between gap-3">
-            <div class="text-xs text-emerald-950">
-              <div class="font-bold">Test the Duplicate Blocker:</div>
-              <div class="text-emerald-800">Simulate re-uploading <code class="font-mono font-bold">Quotes.csv</code> with 2 new customers mixed in with existing names.</div>
-            </div>
-            <button onclick="simulateCsvReuploadWithDuplicates()" class="shrink-0 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3 py-2 rounded-lg shadow-sm transition cursor-pointer">
-              Run Test Upload
-            </button>
           </div>
 
           <div class="p-4 border-b border-slate-200">
@@ -921,7 +915,7 @@
         <div class="bg-slate-900 text-white rounded-xl p-4 border-l-4 border-emerald-400 text-xs space-y-1">
           <div class="font-bold text-emerald-400">Intelligent "Throw It Out" Deduplication Active</div>
           <p class="text-slate-300 leading-relaxed">
-            Checks every uploaded <code class="font-mono text-white">Customer</code> name and <code class="font-mono text-white">Quote #</code> against our registry (<span id="uploadModalRegistryCount" class="font-bold text-white">24</span> names currently cataloged). Returning names are automatically thrown out.
+            Checks <code class="font-mono text-white">Quote #</code> against <span id="uploadModalRegistryCount" class="font-bold text-white">0</span> saved quote records. Existing quote numbers are skipped. New quote numbers for returning customers are accepted.
           </p>
         </div>
 
@@ -930,13 +924,6 @@
           <div class="text-sm font-bold text-slate-900">Click to select Mainstreet <span class="font-mono text-glasspro-red">Quotes.csv</span> file</div>
           <div class="text-xs text-slate-500 mt-1">Supports standard Glas-Avenue / Mainstreet export headers</div>
         </label>
-
-        <div class="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div class="text-xs text-slate-600">Test the duplicate blocker right now:</div>
-          <button onclick="simulateCsvReuploadWithDuplicates()" class="inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer">
-            <span>Simulate Re-Upload (Duplicates + 2 New Quotes)</span>
-          </button>
-        </div>
 
         <div id="csvUploadReportBox" class="hidden rounded-xl border-2 border-slate-200 bg-slate-50 p-4 space-y-3"></div>
       </div>
@@ -961,6 +948,7 @@
 
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md"></div>
 
+  <script src="quote-import-core.js?v=20261118"></script>
   <script>
     // =======================================================================
     // SUPABASE & PORTAL SESSION BRIDGE
@@ -1003,6 +991,7 @@
     let quotesState = [];
     let competitorsState = [];
     let quoteRealtimeChannel = null;
+    let quoteRefreshPromise = null, quoteImportBusy = false;
 
     function buildCsrStamp(employeeName) {
       const parts = String(employeeName || "").trim().split(/\s+/).filter(Boolean);
@@ -1202,9 +1191,10 @@
       csrSelect.title = activePortalUser.perm_admin ? "Admin may change the CSR stamp" : "CSR stamp is locked to the signed-in employee";
       document.getElementById("banner-active-csr").textContent = activeCsr;
 
-      const savedQuotes = localStorage.getItem("glasspro_quotes_v1");
-      const savedCompetitors = localStorage.getItem("glasspro_competitors_v1");
-      const savedExemptions = localStorage.getItem("glasspro_quote_exemptions_v1");
+      document.getElementById("quoteCsvUploadButton").classList.toggle("hidden", !activePortalUser.perm_admin);
+      const savedQuotes = null;
+      const savedCompetitors = null;
+      const savedExemptions = null;
       const hadSavedQuotes = !!savedQuotes;
 
       quotesState = savedQuotes ? JSON.parse(savedQuotes) : JSON.parse(JSON.stringify(INITIAL_QUOTES_FROM_CSV));
@@ -1231,9 +1221,11 @@
 
           const exRes=await supabaseClient.from("quote_customer_exemptions").select("normalized_customer_name");
           if(!exRes.error&&Array.isArray(exRes.data)){exemptedCustomerNames=new Set(exRes.data.map(r=>String(r.normalized_customer_name||"")).filter(Boolean));localStorage.setItem("glasspro_quote_exemptions_v1",JSON.stringify([...exemptedCustomerNames]));}
-        } catch (e) {}
+        } catch (e) {document.getElementById('quoteSyncStatus').textContent='Load failed: '+(e.message||'connection error')+'. Use Refresh quotes to retry.';showToast('Current quote records could not be loaded. '+(e.message||''),'warning');}
       }
-
+      await refreshQuoteRecords(false);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!quoteImportBusy)void refreshQuoteRecords(false);});
+      window.setInterval(()=>{if(!document.hidden&&!quoteImportBusy)void refreshQuoteRecords(false);},60000);
       refreshAllViews();
       startQuoteRealtimeSync();
       lucide.createIcons();
@@ -2110,9 +2102,7 @@
               <div class="font-bold text-slate-900">${GP.escapeHtml(q.customer_name)} <span class="font-mono text-slate-500 font-normal">(#${q.quote_number})</span></div>
               <div class="text-[11px] text-slate-500">First uploaded: ${GP.escapeHtml(q.quote_date)} • ${GP.escapeHtml(q.module)}</div>
             </div>
-            <button onclick="toggleCustomerDedupExemption(${GP.escapeHtml(JSON.stringify(normName))})" class="px-2.5 py-1 rounded text-[11px] font-mono font-bold border transition cursor-pointer ${isExempt ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-700 border-slate-300'}">
-              ${isExempt ? '🔓 Allowed Re-Upload' : '🔒 Block Re-Upload'}
-            </button>
+            <span class="text-xs text-slate-500">Existing quote number protected</span>
           </div>
         `;
       }).join("");
@@ -2139,6 +2129,7 @@
     // MAINSTREET CSV UPLOAD & DEDUPLICATION ENGINE
     // =======================================================================
     function openCsvUploadModal() {
+      if(!activePortalUser?.perm_admin){showToast("Only administrators can upload quote CSVs.","warning");return;}
       document.getElementById("csvUploadReportBox").classList.add("hidden");
       document.getElementById("csvUploadModal").classList.remove("hidden");
     }
@@ -2147,126 +2138,48 @@
       document.getElementById("csvUploadModal").classList.add("hidden");
     }
 
+    async function refreshQuoteRecords(notify=false) {
+      if(quoteRefreshPromise)return quoteRefreshPromise;
+      quoteRefreshPromise=(async()=>{
+        const status=document.getElementById('quoteSyncStatus');status.textContent='Loading current quote records…';
+        document.getElementById('refreshQuotesButton').disabled=true;
+        try{
+          if(!isCloudConnected)throw Error('Supabase is unavailable');
+          const rows=await GP.fetchAllRows(supabaseClient.from('outstanding_quotes').select('*').order('quote_number',{ascending:false}));
+          quotesState=rows.map(quoteFromCloudRow);refreshAllViews();status.textContent=`${rows.length.toLocaleString()} records loaded · refreshed ${new Date().toLocaleTimeString()} · refreshes while this tab is visible`;
+          if(notify)showToast('Quote records refreshed.','success');return true;
+        }catch(e){status.textContent='Refresh failed: '+(e.message||'connection error')+'. Previously loaded records are retained.';if(notify)showToast(status.textContent,'warning');return false;}
+        finally{document.getElementById('refreshQuotesButton').disabled=false;}
+      })();
+      try{return await quoteRefreshPromise;}finally{quoteRefreshPromise=null;}
+    }
     function handleCsvFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          processParsedMainstreetRows(results.data, file.name);
-          event.target.value = "";
-        }
+      const file=event.target.files[0];if(!file)return;
+      if(!activePortalUser?.perm_admin||quoteImportBusy){showToast('Administrator permission required, or an import is already running.','warning');event.target.value='';return;}
+      if(!/\.csv$/i.test(file.name)||file.size>10*1024*1024){showToast('Choose a Quotes CSV smaller than 10 MB.','warning');event.target.value='';return;}
+      quoteImportBusy=true;
+      Papa.parse(file,{header:true,skipEmptyLines:true,transformHeader:h=>h.replace(/^\uFEFF/,'').trim(),
+        complete:async result=>{try{if(result.errors?.length)throw Error('CSV formatting error: '+result.errors[0].message);await processParsedMainstreetRows(result.data,file.name);}catch(e){showToast(e.message||'Quote import failed.','warning');}finally{quoteImportBusy=false;event.target.value='';}},
+        error:e=>{quoteImportBusy=false;event.target.value='';showToast(e.message||'Could not read CSV.','warning');}
       });
     }
-
-    async function processParsedMainstreetRows(rows, sourceLabel = "Quotes.csv") {
-      const groupedByQuoteNum = new Map();
-      rows.forEach(row => {
-        const rawQuoteNum = row["Quote #"] || row["quote_number"];
-        if (!rawQuoteNum) return;
-        const quoteNum = parseInt(String(rawQuoteNum).replace(/\D/g, ""), 10);
-        if (isNaN(quoteNum)) return;
-
-        const cleanCurrency = (val) => typeof val === "number" ? val : (parseFloat(String(val || "0").replace(/[^0-9.-]+/g, "")) || 0);
-
-        if (!groupedByQuoteNum.has(quoteNum)) {
-          const cellVal = String(row["Cell"] || "").trim();
-          const phoneVal = String(row["Phone"] || "").trim();
-          groupedByQuoteNum.set(quoteNum, {
-            quote_number: quoteNum,
-            quote_date: String(row["Quote Date"] || new Date().toLocaleDateString("en-US")).trim(),
-            module: String(row["Module"] || "Auto").trim(),
-            customer_name: String(row["Customer"] || "UNKNOWN CUSTOMER").trim(),
-            phone: cellVal || phoneVal || "N/A",
-            has_cell: Boolean(cellVal),
-            subtotal: cleanCurrency(row["Subtotal"]),
-            tax: cleanCurrency(row["Tax"]),
-            total: cleanCurrency(row["Total"]),
-            csr: String(row["CSR"] || activeCsr).trim(),
-            parts: [],
-            status: "open",
-            contact_attempts: 0,
-            call_data: null
-          });
-        }
-
-        const partCode = String(row["Part"] || "").trim();
-        const partDesc = String(row["Desc."] || "").trim();
-        if (partCode || partDesc) {
-          groupedByQuoteNum.get(quoteNum).parts.push({
-            category: String(row["Category"] || "").trim(),
-            part: partCode,
-            desc: partDesc,
-            qty: parseFloat(row["Qty."]) || 1.0,
-            total: cleanCurrency(row["Part Total"])
-          });
-        }
-      });
-
-      const existingQuoteNumbers = new Set(quotesState.map(q => Number(q.quote_number)));
-      const existingCustomerNames = new Set(quotesState.map(q => normalizeCustomerName(q.customer_name)));
-
-      const acceptedQuotes = [];
-      const rejectedQuotes = [];
-
-      groupedByQuoteNum.forEach(candidate => {
-        const normName = normalizeCustomerName(candidate.customer_name);
-        const isQuoteDuplicate = existingQuoteNumbers.has(candidate.quote_number);
-        const isNameDuplicate = existingCustomerNames.has(normName) && !exemptedCustomerNames.has(normName);
-
-        if (isQuoteDuplicate || isNameDuplicate) {
-          rejectedQuotes.push({
-            quote_number: candidate.quote_number,
-            customer_name: candidate.customer_name,
-            reason: isNameDuplicate ? `Customer "${candidate.customer_name}" already cataloged — thrown out` : `Quote #${candidate.quote_number} already exists`
-          });
-        } else {
-          acceptedQuotes.push(candidate);
-          existingQuoteNumbers.add(candidate.quote_number);
-          existingCustomerNames.add(normName);
-        }
-      });
-
-      if (acceptedQuotes.length > 0) {
-        if (!activePortalUser?.perm_admin || !isCloudConnected) {
-          return showToast("Admin account with Supabase connection is required for CSV imports.", "warning");
-        }
-        const rows = acceptedQuotes.map(q=>({
-          quote_number:q.quote_number, normalized_customer_name:normalizeCustomerName(q.customer_name),
-          customer_name:q.customer_name,quote_date:q.quote_date,module:q.module,phone:q.phone,
-          has_cell:q.has_cell,subtotal:q.subtotal,tax:q.tax,total:q.total,
-          original_csr:q.csr,parts:q.parts||[],status:q.status||"open",
-          contact_attempts:0,call_data:{},admin_coaching_note:""
-        }));
-        const {error} = await supabaseClient.from("outstanding_quotes").insert(rows);
-        if (error) {
-          return showToast(`CSV import NOT saved: ${error.message}. Refresh records before retrying.`, "warning");
-        }
-        quotesState = [...acceptedQuotes, ...quotesState];
-        await logPortalAudit("CSV_UPLOAD", `Uploaded ${sourceLabel}: +${acceptedQuotes.length} new quotes saved in Supabase, ${rejectedQuotes.length} duplicates blocked`);
-        refreshAllViews();
+    async function processParsedMainstreetRows(rows,sourceLabel='Quotes.csv') {
+      if(!activePortalUser?.perm_admin||!isCloudConnected)throw Error('Administrator account with a Supabase connection required.');
+      const candidates=GPQuoteImportCore.parse(rows,activeCsr,GP.localDate());
+      if(!await refreshQuoteRecords(false))throw Error('Current quote records could not be checked. Retry after the connection is restored.');
+      const plan=GPQuoteImportCore.partition(candidates,quotesState),payload=plan.accepted.map(q=>({...q,original_csr:q.csr}));
+      let added=0,duplicates=plan.duplicates.length;
+      if(payload.length){
+        const {data,error}=await supabaseClient.rpc('gp_import_quote_callbacks',{p_rows:payload,p_source:sourceLabel});
+        if(error)throw Error(error.code==='PGRST202'?'Install supabase/migrations/2026-11-18-quote-callback-import.sql in Supabase SQL Editor before importing.':'CSV import was not saved: '+error.message);
+        added=data.added;duplicates+=data.duplicates;
       }
-
-      const reportBox = document.getElementById("csvUploadReportBox");
-      reportBox.classList.remove("hidden");
-      reportBox.innerHTML = `
-        <div class="font-extrabold text-sm text-slate-900 border-b pb-2">CSV Upload Audit (${GP.escapeHtml(sourceLabel)})</div>
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg"><div class="font-bold text-emerald-900 text-sm">+${acceptedQuotes.length} New Quotes Added</div></div>
-          <div class="bg-rose-50 border border-rose-200 p-3 rounded-lg"><div class="font-bold text-rose-900 text-sm">${rejectedQuotes.length} Duplicates Thrown Out</div></div>
-        </div>
-        ${rejectedQuotes.length > 0 ? `<div class="max-h-36 overflow-y-auto bg-white rounded border p-2 text-[11px] font-mono space-y-1">${rejectedQuotes.map(r => `<div class="text-rose-700">✗ #${GP.escapeHtml(r.quote_number)} (${GP.escapeHtml(r.customer_name)}): ${GP.escapeHtml(r.reason)}</div>`).join("")}</div>` : ''}
-      `;
-    }
-
-    function simulateCsvReuploadWithDuplicates() {
-      const simulatedRows = [
-        { "Quote #": "900001", "Quote Date": GP.localDate(), "Module": "Auto", "Customer": "TEST CUSTOMER ALPHA", "Cell": "(555) 010-1001", "Subtotal": "339.65", "Tax": "18.42", "Total": "358.07", "CSR": activeCsr, "Part": "TEST-PART-A", "Desc.": "Test windshield part" },
-        { "Quote #": "900002", "Quote Date": GP.localDate(), "Module": "Flat", "Customer": "TEST CUSTOMER BETA", "Phone": "(555) 010-1002", "Subtotal": "410.00", "Tax": "28.70", "Total": "438.70", "CSR": activeCsr, "Part": "TEST-PART-B", "Desc.": "Test flat glass part" }
-      ];
-      openCsvUploadModal();
-      processParsedMainstreetRows(simulatedRows, "Simulated Test Batch");
+      // Read the saved records back, including concurrent imports from another administrator.
+      const loaded=await refreshQuoteRecords(false);
+      const report=document.getElementById('csvUploadReportBox');report.classList.remove('hidden');
+      report.innerHTML=`<div class="font-bold">${GP.escapeHtml(sourceLabel)}</div><p>${added} new quotes saved · ${duplicates} existing quote numbers skipped · ${plan.returning.length} new quotes for returning customers allowed.</p><p class="text-xs">Existing callback status, receipts and notes are preserved.${loaded?'':' Records were saved, but refreshing failed. Use Refresh quotes when the connection returns.'}</p>`;
+      currentModuleFilter='ALL';setModuleFilter('ALL');document.getElementById('boardCsrFilter').value='ALL';document.getElementById('boardStatusFilter').value='ACTIVE';document.getElementById('boardSearchInput').value='';renderBoardTable();
+      showToast(`${added} new quotes saved. ${duplicates} existing quote numbers skipped.`,'success');
     }
 
     function showToast(message, type = "info") {
