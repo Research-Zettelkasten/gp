@@ -19,7 +19,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base+'/home.html');await page.getByRole('heading',{name:/Good (morning|afternoon|evening), Sam/}).waitFor();
     await page.getByText('Updated ',{exact:false}).first().waitFor();
-    assert.equal(await page.locator('.gp-home-tool').count(),3,'permission-aware module cards');
+    assert.equal(await page.locator('.gp-home-tool').count(),4,'permission-aware module cards');
     assert.equal(await page.locator('.gp-home-tool[href="admin.html"]').count(),0);
     assert.equal(await page.locator('a[aria-current="page"][href="home.html"]').count(),1,'home is active in navigation');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'desktop has no horizontal overflow');

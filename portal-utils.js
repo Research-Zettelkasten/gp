@@ -50,7 +50,8 @@
       navLinkComm: user.perm_admin === true || user.perm_commission === true,
       navLinkFleet: canAccessFleet(user),
       navLinkAdmin: !!user.perm_admin,
-      navLinkCollections: user.perm_admin === true || user.perm_collections === true
+      navLinkCollections: user.perm_admin === true || user.perm_collections === true,
+      navLinkCustomers: user.perm_admin === true || user.perm_collections === true || user.perm_quotes === true
     };
     Object.entries(rules).forEach(([id, allowed]) => {
       const el = document.getElementById(id);
@@ -134,6 +135,7 @@
     if (!profile || profile.active !== true) return false;
     if (!permission) return true;
     if (permission === "fleet") return canAccessFleet(profile);
+    if (permission === "customers") return profile.perm_admin === true || profile.perm_collections === true || profile.perm_quotes === true;
     if (permission === "admin") return profile.perm_admin === true;
     if (profile.perm_admin === true && /^perm_/.test(permission)) return true;
     return profile[permission] === true;
@@ -250,3 +252,4 @@
     hasPermission
   });
 })(typeof window !== "undefined" ? window : globalThis);
+

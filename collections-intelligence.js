@@ -90,10 +90,12 @@ function finish(result){
  if(result.rows.length>20000)throw Error('Report exceeds 20,000 records.');
  return result;
 }
-function evidenceIndex(imports,rows){const byImport=new Map(imports.map(i=>[i.id,i])),byCase=new Map();for(const r of rows){if(r.transaction_type!=='invoice'||!r.case_key)continue;const i=byImport.get(r.import_id);if(!i||i.status!=='complete')continue;const list=byCase.get(r.case_key)||[];list.push({...r,import:i});byCase.set(r.case_key,list);}for(const list of byCase.values())list.sort((a,b)=>rank(b.import).localeCompare(rank(a.import)));return{byCase,byImport,imports:newest(imports)};}
+function evidenceIndex(imports,rows){const byImport=new Map(imports.map(i=>[i.id,i])),byCase=new Map(),byCustomerInvoice=new Map();for(const r of rows){if(r.transaction_type!=='invoice'||!r.case_key)continue;const i=byImport.get(r.import_id);if(!i||i.status!=='complete')continue;const value={...r,import:i},list=byCase.get(r.case_key)||[];list.push(value);byCase.set(r.case_key,list);if(r.customer_id&&r.invoice_number&&r.transaction_date){const key=[r.customer_id,C.num(r.invoice_number),r.transaction_date].join('|'),matches=byCustomerInvoice.get(key)||[];matches.push(value);byCustomerInvoice.set(key,matches);}}for(const map of [byCase,byCustomerInvoice])for(const list of map.values())list.sort((a,b)=>rank(b.import).localeCompare(rank(a.import)));return{byCase,byCustomerInvoice,byImport,imports:newest(imports)};}
 function assess(c,index,today){
  const rows=index?.byCase.get(c.case_key)||[],known=source=>{
-  const row=rows.find(r=>r.source===source),i=index?.byImport.get(c[source+'_import_id']);
+  const aliases=c.customer_id&&c.invoice_date?index?.byCustomerInvoice?.get([c.customer_id,C.num(c.invoice_number),c.invoice_date].join('|'))||[]:[];
+  const candidates=[...rows,...aliases.filter(r=>r.case_key!==c.case_key&&(r.customer_identity_verified||['manual','verified_alias'].includes(c.customer_link_method)))].filter(r=>r.source===source).sort((a,b)=>rank(b.import).localeCompare(rank(a.import)));
+  const row=candidates[0],i=index?.byImport.get(c[source+'_import_id']);
   const fallback=c[source+'_balance']==null?null:{source,open_balance:Number(c[source+'_balance']),import:i||null,raw:{},fallback:true};
   return row&&(!fallback||rank(row.import)>=rank(i))?row:fallback;
  };

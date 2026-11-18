@@ -62,6 +62,7 @@ alter table public.collection_cases add column if not exists customer_link_metho
 alter table public.collection_source_rows add column if not exists customer_id uuid references public.gp_customers(id);
 alter table public.collection_source_rows add column if not exists customer_identity_verified boolean not null default false;
 alter table public.collection_account_notes add column if not exists customer_id uuid references public.gp_customers(id);
+alter table public.collection_account_notes add column if not exists customer_link_method text not null default 'unmatched';
 alter table public.outstanding_quotes add column if not exists customer_id uuid references public.gp_customers(id);
 alter table public.outstanding_quotes add column if not exists customer_link_method text not null default 'unmatched';
 create index if not exists gp_collection_cases_customer on public.collection_cases(customer_id);
@@ -138,7 +139,7 @@ begin
  if tg_op='UPDATE' and (new.status,new.call_data,new.admin_coaching_note) is not distinct from (old.status,old.call_data,old.admin_coaching_note) then return new;end if;
  insert into public.gp_customer_quote_history(customer_id,quote_number,status,note,details,recorded_by,actor_name)
  values(new.customer_id,new.quote_number,new.status,concat_ws(E'\n',nullif(new.call_data->>'notes',''),case when nullif(new.admin_coaching_note,'') is not null then 'Manager note: '||new.admin_coaching_note end),
- jsonb_build_object('call_data',new.call_data,'admin_coaching_note',new.admin_coaching_note,'total',new.total,'module',new.module,'previous_status',case when tg_op='UPDATE' then old.status else null end),auth.uid(),new.call_data->>'csr_stamp');
+ jsonb_build_object('call_data',new.call_data,'admin_coaching_note',new.admin_coaching_note,'total',new.total,'module',new.module,'previous_status',case when tg_op='UPDATE' then old.status else null end),auth.uid(),coalesce((select u.employee_name from public.app_users u where u.auth_user_id=auth.uid()),new.call_data->>'csr_stamp'));
  return new;
 end$$;
 drop trigger if exists gp_customer_quote_history on public.outstanding_quotes;
@@ -163,8 +164,8 @@ declare n integer;m integer;begin
  get diagnostics n=row_count;
  update public.outstanding_quotes set customer_id=private.gp_customer_resolve(customer_name),customer_link_method=case when private.gp_customer_resolve(customer_name) is null then 'unmatched' when exists(select 1 from public.gp_customer_aliases a where a.normalized_alias=private.gp_customer_norm(customer_name)) then 'verified_alias' else 'exact_name' end where customer_link_method<>'manual';
  get diagnostics m=row_count;
- update public.collection_source_rows set customer_id=private.gp_customer_resolve(customer_name),customer_identity_verified=exists(select 1 from public.gp_customer_aliases a where a.normalized_alias=private.gp_customer_norm(customer_name)) where coalesce(raw->>'customer_missing','false')<>'true';
- update public.collection_account_notes set customer_id=private.gp_customer_resolve(customer_name);
+ update public.collection_source_rows s set customer_id=coalesce((select c.customer_id from public.collection_cases c where c.case_key=s.case_key and c.customer_link_method='manual' and c.legacy_linked_to is null limit 1),private.gp_customer_resolve(s.customer_name)),customer_identity_verified=exists(select 1 from public.gp_customer_aliases a where a.normalized_alias=private.gp_customer_norm(s.customer_name)) or exists(select 1 from public.collection_cases c where c.case_key=s.case_key and c.customer_link_method='manual' and c.legacy_linked_to is null) where coalesce(s.raw->>'customer_missing','false')<>'true';
+ update public.collection_account_notes set customer_id=private.gp_customer_resolve(customer_name),customer_link_method='exact_name' where customer_link_method<>'manual';
  update public.gp_customer_quote_history h set customer_id=q.customer_id from public.outstanding_quotes q where h.quote_number=q.quote_number;
  return jsonb_build_object('collection_records',n,'quotes',m);
 end$$;
@@ -176,7 +177,7 @@ declare batch uuid;r jsonb;cid uuid;existing public.gp_customers%rowtype;made in
  if jsonb_typeof(p_rows) is distinct from 'array' or jsonb_array_length(p_rows) not between 1 and 5000 or octet_length(p_rows::text)>10000000 or p_sha256 is null or p_sha256!~'^[a-f0-9]{64}$' then raise exception 'Invalid directory import';end if;
  perform pg_advisory_xact_lock(hashtextextended('gp-customer-registry',0));
  if exists(select 1 from public.gp_customer_imports where file_sha256=p_sha256) then raise exception 'This exact customer file is already imported';end if;
- if exists(select r->>'import_key' from jsonb_array_elements(p_rows) r group by r->>'import_key' having count(*)>1) then raise exception 'Directory import keys must be unique';end if;
+ if exists(select j.value->>'import_key' from jsonb_array_elements(p_rows) as j(value) group by j.value->>'import_key' having count(*)>1) then raise exception 'Directory import keys must be unique';end if;
  insert into public.gp_customer_imports(file_name,file_sha256,row_count,imported_by) values(left(coalesce(p_file_name,'Customer directory.csv'),200),p_sha256,jsonb_array_length(p_rows),auth.uid()) returning id into batch;
  for r in select value from jsonb_array_elements(p_rows) loop
   if length(btrim(coalesce(r->>'customer_name',''))) not between 2 and 250 or length(coalesce(r->>'import_key','')) not between 2 and 250 then raise exception 'Customer name or stable import key is missing';end if;
@@ -218,7 +219,7 @@ declare v_id uuid:=p_customer_id;oldrow jsonb;begin
  perform pg_advisory_xact_lock(hashtextextended('gp-customer-registry',0));
  if v_id is null then insert into public.gp_customers(display_name,source_type,identity_status,created_by) values(btrim(p_fields->>'display_name'),'manual','verified',auth.uid()) returning gp_customers.id into v_id;
  else select to_jsonb(c) into oldrow from public.gp_customers c where c.id=v_id for update;if not found then raise exception 'Customer not found';end if;end if;
- update public.gp_customers c set display_name=btrim(p_fields->>'display_name'),customer_number=left(coalesce(p_fields->>'customer_number',c.customer_number),100),category=left(coalesce(p_fields->>'category',c.category),40),address=left(coalesce(p_fields->>'address',c.address),1000),city=left(coalesce(p_fields->>'city',c.city),200),state_code=left(coalesce(p_fields->>'state_code',c.state_code),30),postal_code=left(coalesce(p_fields->>'postal_code',c.postal_code),30),phone=left(coalesce(p_fields->>'phone',c.phone),100),cell=left(coalesce(p_fields->>'cell',c.cell),100),email=left(coalesce(p_fields->>'email',c.email),300),identity_status='verified',review_required=false,updated_at=now() where c.id=v_id;
+ update public.gp_customers c set display_name=btrim(p_fields->>'display_name'),customer_number=left(coalesce(p_fields->>'customer_number',c.customer_number),100),category=left(coalesce(p_fields->>'category',c.category),40),address=left(coalesce(p_fields->>'address',c.address),1000),city=left(coalesce(p_fields->>'city',c.city),200),state_code=left(coalesce(p_fields->>'state_code',c.state_code),30),postal_code=left(coalesce(p_fields->>'postal_code',c.postal_code),30),phone=left(coalesce(p_fields->>'phone',c.phone),100),home_phone=left(coalesce(p_fields->>'home_phone',c.home_phone),100),work_phone=left(coalesce(p_fields->>'work_phone',c.work_phone),100),fax=left(coalesce(p_fields->>'fax',c.fax),100),billing_code=left(coalesce(p_fields->>'billing_code',c.billing_code),100),sales_person=left(coalesce(p_fields->>'sales_person',c.sales_person),250),cell=left(coalesce(p_fields->>'cell',c.cell),100),email=left(coalesce(p_fields->>'email',c.email),300),identity_status='verified',review_required=false,updated_at=now() where c.id=v_id;
  insert into public.gp_customer_events(customer_id,event_type,note,details,recorded_by) values(v_id,'profile_update',btrim(p_reason),jsonb_build_object('previous',oldrow,'changes',p_fields),auth.uid());
  perform public.gp_customer_relink_reports();return v_id;
 end$$;
@@ -242,7 +243,7 @@ declare changed integer;begin
  perform pg_advisory_xact_lock(hashtextextended('gp-customer-registry',0));perform set_config('gp.customer_manual_link','yes',true);
  if p_source='collections' then update public.collection_cases set customer_id=p_customer_id,customer_link_method='manual' where id=p_record_id::uuid and not legacy_unmatched and legacy_linked_to is null;
  elsif p_source='quotes' then update public.outstanding_quotes set customer_id=p_customer_id,customer_link_method='manual' where quote_number=p_record_id::bigint;
- elsif p_source='account_note' then update public.collection_account_notes set customer_id=p_customer_id where id=p_record_id::bigint;
+ elsif p_source='account_note' then update public.collection_account_notes set customer_id=p_customer_id,customer_link_method='manual' where id=p_record_id::bigint;
  else raise exception 'Unsupported record type';end if;
  get diagnostics changed=row_count;if changed<>1 then raise exception 'Record not found or requires GlassQuest identity matching first';end if;
  if p_source='quotes' then update public.gp_customer_quote_history set customer_id=p_customer_id where quote_number=p_record_id::bigint;end if;

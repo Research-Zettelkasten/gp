@@ -17,6 +17,9 @@ create policy fixture_account_notes_read on public.collection_account_notes for 
 create policy fixture_quotes_read on public.outstanding_quotes for select to authenticated using(private.gp_has_permission('quotes'));
 \ir ../supabase/migrations/2026-11-18-customer-registry.sql
 \ir ../supabase/migrations/2026-11-18-customer-registry.sql
+create function auth.role() returns text language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),'authenticated')$$;
+\ir ../supabase/migrations/2026-11-18-automatic-collections.sql
+\ir ../supabase/migrations/2026-11-18-automatic-collections.sql
 create function pg_temp.check_that(ok boolean,msg text) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'ASSERTION FAILED: %',msg;end if;end$$;
 create function pg_temp.expect_error(statement text,needle text) returns void language plpgsql as $$begin begin execute statement;exception when others then if position(needle in sqlerrm)>0 then return;else raise;end if;end;raise exception 'Expected error containing %',needle;end$$;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
@@ -72,4 +75,42 @@ select set_config('request.jwt.claim.sub','44444444-4444-4444-8444-444444444444'
 set role authenticated;
 select pg_temp.check_that((select count(*)=0 from public.gp_customers),'inactive administrators cannot read registry');
 reset role;
-select 'PASS: customer directory, aliases, ambiguous identity, append-only histories, source links and module-level RLS';
+-- Automatic archival requires a current, matched, explicit invoice zero.
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+set role authenticated;
+select public.gp_collections_begin_snapshot('qbo','verify.csv','2026-11-18','invoice_verification','full',repeat('b',64),1) as verification_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
+values(:'verification_id','qbo','INV|EXAMPLE CUSTOMER|100','INV|EXAMPLE CUSTOMER|100','Example Customer','EXAMPLE CUSTOMER','100','invoice','2026-01-01',50,0,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'verification_id');
+select pg_temp.check_that((select status='reconciled' and cleared_import_id=:'verification_id' from public.collection_cases where id=:'case_id'),'verified zero automatically archived');
+select pg_temp.check_that((select auto_archived_count=1 from public.collection_imports where id=:'verification_id'),'automatic archive counted on snapshot');
+select pg_temp.check_that((select count(*)=1 from public.collection_actions where case_id=:'case_id' and details->>'mode'='automatic'),'automatic archive attributed in original case history');
+select pg_temp.check_that((select count(*)=1 from public.collection_actions where case_id=:'case_id' and note='Original invoice collection note'),'automatic archive preserves existing notes');
+select public.gp_collections_reconcile_now();
+select pg_temp.check_that((select count(*)=1 from public.collection_actions where case_id=:'case_id' and details->>'mode'='automatic'),'reconciliation retry does not duplicate clearance');
+-- Newer positive reports reopen the case; payments by themselves never close it.
+select public.gp_collections_begin_snapshot('qbo','reappeared.csv','2026-11-18','open_invoices','full',repeat('c',64),2) as positive_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
+values(:'positive_id','qbo','INV|EXAMPLE CUSTOMER|100','INV|EXAMPLE CUSTOMER|100','Example Customer','EXAMPLE CUSTOMER','100','invoice','2026-01-01',50,25,'{"balance_present":true}'),
+(:'positive_id','qbo','PAYMENT-TEST',null,'Example Customer','EXAMPLE CUSTOMER','P-1','payment','2026-01-02',-25,-25,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'positive_id');
+select pg_temp.check_that((select status='open' and qbo_balance=25 from public.collection_cases where id=:'case_id'),'new positive invoice automatically reopened despite customer payment');
+select pg_temp.check_that((select count(*)=1 from public.collection_actions where case_id=:'case_id' and details->>'event'='automatic_reopen'),'reopening audited');
+-- Missing from a complete report remains research, never proof of settlement.
+select public.gp_collections_begin_snapshot('qbo','missing.csv','2026-11-18','open_invoices','full',repeat('d',64),1) as missing_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
+values(:'missing_id','qbo','OTHER-PAYMENT','Example Customer','EXAMPLE CUSTOMER','P-2','payment','2026-01-03',-25,-25,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'missing_id');
+select pg_temp.check_that((select status='open' from public.collection_cases where id=:'case_id'),'missing invoice with payment remains active');
+reset role;
+-- Cross-source names are connected only by an explicit alias decision.
+update public.collection_cases set invoice_date='2026-01-01',mainstreet_balance=50 where invoice_number='200';
+select id as alias_case_id from public.collection_cases where invoice_number='200' \gset
+set role authenticated;
+select public.gp_collections_begin_snapshot('qbo','alias-verification.csv','2026-11-18','invoice_verification','partial',repeat('e',64),1) as alias_verification_id \gset
+insert into public.collection_source_rows(import_id,source,external_key,case_key,customer_name,normalized_customer,invoice_number,transaction_type,transaction_date,original_amount,open_balance,raw)
+values(:'alias_verification_id','qbo','INV|EXAMPLE CUSTOMER|200','INV|EXAMPLE CUSTOMER|200','Example Customer','EXAMPLE CUSTOMER','200','invoice','2026-01-01',50,0,'{"balance_present":true}');
+select public.gp_collections_commit_snapshot(:'alias_verification_id');
+select pg_temp.check_that((select status='reconciled' from public.collection_cases where id=:'alias_case_id'),'verified customer alias permits matching same numbered dated invoice');
+reset role;
+select 'PASS: customer identities, unified history, RLS, automatic verified-zero archival, retained notes and positive-balance reopening';

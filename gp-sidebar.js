@@ -6,7 +6,7 @@
   'use strict';
   const MODULE_GROUPS = [
     {key:'daily', label:'DAILY WORK', links:[['navLinkTime','Time Clock','◷'],['navLinkComm','Commission & WOs','▤']]},
-    {key:'customer', label:'CUSTOMER OPERATIONS', links:[['navLinkQuotes','Quote Call-Backs','◉'],['navLinkCollections','Collections','▥']]},
+    {key:'customer', label:'CUSTOMER OPERATIONS', links:[['navLinkCustomers','Customers','♙'],['navLinkQuotes','Quote Call-Backs','◉'],['navLinkCollections','Collections','▥']]},
     {key:'field', label:'FIELD OPERATIONS', links:[['navLinkFleet','Vehicle Check & Safety','◇']]}
   ];
   // Interior pages stay in their existing modules; the sidebar activates their
@@ -351,6 +351,7 @@
     nav=document.getElementById('mainNavBar');if(!nav||nav.dataset.gpSidebarReady)return;
     nav.dataset.gpSidebarReady='true';nav.setAttribute('aria-label','GLASSPRO modules and Management sections');
     nav.classList.add('gp-sidebar');
+    if(!nav.querySelector('#navLinkCustomers')){const customerLink=document.createElement('a');customerLink.id='navLinkCustomers';customerLink.href='customers.html';customerLink.textContent='Customers';customerLink.className='gp-nav-btn';nav.append(customerLink);}
     moduleLinks=new Map([...nav.querySelectorAll('a[href][id]')].map(a=>[a.id,a]));
     nav.replaceChildren();
     const brand=document.createElement('div');brand.className='gp-side-brand';

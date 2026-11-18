@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="portal-utils.js"></script>
+  <script src="portal-utils.js?v=20261118c"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Quote Call-Back & Admin Review Portal</title>
@@ -163,7 +163,7 @@
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
-<script src="gp-sidebar.js?v=20261118" defer></script>
+<script src="gp-sidebar.js?v=20261118c" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
@@ -1141,7 +1141,7 @@
     // INITIALIZATION & STATE SYNC
     // =======================================================================
     function quoteFromCloudRow(r){
-      return {quote_number:r.quote_number,quote_date:r.quote_date,module:r.module,customer_name:r.customer_name,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"Unassigned",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length>0?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""};
+      return {customer_id:r.customer_id,quote_number:r.quote_number,quote_date:r.quote_date,module:r.module,customer_name:r.customer_name,phone:r.phone,has_cell:r.has_cell,subtotal:Number(r.subtotal||0),tax:Number(r.tax||0),total:Number(r.total||0),csr:r.original_csr||"Unassigned",parts:r.parts||[],status:r.status||"open",contact_attempts:r.contact_attempts||0,call_data:r.call_data&&Object.keys(r.call_data).length>0?r.call_data:null,admin_coaching_note:r.admin_coaching_note||""};
     }
 
     function startQuoteRealtimeSync(){
@@ -1221,6 +1221,7 @@
       refreshAllViews();
       startQuoteRealtimeSync();
       lucide.createIcons();
+      const requestedQuote=new URLSearchParams(location.search).get("quote");if(requestedQuote&&/^\d+$/.test(requestedQuote))openCallbackModal(Number(requestedQuote));
     }
 
     async function addCompetitorCloud(name,specialty,active=true){
@@ -1443,6 +1444,7 @@
       const quote = quotesState.find(q => q.quote_number === Number(quoteNumber));
       if (!quote) return;
       activeModalQuoteNumber = quote.quote_number;
+      let customerLink=document.getElementById("quoteCustomerProfileLink");if(!customerLink){customerLink=document.createElement("a");customerLink.id="quoteCustomerProfileLink";customerLink.style.cssText="display:inline-block;font-size:12px;font-weight:700;margin-top:10px;color:#93c5fd";document.getElementById("modalQuoteNumber").parentElement.append(customerLink);}customerLink.hidden=!quote.customer_id;customerLink.href=quote.customer_id?"customers.html?customer="+encodeURIComponent(quote.customer_id):"customers.html";customerLink.textContent="Open customer profile & unified notes";
 
       document.getElementById("modalCustomerName").textContent = quote.customer_name;
       document.getElementById("modalPhoneText").textContent = quote.phone || "No Phone Listed";
