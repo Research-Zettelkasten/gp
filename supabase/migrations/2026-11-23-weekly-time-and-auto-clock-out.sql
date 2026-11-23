@@ -44,8 +44,12 @@ create or replace function private.gp_saved_shift_end(t public.time_logs,p_start
 returns timestamptz language plpgsql stable set search_path='' as $$declare a integer;b integer;e timestamptz;begin
  a:=private.gp_punch_minutes(t.clock_in);b:=private.gp_punch_minutes(t.clock_out);
  if a is null or b is null or b=a then raise exception 'Existing timecard needs a valid, nonzero clock-out time.';end if;
- e:=coalesce(t.session_ended_at,(t.work_date::timestamp+make_interval(mins=>b)+case when b<a then interval '1 day' else interval '0 days' end) at time zone 'America/New_York');
- if e<=p_start or e>clock_timestamp() or e-p_start>interval '25 hours' or t.decimal_hours::numeric<=0 then raise exception 'Review the existing timecard duration before clearing the active clock.';end if;
+ e:=(t.work_date::timestamp+make_interval(mins=>b)+case when b<a then interval '1 day' else interval '0 days' end) at time zone 'America/New_York';
+ -- A manager may have corrected clock_out since automatic closure. Honor the
+ -- corrected punch; retain exact seconds only when saved metadata still agrees.
+ if t.session_ended_at is not null and date_trunc('minute',t.session_ended_at at time zone 'America/New_York')=date_trunc('minute',e at time zone 'America/New_York') then e:=t.session_ended_at;end if;
+ if e is null or e<=p_start or e>clock_timestamp() or e-p_start>interval '25 hours' or coalesce(t.decimal_hours::text,'')!~'^\d+(\.\d+)?$' then raise exception 'Review the existing timecard duration before clearing the active clock.';end if;
+ if t.decimal_hours::numeric<=0 or t.decimal_hours::numeric>25 then raise exception 'Review the existing timecard hours before clearing the active clock.';end if;
  return e;
 end$$;
 

@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.18.2 — customer registry and automatic Collections reconciliation**.
+Current release: **2026.11.23.1 — weekly timecards and automatic missed clock-outs**.
+
+See [weekly time and missed clock-out setup](INSTALL-WEEKLY-TIME-AND-AUTO-CLOCK-OUT.md) for the SQL installer, 12:01 AM / 5 PM policy, emergency-call exception, saved-timecard recovery and manager review queue.
 
 See [installation and usage](INSTALL-CUSTOMERS-AND-AUTO-COLLECTIONS.md) for the combined SQL install, private customer-directory import, note permissions, identity review and payment-verification behavior.
 
@@ -24,4 +26,4 @@ Install SQL before deploying the website. The update does not apply migrations t
 
 ## Checks
 
-Run `node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs`. GitHub Actions additionally runs PostgreSQL permission/transaction tests, clock-out concurrency regressions and browser workflows with synthetic data. Preview screenshots cover desktop/mobile and both themes.
+Run `node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs`. GitHub Actions additionally runs PostgreSQL permission/transaction tests, clock-out concurrency regressions and browser workflows with synthetic data. Preview screenshots cover desktop/mobile and both themes.

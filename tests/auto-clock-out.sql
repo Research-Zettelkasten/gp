@@ -23,6 +23,14 @@ select public.test_expect_error('select public.gp_review_auto_clock_out('||:regu
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 select public.gp_review_auto_clock_out(:regular_review,'Verified actual end time and lunch punches with employee');
 select public.test_assert((select clock_out_review_status='approved' from public.time_logs where session_started_at_ms=:regular_start),'review is explicitly approved');
+select set_config('request.jwt.claim.sub','',false);
+select public.test_clock_at('2026-11-11 08:00-05') as correction_start \gset
+select public.gp_auto_clock_out_due();
+select id as correction_review from public.gp_shift_close_reviews where session_started_at_ms=:correction_start \gset
+update public.time_logs set clock_out='16:00',decimal_hours=8 where session_started_at_ms=:correction_start;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+select public.gp_review_auto_clock_out(:correction_review,'Corrected actual end time to 4 PM after employee verification');
+select public.test_assert((select clock_out='16:00' and session_ended_at='2026-11-11 16:00-05'::timestamptz and decimal_hours::numeric=8 from public.time_logs where session_started_at_ms=:correction_start),'review updates completion metadata to match corrected actual punches');
 -- Reproduce the legacy save-success/delete-failure collision without adding payroll.
 select set_config('request.jwt.claim.sub','',false);
 select public.test_clock_at('2026-11-19 07:51-05') as stale_start \gset
@@ -77,4 +85,24 @@ select public.gp_auto_clock_out_due();
 select public.test_clock_at(clock_timestamp()) as future_start \gset
 select public.test_assert(public.gp_auto_clock_out_due()=0,'not-yet-due sessions stay active');
 delete from public.active_time_sessions where started_at_ms=:future_start;
+-- Browser-visible review evidence retains account boundaries through actual RLS.
+grant usage on schema auth,private to authenticated;
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+set role authenticated;
+select public.test_assert((select count(*)=0 from public.gp_shift_close_reviews),'another employee cannot read review snapshots');
+reset role;
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
+set role authenticated;
+select public.test_assert((select count(*)>0 from public.gp_shift_close_reviews),'employee can see own automatic closure evidence');
+reset role;
+select set_config('request.jwt.claim.sub','',false);
+-- Legacy text-hours installations use the identical automatic path.
+drop trigger gp_time_exact_lunch on public.time_logs;
+alter table public.time_logs alter column decimal_hours type text using decimal_hours::text;
+create trigger gp_time_exact_lunch before insert or update of clock_in,clock_out,lunch_out_time,lunch_in_time,break_minutes,decimal_hours on public.time_logs for each row execute function public.gp_apply_exact_lunch();
+\ir ../supabase/migrations/2026-11-23-weekly-time-and-auto-clock-out.sql
+select public.test_clock_at('2026-11-10 08:00-05') as text_auto_start \gset
+update public.active_time_sessions set lunch_out_at='2026-11-10 12:00-05',lunch_in_at='2026-11-10 13:00-05';
+select public.gp_auto_clock_out_due();
+select public.test_assert((select decimal_hours::numeric=8 and break_minutes=60 and auto_clocked_out from public.time_logs where session_started_at_ms=:text_auto_start),'automatic clock-out supports legacy text hours with exact lunch');
 \echo 'PASS: missed clock-out policy, review queue, legacy recovery, duplicate protection, DST, lunches and atomic audit rollback.'
