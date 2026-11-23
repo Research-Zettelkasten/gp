@@ -73,6 +73,8 @@ jobs:
         run: node tests/clock-in-race.cjs
       - name: Administrator live correction and per-account navigation permissions
         run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-navigation.sql
+      - name: Live lunch corrections, payroll and audit rollback
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-lunch.sql
       - name: Concurrent direct correction and clock-out
         run: node tests/admin-live-race.cjs
       - name: Complete installation with protected Cron permissions

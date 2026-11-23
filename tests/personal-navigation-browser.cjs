@@ -4,7 +4,7 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
 (()=>{
  const create=window.supabase.createClient;
  const uid=window.__testRole==='admin'?'11111111-1111-4111-8111-111111111111':'22222222-2222-4222-8222-222222222222';
- window.__menuWrites=[];window.__directCorrections=[];
+ window.__menuWrites=[];window.__directCorrections=[];window.__lunchCorrections=[];
  window.supabase.createClient=()=>{
   const client=create(),from=client.from,rpc=client.rpc;
   client.from=table=>{
@@ -25,6 +25,14 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
     if(window.__failLiveCorrection)return{data:null,error:{message:'Synthetic correction save failure'}};
     window.__directCorrections.push(args);window.__active.approved_clock_in_at=args.p_requested_at;
     return{data:{applied_to:'active_shift',request_id:700},error:null};
+   }
+   if(name==='gp_admin_correct_live_lunch'){
+    if(window.__failLunchCorrection)return{data:null,error:{message:'Lunch punches changed while you were editing.'}};
+    window.__lunchCorrections.push(args);
+    Object.assign(window.__active,{lunch_out_at:args.p_lunch_out,lunch_in_at:args.p_lunch_back,break_minutes:0});
+    const minutes=GP_CLOCK.preview(window.__active).breakMinutes;
+    if(args.p_lunch_back)window.__active.break_minutes=minutes;
+    return{data:{ok:true,break_minutes:window.__active.break_minutes},error:null};
    }
    return rpc(name,args);
   };return client;
@@ -91,6 +99,31 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   await admin.evaluate(()=>window.__failLiveCorrection=false);await admin.getByRole('button',{name:'Apply correction now',exact:true}).click();await admin.locator('#gpLiveCorrectionDialog').waitFor({state:'hidden'});
   assert.equal(await admin.evaluate(()=>window.__directCorrections[0].p_expected_start_ms),original);assert.equal(await admin.evaluate(()=>window.__active.started_at_ms),original);
   await admin.waitForFunction(before=>Number(document.querySelector('[data-live-hours]').textContent)>=before+.49,beforeHours);
+  const lunch=admin.locator('#gpLiveLunchDialog'),lunchButton=admin.getByRole('button',{name:'Correct Lunch',exact:true});
+  const lunchBefore=await admin.evaluate(()=>({out:window.__active.lunch_out_at,back:window.__active.lunch_in_at}));
+  await lunchButton.click();await lunch.locator('#gpLiveLunchApply:not(:disabled)').waitFor();
+  assert.equal(await lunch.locator('#gpLiveLunchMode').inputValue(),'complete');
+  assert.equal(await lunch.locator('#gpLiveLunchOut').inputValue(),await admin.evaluate(iso=>GP_CLOCK.localInput(Date.parse(iso)),lunchBefore.out));
+  const correctedBack=await admin.evaluate(iso=>GP_CLOCK.localInput(Date.parse(iso)+900000),lunchBefore.back);
+  await lunch.locator('#gpLiveLunchBack').fill(correctedBack);
+  await lunch.locator('.gp-live-correction-preview').filter({hasText:'45 unpaid lunch minutes'}).waitFor();
+  await lunch.getByLabel('Reason for correction').fill('Verified the actual return from lunch with the employee.');
+  await admin.evaluate(()=>window.__failLunchCorrection=true);await lunch.getByRole('button',{name:'Apply correction now'}).click();
+  await lunch.getByRole('status').filter({hasText:'changed while you were editing'}).waitFor();
+  assert.equal(await lunch.locator('#gpLiveLunchBack').inputValue(),correctedBack);
+  await admin.evaluate(()=>window.__failLunchCorrection=false);await lunch.getByRole('button',{name:'Apply correction now'}).click();
+  await lunch.waitFor({state:'hidden'});await admin.locator('#adminActiveTimeTable').getByText('Lunch: 45m').waitFor();
+  const lunchSaved=await admin.evaluate(()=>window.__lunchCorrections[0]);
+  assert.equal(lunchSaved.p_expected_start_ms,original);
+  assert.equal(lunchSaved.p_expected_lunch_back,lunchBefore.back);
+  assert.equal(lunchSaved.p_lunch_out,lunchBefore.out);
+  assert.equal(await admin.evaluate(()=>window.__active.started_at_ms),original);
+  await lunchButton.click();await lunch.locator('#gpLiveLunchApply:not(:disabled)').waitFor();
+  await lunch.getByLabel('Lunch status').selectOption('none');
+  assert.equal(await lunch.getByLabel('Lunch Out',{exact:true}).isVisible(),false);
+  await lunch.getByLabel('Reason for correction').fill('Verified both lunch punches were entered by mistake.');
+  await lunch.getByRole('button',{name:'Apply correction now'}).click();await lunch.waitFor({state:'hidden'});
+  await admin.locator('#adminActiveTimeTable').getByText('No lunch yet').waitFor();
   await admin.getByRole('button',{name:'Customize menu',exact:true}).click();
   await admin.locator('[data-menu-control="show-adminMOSPane"]').uncheck();
   const team=admin.locator('[data-menu-item="navLinkAdmin"]');await team.locator('summary').click();await team.getByLabel('Activity History',{exact:true}).uncheck();
@@ -109,6 +142,10 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   await admin.locator('#gpMenuEditor').screenshot({path:'test-results/personal-menu-mobile-dark.png',animations:'disabled'});
   await admin.keyboard.press('Escape');assert.equal(await admin.getByRole('button',{name:'Open GLASSPRO navigation',exact:true}).evaluate(e=>e===document.activeElement),true);
   await admin.locator('[data-correct-clock-user]').first().click();await admin.locator('#gpLiveCorrectionApply:not(:disabled)').waitFor();await admin.locator('#gpLiveCorrectionDialog').screenshot({path:'test-results/admin-live-correction-mobile-dark.png',animations:'disabled'});await admin.getByRole('button',{name:'Cancel',exact:true}).click();
+  await lunchButton.click();await lunch.locator('#gpLiveLunchApply:not(:disabled)').waitFor();
+  assert.equal(await lunch.evaluate(dialog=>dialog.getBoundingClientRect().width<=window.innerWidth),true);
+  await lunch.screenshot({path:'test-results/admin-live-lunch-mobile-dark.png',animations:'disabled'});
+  await lunch.getByRole('button',{name:'Cancel',exact:true}).click();
 
   // An old account response must not replace a menu edited while its request was pending.
   const late=await context.newPage();late.on('pageerror',e=>errors.push(e.message));await late.addInitScript(()=>window.__deferNavRead=true);

@@ -31,8 +31,10 @@ self.addEventListener('notificationclick', event => {
       return current.origin === home.origin && current.pathname === home.pathname;
     });
     if (existing) {
-      const tab = await existing.navigate(target.href);
-      if (tab) return tab.focus();
+      try {
+        const tab = await existing.navigate(target.href);
+        if (tab) return await tab.focus();
+      } catch { /* Open a new window if the previous tab closed. */ }
     }
     return self.clients.openWindow(target.href);
   })());

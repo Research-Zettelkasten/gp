@@ -17,6 +17,8 @@ The timekeeping feature installers no longer install extensions, modify Cron per
 
 See [personal navigation, live corrections and quote uploads](NAVIGATION-LIVE-CORRECTIONS-AND-QUOTE-UPLOADS.md) for the combined SQL installer, personalized sidebar controls, consolidated Team Management tabs, immediate administrator clock-in correction and four-decimal CSV support.
 
+Administrators can use **Team Management → Time & Attendance → Live Time Monitoring → Correct Lunch** to enter or fix Lunch Out and Lunch Back, record an ongoing break, or clear a mistaken lunch. The active shift and the audit record save together. Run the [live lunch correction SQL](supabase/migrations/2026-11-23-admin-live-lunch-correction.sql) in Supabase after the Live Punch Approvals update. For a completed shift, use **Edit Punch** in **Shift History & Geotags**.
+
 Lunch Exception Review now has independent Monday–Sunday week navigation. The current review week stays on the prior week throughout Monday for weekend follow-up and advances at midnight Eastern on Tuesday. Use Previous/Next week, Jump to a date, or All outstanding to review older pending and rejected items. Rollover never resolves or deletes exceptions. See [lunch review weeks](LUNCH-REVIEW-WEEKS.md). The Tuesday rollover needs no separate SQL.
 
 See [live punch approval and appearance setup](INSTALL-LIVE-PUNCH-APPROVALS-AND-THEME.md) for installation, employee requests, administrator review and Display preferences.

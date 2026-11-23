@@ -89,7 +89,7 @@
         await detach(client, subscription);
         subscription = null;
       }
-      let enabled = Boolean(subscription && currentOwner === user.auth_user_id);
+      let enabled = Boolean(subscription && Notification.permission === 'granted' && currentOwner === user.auth_user_id);
       function showState(message) {
         button.hidden = false;
         button.textContent = enabled ? 'Disable notifications' : 'Enable notifications';

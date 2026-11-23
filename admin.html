@@ -677,7 +677,8 @@
 <script src="gp-ux.js?v=20261123d" defer></script>
 <script src="gp-time-core.js?v=20261123c"></script>
 <script src="gp-admin-live-correction.js?v=20261123d"></script>
-<link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123d">
+<script src="gp-admin-live-lunch.js?v=20261123g"></script>
+<link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123g">
 <script src="gp-clock-in-change.js?v=20261123e"></script>
 <link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
 <script src="gp-clock.js?v=20261123b"></script>
@@ -1278,7 +1279,7 @@
         </div>
       </div>
 
-      <div id="gpWidgetLiveTime" class="card live-sync-card gp-widget-section"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Review current shifts and use Clock Out to end a confirmed active shift with an audit reason. Timecards and lunch reviews update automatically.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th><th>Action</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
+      <div id="gpWidgetLiveTime" class="card live-sync-card gp-widget-section"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Correct clock-in or lunch punches while an employee is working, or use Clock Out to end the shift. Each change requires an audit reason.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th><th>Action</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
       <div id="gpWidgetTimeHistory" class="card gp-widget-section"><div class="card-title"><span>Shift History & Geotags — By Employee / Selected Week</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Selected Week CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Only shifts belonging to the selected Monday–Sunday week are shown here. Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
     </div>
 
@@ -1938,17 +1939,14 @@
     function renderActiveTimeMonitor(){
       const body=document.getElementById("adminActiveTimeTable");if(!body)return;
       const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));
-      const fingerprint=JSON.stringify([activeTimeSessionsConfirmed,active.map(e=>[e.auth_user_id,e.employee_name,e.department,e.started_at_ms,e.started_at,e.approved_clock_in_at,e.lunch_out_at,e.lunch_in_at,e.location,e.coords])]);
+      const fingerprint=JSON.stringify([activeTimeSessionsConfirmed,active.map(e=>[e.auth_user_id,e.employee_name,e.department,e.started_at_ms,e.started_at,e.approved_clock_in_at,e.lunch_out_at,e.lunch_in_at,e.break_minutes,e.location,e.coords])]);
       if(body._gpFingerprint!==fingerprint){body._gpFingerprint=fingerprint;body.innerHTML=active.map(e=>{
         const ms=Date.parse(e.approved_clock_in_at||"")||Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now();
-        const gross=Math.max(0,(Date.now()-ms)/3600000);
-        const unpaid=GP_LUNCH.liveBreakMinutes(e)/60;
-        const elapsed=Math.max(0,gross-unpaid);
+        const {hours:elapsed,breakMinutes:unpaid,onLunch}=GP_CLOCK.preview(e);
         const started=new Date(ms);
-        const onLunch=!!e.lunch_out_at&&!e.lunch_in_at;
-        const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${Math.round(unpaid*60)}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
+        const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${unpaid}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
         const map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";
-        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);"><span data-live-hours>${format00(elapsed)}</span> hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<div class="gp-live-clock-actions"><button type="button" class="gp-clock-action" data-correct-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-clock-start="${Number(e.started_at_ms)}">Correct clock-in</button><button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button></div>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
+        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);"><span data-live-hours>${format00(elapsed)}</span> hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<div class="gp-live-clock-actions"><button type="button" class="gp-clock-action" data-correct-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-clock-start="${Number(e.started_at_ms)}">Correct clock-in</button><button type="button" class="gp-clock-action" data-correct-lunch-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-lunch-start="${Number(e.started_at_ms)}">Correct Lunch</button><button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button></div>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
       }).join("")||`<tr><td colspan="7" style="text-align:center;color:var(--muted);">${activeTimeSessionsConfirmed?"No employees are currently clocked in.":"Active shifts could not be verified. Refresh before making changes."}</td></tr>`;}
       const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
@@ -3019,6 +3017,7 @@
       window.GP_CLOCK_IN?.mountAdmin?.({client:supabaseClient,onSaved:()=>loadAdminData()});
       window.GP_ADMIN_CLOCK.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ADMIN_LIVE.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
+      window.GP_ADMIN_LUNCH.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ANNOUNCEMENTS.mount(supabaseClient, true)?.();
       startAdminLiveSync();
     });

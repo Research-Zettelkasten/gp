@@ -1,6 +1,6 @@
 {
   "version": "2026.11.23.7",
-  "notes": "Add opt-in Web Push for team announcements and restore the static GLASSPRO app icon. See WEB-PUSH-SETUP.md for the SQL, Supabase sender and keys.",
+  "notes": "Add administrator live lunch corrections, opt-in Web Push for team announcements, and the restored GLASSPRO app icon.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }
