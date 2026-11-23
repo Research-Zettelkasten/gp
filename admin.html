@@ -680,7 +680,8 @@
 <script src="gp-admin-live-lunch.js?v=20261123g"></script>
 <link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123g">
 <script src="gp-clock-in-change.js?v=20261123e"></script>
-<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
+<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123h">
+<script src="gp-lunch-requests.js?v=1" defer></script>
 <script src="gp-clock.js?v=20261123b"></script>
 <script src="gp-admin-clock.js?v=20261123b"></script>
 <script src="gp-admin-clock-review.js?v=20261123b"></script>
@@ -1126,6 +1127,15 @@
         </section>
         
 
+      <section id="gpLunchRequestReview" class="card" aria-labelledby="gpLunchRequestReviewTitle">
+        <div class="card-title">
+          <span id="gpLunchRequestReviewTitle">Lunch Correction Requests</span>
+          <button type="button" class="btn-outline" data-lunch-review-refresh>Refresh Requests</button>
+        </div>
+        <p class="gp-lunch-request-note">Review employee requests to correct Lunch Out and Lunch Back.</p>
+        <p class="gp-correction-status" data-lunch-review-status role="status"></p>
+        <div class="gp-clock-correction" data-lunch-review-list>Loading requests…</div>
+      </section>
       <section id="gpWidgetLunchReview" class="card gp-lunch-review gp-widget-section" aria-label="Lunch exceptions requiring manager review">
         <div class="card-title" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
           <span>Lunch Exception Review <span id="lunchPendingCount" class="badge badge-warn">0 pending</span></span>
@@ -3018,6 +3028,7 @@
       const pane = VALID_ADMIN_PANES.has(hashPane) ? hashPane : (dashboardPrefs.defaultPane || "adminOverviewPane");
       showAdminSubTab(pane, getDashboardButtonForPane(pane));
       window.GP_CLOCK_IN?.mountAdmin?.({client:supabaseClient,onSaved:()=>loadAdminData()});
+      GP_LUNCH_REQUESTS.mountAdmin({client:supabaseClient,onReviewed:()=>loadAdminData()});
       window.GP_ADMIN_CLOCK.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ADMIN_LIVE.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ADMIN_LUNCH.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});

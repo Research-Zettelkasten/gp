@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.8",
-  "notes": "Add on-shift location requests and targeted push alerts, with a 50-foot accuracy target for new GPS readings.",
+  "version": "2026.11.23.9",
+  "notes": "Add employee lunch correction requests with manager approval for live shifts and saved timecards.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }

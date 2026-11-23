@@ -4,11 +4,18 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
 (()=>{
  const create=window.supabase.createClient;
  const uid=window.__testRole==='admin'?'11111111-1111-4111-8111-111111111111':'22222222-2222-4222-8222-222222222222';
- const locationId='50000000-0000-4000-8000-000000000001',locationKey='__live_location';
+ const locationId='50000000-0000-4000-8000-000000000001',locationKey='__live_location',lunchKey='__employee_lunch_request';
  window.__menuWrites=[];window.__directCorrections=[];window.__lunchCorrections=[];
  window.supabase.createClient=()=>{
   const client=create(),from=client.from,rpc=client.rpc;
   client.from=table=>{
+   if(table==='gp_lunch_requests'){
+    const current=JSON.parse(localStorage.getItem(lunchKey)||'null');
+    let status;
+    const q={select(){return q;},eq(key,value){if(key==='status')status=value;return q;},order(){return q;},async limit(){
+      return {data:current && (!status || current.status===status)?[current]:[],error:null};
+    }};return q;
+   }
    if(table==='gp_live_location_requests'){
     const q={select(){return q;},eq(){return q;},async maybeSingle(){
       return {data:JSON.parse(localStorage.getItem(locationKey)||'null'),error:null};
@@ -22,6 +29,19 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
    }};return q;
   };
   client.rpc=async(name,args)=>{
+   if(name==='gp_request_lunch_change'){
+    const {employee_name,started_at,lunch_out_at,lunch_in_at,break_minutes}=window.__active;
+    localStorage.setItem(lunchKey,JSON.stringify({id:700,employee_name,shift_start:started_at,
+      previous_lunch:{out:lunch_out_at,back:lunch_in_at,minutes:break_minutes},
+      requested_out:args.p_lunch_out,requested_back:args.p_lunch_back,reason:args.p_reason,status:'pending'}));
+    return{data:700,error:null};
+   }
+   if(name==='gp_review_lunch_change'){
+    const request=JSON.parse(localStorage.getItem(lunchKey));
+    request.status=args.p_approve?'approved':'rejected';request.review_note=args.p_note;
+    localStorage.setItem(lunchKey,JSON.stringify(request));
+    return{error:null};
+   }
    if(name==='gp_request_live_location'){
     localStorage.setItem(locationKey,JSON.stringify({id:locationId,
       session_started_at_ms:args.p_expected_start_ms,requester_name:'Test Administrator',
@@ -175,6 +195,22 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   await locationDialog.getByRole('button',{name:'Refresh status',exact:true}).click();
   assert.match(await locationDialog.getByRole('link',{name:'View shared location on map'}).getAttribute('href'),/30.833440%2C-83.288770$/);
   await locationDialog.getByRole('button',{name:'Close',exact:true}).click();
+  const requestTab=page.getByRole('button',{name:'Request Lunch Correction',exact:true});
+  await requestTab.click();
+  const requestPane=page.locator('#timeLunchRequestPane');
+  await requestPane.getByLabel('Shift',{exact:true}).selectOption({label:await requestPane.locator('option').first().textContent()});
+  await requestPane.getByLabel('Actual Lunch Back').fill(await page.evaluate(()=>GP_CLOCK.localInput(Date.parse(window.__active.lunch_in_at)+600000)));
+  await requestPane.getByLabel('Reason for correction').fill('I returned ten minutes after the recorded time.');
+  await requestPane.getByRole('button',{name:'Send Request',exact:true}).click();
+  await requestPane.getByText('Pending manager review',{exact:true}).waitFor();
+  const lunchReviews=admin.locator('#gpLunchRequestReview');
+  await lunchReviews.getByRole('button',{name:'Refresh Requests',exact:true}).click();
+  await lunchReviews.getByLabel('Manager review note').fill('Confirmed the actual return time with the employee.');
+  await lunchReviews.getByRole('button',{name:'Approve',exact:true}).click();
+  await lunchReviews.getByRole('status').filter({hasText:'Approved.'}).waitFor();
+  await page.getByRole('button',{name:'Live Punch Clock',exact:true}).click();
+  await requestTab.click();
+  await requestPane.getByText('Approved · Confirmed the actual return time with the employee.',{exact:true}).waitFor();
   await admin.getByRole('button',{name:'Customize menu',exact:true}).click();
   await admin.locator('[data-menu-control="show-adminMOSPane"]').uncheck();
   const team=admin.locator('[data-menu-item="navLinkAdmin"]');await team.locator('summary').click();await team.getByLabel('Activity History',{exact:true}).uncheck();
