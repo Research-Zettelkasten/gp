@@ -381,16 +381,16 @@
 
       <div class="desktop-split">
         <div>
+          <section id="gpLiveLocation" class="card gp-location-panel" aria-label="Location requests" hidden></section>
+          <details id="gpClockNotifications" class="card gp-location-panel gp-device-notifications">
+            <summary>Device notifications</summary>
+            <div class="gp-location-actions">
+              <button id="gpPushToggle" class="btn-outline" type="button" hidden>Enable notifications</button>
+              <p id="gpPushStatus" role="status"></p>
+            </div>
+          </details>
           <!-- PANE 1: LIVE PUNCH CLOCK -->
           <div id="timeLivePane">
-            <section id="gpLiveLocation" class="card gp-location-panel" aria-label="Location requests" hidden></section>
-            <details id="gpClockNotifications" class="card gp-location-panel gp-device-notifications">
-              <summary>Device notifications</summary>
-              <div class="gp-location-actions">
-                <button id="gpPushToggle" class="btn-outline" type="button" hidden>Enable notifications</button>
-                <p id="gpPushStatus" role="status"></p>
-              </div>
-            </details>
             <div class="card">
               <div class="card-title">
                 <span>Live Shift Chronograph</span>
