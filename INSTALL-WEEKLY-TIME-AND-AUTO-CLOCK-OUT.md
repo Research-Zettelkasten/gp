@@ -2,9 +2,10 @@
 
 ## Install on the existing portal
 
-1. In Supabase **SQL Editor → New query**, paste and run the complete contents of [`supabase/GLASSPRO-WEEKLY-TIME-INSTALL.sql`](supabase/GLASSPRO-WEEKLY-TIME-INSTALL.sql). Open **Raw** in GitHub to copy SQL only. The bundle includes the rerunnable November 16/17 clock-out prerequisites, the new November 23 migration, and the Cron installer.
-2. Refresh the deployed website. No build command or new keys are required.
-3. In Management → Time Hub → **Live Time Monitoring**, open **Automatic clock-out reviews**. The first installation run processes sessions already overdue, including old active clocks with matching saved timecards. Check and correct their hours before marking them reviewed.
+1. In Supabase **SQL Editor → New query**, paste and run the complete contents of [`supabase/GLASSPRO-WEEKLY-TIME-INSTALL.sql`](supabase/GLASSPRO-WEEKLY-TIME-INSTALL.sql). Open **Raw** in GitHub to copy SQL only. The atomic bundle includes the rerunnable November 16/17 clock-out prerequisites and the November 23 migration. It does not install extensions or change Cron permissions/jobs.
+2. Check **Supabase → Integrations → Cron** for an existing active `glasspro-missed-clock-out` job. If it is already running, keep it. Otherwise enable Cron through the Dashboard, then run `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql` separately. This scheduler file does not install extensions or modify managed permissions.
+3. Refresh the deployed website. No build command or new keys are required.
+4. In Management → Time & Attendance → **Live Time Monitoring**, open **Automatic clock-out reviews**. Running the scheduler file or the existing scheduled job processes overdue sessions, including old active clocks with matching saved timecards. Check and correct their hours before marking them reviewed.
 
 This code update does not directly change your live Supabase data. The SQL installation is required. Existing Auth/RLS, active-session, exact-lunch and lunch-review tables must already exist. The installer does not replace the entire schema, delete past weeks or convert payroll column types.
 
@@ -13,7 +14,7 @@ For projects where the earlier clock-out SQL is already installed, the two new c
 1. `supabase/migrations/2026-11-23-weekly-time-and-auto-clock-out.sql`
 2. `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql`
 
-The final query should show one active job named **glasspro-missed-clock-out** with schedule `* * * * *`. Re-running the installer updates the same named job; it does not schedule another copy. In Supabase Cron, check **Job runs** to confirm successful executions. The worker runs inside Supabase while browsers and employee devices are closed. It does not depend on a ChatGPT reminder or browser timer.
+The scheduler file's final query should show one active job named **glasspro-missed-clock-out** with schedule `* * * * *`. Re-running the scheduler file updates the same named job for the SQL Editor role. Re-running the feature installer leaves jobs unchanged. In Supabase Cron, check **Job runs** to confirm successful executions. The worker runs inside Supabase while browsers and employee devices are closed. It does not depend on a ChatGPT reminder or browser timer.
 
 ## Exact policy
 
@@ -68,4 +69,4 @@ An active shift estimate appears separately, with a combined estimate for the se
 
 Checks cover Eastern Monday rollover from a browser in another timezone, previous weeks, all-shift totals, exact cutoffs, daylight-saving changes, exact lunches, impossible defaults, legacy saved-card recovery, manager corrections, permissions, audit rollback, text/numeric hour storage, and concurrent scheduled/manual clock-outs. Browser workflows exercise week navigation, automatic rollover, stale-clock recovery and manager review using synthetic records.
 
-Scheduling follows the official [Supabase Cron installation](https://supabase.com/docs/guides/cron/install) and [job scheduling](https://supabase.com/docs/guides/cron/quickstart) interfaces. The SQL bundle installs a database job; applying the code in GitHub alone does not enable the job.
+Scheduling follows the official [Supabase Cron installation](https://supabase.com/docs/guides/cron/install) and [job scheduling](https://supabase.com/docs/guides/cron/quickstart) interfaces. The separate scheduler file sets up the database job after Cron is enabled in the Dashboard; the feature bundle and GitHub deployment do not enable it.

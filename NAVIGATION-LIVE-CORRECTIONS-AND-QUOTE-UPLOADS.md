@@ -4,9 +4,15 @@
 
 Deploy the current `main` branch. For account menu synchronization and direct administrator live corrections, run the complete contents of [`supabase/GLASSPRO-NAVIGATION-AND-LIVE-CORRECTIONS-INSTALL.sql`](supabase/GLASSPRO-NAVIGATION-AND-LIVE-CORRECTIONS-INSTALL.sql) in the existing project's **Supabase → SQL Editor → New query**. Open the file's **Raw** view in GitHub to copy it, then refresh the portal after the SQL completes.
 
-The combined installer includes the earlier timekeeping/clock-in approval prerequisites, quote import RPC, this update and the existing automatic clock-out schedule. It is additive, rerunnable and atomic, retains histories and processes already-overdue sessions using the existing 12:01 AM / 5 PM and emergency-call rules. It does not import the supplied customer CSV into the public repository or database. Existing portal Auth, employee, timekeeping and quote tables are prerequisites.
+The combined installer includes the earlier timekeeping/clock-in approval prerequisites, quote import RPC and this update. It is additive, rerunnable and atomic. It does not install extensions, change Cron permissions or jobs, or run an overdue clock-out sweep. Existing scheduled jobs remain in place. Existing portal Auth, employee, timekeeping and quote tables are prerequisites.
 
 If every earlier live-punch approval migration and quote-import RPC is already installed, only `supabase/migrations/2026-11-23-navigation-and-admin-live-corrections.sql` is needed. GitHub deployment does not apply SQL to the live project. The CSV precision fix and Tuesday lunch review controls are frontend changes and do not require additional SQL.
+
+## Cron permission error during an earlier installation
+
+If an earlier installer failed with `2BP01: dependent privileges exist` in Supabase's Cron setup, copy the corrected complete feature installer into a new SQL query and run it. Its feature transaction is independent of Cron setup and works without that extension. The earlier failed atomic installer must be rerun; deploying the website alone does not create its database functions.
+
+For automatic clock-out scheduling, first check **Supabase → Integrations → Cron** for an existing active `glasspro-missed-clock-out` job. If it is already running, keep it. If scheduling is not installed, enable Cron through the Dashboard and separately run `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql`. That scheduler file uses the existing extension, sets the named minute job and processes overdue sessions; it does not grant/revoke managed permissions. Check Job runs afterward. If enabling Cron itself returns a managed-permissions error, resolve that extension setup with Supabase support; live-punch corrections can still be installed independently.
 
 ## A simpler sidebar
 

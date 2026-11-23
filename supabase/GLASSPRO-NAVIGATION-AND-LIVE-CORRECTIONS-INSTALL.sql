@@ -1,6 +1,9 @@
--- GLASSPRO navigation, direct administrator live corrections and quote import prerequisites.
--- Copy the complete file into Supabase SQL Editor and run it on the existing project.
--- Atomic and rerunnable; the final Cron installer also processes overdue sessions.
+-- GLASSPRO feature installation for the existing portal.
+-- Run this COMPLETE file in Supabase SQL Editor. Atomic and rerunnable.
+-- Cron setup is separate: this transaction does not install extensions,
+-- change Cron permissions/jobs, or run an overdue clock-out sweep.
+-- Existing scheduled jobs remain in place. For new scheduling, see
+-- ENABLE-AUTO-CLOCK-OUT-CRON.sql after enabling Cron in the Dashboard.
 begin;
 
 
@@ -1061,19 +1064,6 @@ end$$;
 revoke all on function public.gp_admin_correct_live_clock_in(uuid,bigint,timestamptz,text) from public,anon;
 grant execute on function public.gp_admin_correct_live_clock_in(uuid,bigint,timestamptz,text) to authenticated;
 notify pgrst,'reload schema';
-
-
--- Existing automatic clock-out schedule and overdue catch-up
--- Run AFTER 2026-11-23-weekly-time-and-auto-clock-out.sql in the existing project.
--- This is a Supabase database job: it runs while all browsers are closed.
-create extension if not exists pg_cron with schema pg_catalog;
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
-select cron.schedule('glasspro-missed-clock-out','* * * * *','select public.gp_auto_clock_out_due();');
--- Catch up sessions already overdue when this update is installed.
-select public.gp_auto_clock_out_due();
--- Confirm one active job. All date/time decisions inside the worker use Eastern time.
-select jobid,jobname,schedule,active from cron.job where jobname='glasspro-missed-clock-out';
 
 
 commit;

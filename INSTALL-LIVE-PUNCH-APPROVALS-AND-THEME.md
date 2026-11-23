@@ -12,7 +12,9 @@ The tradeoff is that an employee who completely missed a clock-in, or could not 
 2. Copy the complete SQL into **Supabase → SQL Editor → New query** and run it on the existing GLASSPRO project.
 3. Refresh the deployed website. The new release removes employee Manual Shift Entry and exposes the approval queue in Management → Time & Geotags.
 
-The installer includes the earlier clock-out prerequisites, weekly/missed-clock-out migration, the new approval migration and the same named Cron job. It is additive and rerunnable. It applies the schema/functions atomically, retains existing histories and requests, and processes already-overdue sessions at the end. Existing Auth/RLS and exact-lunch tables are required. GitHub deployment alone does not apply SQL to the live project.
+The installer includes the earlier clock-out prerequisites, weekly/missed-clock-out migration and the new approval migration. It is additive, rerunnable and atomic. It retains existing histories and requests and leaves Cron setup, permissions and jobs unchanged. Existing Auth/RLS and exact-lunch tables are required. GitHub deployment alone does not apply SQL to the live project.
+
+For new automatic clock-out scheduling, enable Cron in **Supabase → Integrations → Cron**, then separately run `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql`. Existing active jobs can continue unchanged. The scheduler file processes overdue sessions when it is run; the feature installer does not. See the weekly setup guide for job verification.
 
 If every earlier timekeeping migration is already installed, `supabase/migrations/2026-11-23-clock-in-approval.sql` can be run by itself instead. Do not paste JavaScript into SQL Editor.
 
