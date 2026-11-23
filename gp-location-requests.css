@@ -1,0 +1,11 @@
+.gp-location-panel{margin-bottom:14px;scroll-margin-top:80px}
+.gp-location-panel h3{font-size:15px;margin:0 0 8px;color:var(--gp2-text,var(--navy))}
+.gp-location-panel p{font-size:13px;line-height:1.5;margin:0 0 8px}
+.gp-location-panel p:empty{display:none}
+.gp-location-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gp-location-panel[hidden],.gp-location-actions[hidden]{display:none}
+.gp-device-notifications summary{cursor:pointer;font-size:13px;font-weight:700}
+.gp-device-notifications[open] summary{margin-bottom:10px}
+.gp-device-notifications p{margin:0}
+#gpLocationRequestDialog [data-map]{display:inline-block;margin-bottom:8px}
+#gpLocationRequestDialog [data-map][hidden]{display:none}

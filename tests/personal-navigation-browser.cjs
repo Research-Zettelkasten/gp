@@ -4,10 +4,16 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
 (()=>{
  const create=window.supabase.createClient;
  const uid=window.__testRole==='admin'?'11111111-1111-4111-8111-111111111111':'22222222-2222-4222-8222-222222222222';
+ const locationId='50000000-0000-4000-8000-000000000001',locationKey='__live_location';
  window.__menuWrites=[];window.__directCorrections=[];window.__lunchCorrections=[];
  window.supabase.createClient=()=>{
   const client=create(),from=client.from,rpc=client.rpc;
   client.from=table=>{
+   if(table==='gp_live_location_requests'){
+    const q={select(){return q;},eq(){return q;},async maybeSingle(){
+      return {data:JSON.parse(localStorage.getItem(locationKey)||'null'),error:null};
+    }};return q;
+   }
    if(table!=='gp_navigation_preferences')return from(table);
    const q={select(){return q;},eq(){return q;},async maybeSingle(){
     if(window.__deferNavRead){await new Promise(resolve=>window.__releaseNavRead=resolve);}
@@ -16,6 +22,20 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
    }};return q;
   };
   client.rpc=async(name,args)=>{
+   if(name==='gp_request_live_location'){
+    localStorage.setItem(locationKey,JSON.stringify({id:locationId,
+      session_started_at_ms:args.p_expected_start_ms,requester_name:'Test Administrator',
+      requested_at:new Date().toISOString(),expires_at:new Date(Date.now()+600000).toISOString(),status:'pending'}));
+    return{data:{id:locationId,created:true},error:null};
+   }
+   if(name==='gp_respond_live_location'){
+    const current=JSON.parse(localStorage.getItem(locationKey));
+    if(current?.id!==args.p_request_id)return{error:{message:'Request changed'}};
+    Object.assign(current,{status:args.p_share?'shared':'declined',responded_at:new Date().toISOString(),
+      latitude:args.p_latitude,longitude:args.p_longitude,accuracy_m:args.p_accuracy_m});
+    localStorage.setItem(locationKey,JSON.stringify(current));
+    return{error:null};
+   }
    if(name==='gp_save_navigation_preferences'){
     if(window.__offlineMenu)return{data:null,error:{code:'PGRST202',message:'Synthetic unavailable sync'}};
     window.__menuWrites.push(args);localStorage.setItem('__menuCloud_'+uid,JSON.stringify(args.p_preferences));
@@ -35,7 +55,12 @@ const mock=require('./fixtures/clock-browser-mock.cjs')+String.raw`
     return{data:{ok:true,break_minutes:window.__active.break_minutes},error:null};
    }
    return rpc(name,args);
-  };return client;
+  };
+  client.functions={invoke:async (name,{body})=>{
+   window.__lastNotification=body;
+   return{data:body.action==='location'?{accepted:1}:{configured:false},error:null};
+  }};
+  return client;
  };
 })();`;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
@@ -45,6 +70,17 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   for(let n=0;n<40;n++){try{await fetch(base+'/home.html');break;}catch{await pause(100);}}
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE});
   const context=await browser.newContext({viewport:{width:1440,height:1100},timezoneId:'America/New_York'});
+  await context.addInitScript(()=>{
+    let next;
+    Object.defineProperty(navigator,'geolocation',{value:{
+      watchPosition(success){
+        window.__gpsReadings=(window.__gpsReadings||0)+1;
+        next=setTimeout(()=>success({timestamp:Date.now(),coords:{latitude:30.83344,longitude:-83.28877,accuracy:14}}),10);
+        return next;
+      },
+      clearWatch(id){clearTimeout(id);}
+    }});
+  });
   await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',r=>r.fulfill({contentType:'application/javascript',body:mock}));
   await context.route('https://fonts.googleapis.com/**',r=>r.fulfill({contentType:'text/css',body:''}));
   await context.route('https://cdnjs.cloudflare.com/**',r=>r.fulfill({contentType:'application/javascript',body:'window.Papa={parse(){}};'}));
@@ -124,6 +160,21 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
   await lunch.getByLabel('Reason for correction').fill('Verified both lunch punches were entered by mistake.');
   await lunch.getByRole('button',{name:'Apply correction now'}).click();await lunch.waitFor({state:'hidden'});
   await admin.locator('#adminActiveTimeTable').getByText('No lunch yet').waitFor();
+  await admin.getByRole('button',{name:'Request Location',exact:true}).click();
+  const locationDialog=admin.locator('#gpLocationRequestDialog');
+  await locationDialog.getByRole('button',{name:'Send request',exact:true}).click();
+  await locationDialog.getByRole('status').filter({hasText:'Push alert accepted'}).waitFor();
+  const sent=await admin.evaluate(()=>window.__lastNotification);
+  assert.equal(sent.action,'location');
+  await page.goto(base+'/index.html?locationRequest='+sent.requestId+'#gpLiveLocation');
+  const locationPanel=page.locator('#gpLiveLocation');
+  await locationPanel.getByText('Test Administrator requested your location.',{exact:false}).waitFor();
+  assert.equal(await page.evaluate(()=>window.__gpsReadings||0),0,'no reading before employee consent');
+  await locationPanel.getByRole('button',{name:'Share my location',exact:true}).click();
+  await locationPanel.getByRole('status').filter({hasText:'Good (±46 ft)'}).waitFor();
+  await locationDialog.getByRole('button',{name:'Refresh status',exact:true}).click();
+  assert.match(await locationDialog.getByRole('link',{name:'View shared location on map'}).getAttribute('href'),/30.833440%2C-83.288770$/);
+  await locationDialog.getByRole('button',{name:'Close',exact:true}).click();
   await admin.getByRole('button',{name:'Customize menu',exact:true}).click();
   await admin.locator('[data-menu-control="show-adminMOSPane"]').uncheck();
   const team=admin.locator('[data-menu-item="navLinkAdmin"]');await team.locator('summary').click();await team.getByLabel('Activity History',{exact:true}).uncheck();

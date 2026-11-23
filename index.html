@@ -229,7 +229,10 @@
 <link rel="icon" type="image/png" href="icons/glasspro-192.png?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/glasspro-180.png?v=2">
 <link rel="manifest" href="glasspro.webmanifest?v=2">
-<script src="gp-push.js?v=1" defer></script>
+<script src="gp-push.js?v=2" defer></script>
+<script src="gp-geolocation.js?v=1" defer></script>
+<script src="gp-location-requests.js?v=1" defer></script>
+<link rel="stylesheet" href="gp-location-requests.css?v=1">
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -380,6 +383,14 @@
         <div>
           <!-- PANE 1: LIVE PUNCH CLOCK -->
           <div id="timeLivePane">
+            <section id="gpLiveLocation" class="card gp-location-panel" aria-label="Location requests" hidden></section>
+            <details id="gpClockNotifications" class="card gp-location-panel gp-device-notifications">
+              <summary>Device notifications</summary>
+              <div class="gp-location-actions">
+                <button id="gpPushToggle" class="btn-outline" type="button" hidden>Enable notifications</button>
+                <p id="gpPushStatus" role="status"></p>
+              </div>
+            </details>
             <div class="card">
               <div class="card-title">
                 <span>Live Shift Chronograph</span>
@@ -388,8 +399,8 @@
 
               <div class="geo-banner">
                 <div style="flex:1;">
-                  <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--muted);">High-Precision Street Geotag</strong>
-                  <span id="liveGeoText" style="font-weight:600;">Ready to capture street address & accuracy radius</span>
+                  <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--muted);">Punch location</strong>
+                  <span id="liveGeoText" style="font-weight:600;">Ready to check current location and accuracy</span>
                 </div>
                 <button type="button" class="btn-outline" style="padding:5px 10px; font-size:10px;" onclick="previewGPS()">Verify GPS</button>
               </div>
@@ -806,6 +817,8 @@
       }
 
       document.getElementById("timeWorkspace").classList.remove("hidden");
+      GP_LOCATION_REQUESTS.mountEmployee({client:supabaseClient, getUser:()=>activeUser});
+      void window.GP_PUSH.mount(supabaseClient, activeUser);
       // mosQuickBar hidden per user preference
 
       // Render MultiplyOS SOP Chips
@@ -837,6 +850,7 @@
 
     window.logoutPortal = async function() {
       activeUser = null;
+      document.getElementById("gpLiveLocation").hidden = true;
       if (liveInterval) clearInterval(liveInterval);
       await GP.signOut(supabaseClient, null);
       document.getElementById("timeWorkspace").classList.add("hidden");
@@ -861,39 +875,11 @@
       if (paneId === 'timePaycheckPane') initPayCalculator();
     };
 
-    // HIGH-PRECISION STREET GEOTAGGING
-    async function captureGeotag() {
-      if (!navigator.geolocation) return { address: "GPS Not Supported", coords: "" };
-      return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const accFeet = Math.round((pos.coords.accuracy || 0) * 3.28084);
-            const coords = `${lat.toFixed(5)},${lon.toFixed(5)}`;
-            try {
-              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`);
-              if (res.ok) {
-                const data = await res.json();
-                const a = data.address || {};
-                const num = a.house_number ? a.house_number + " " : "";
-                const road = a.road || a.pedestrian || a.highway || "";
-                const city = a.city || a.town || a.village || a.county || "";
-                if (road && city) return resolve({ address: `${num}${road}, ${city} (±${accFeet}ft)`, coords });
-              }
-            } catch (e) {}
-            resolve({ address: `GPS: ${coords} (±${accFeet}ft)`, coords });
-          },
-          () => resolve({ address: "Location Permission Denied", coords: "" }),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-      });
-    }
-
     window.previewGPS = async function() {
-      document.getElementById("liveGeoText").textContent = "Locking onto high-precision GPS satellite...";
-      const geo = await captureGeotag();
-      document.getElementById("liveGeoText").textContent = geo.address;
+      const text = document.getElementById("liveGeoText");
+      text.textContent = "Checking location…";
+      const geo = await GP_GEO.geotag({addressLookup:true});
+      text.textContent = geo.address;
     };
 
     let activeLunchState = null; // Refreshed from server: never trust a local dropdown for unpaid breaks.
@@ -1028,7 +1014,8 @@
       const btn = document.getElementById("btnClockIn");
       if (btn.disabled) return;
       btn.disabled = true;
-      btn.textContent = "Locking Street Geotag...";
+      btn.textContent = "Checking location…";
+      const punchAt = Date.now();
       try {
         // A previous session may already exist on another device.
         await restoreActiveTimeSession();
@@ -1037,8 +1024,8 @@
           showToast("An existing clock-in was restored from Supabase. Clock out when your shift ends.");
           return;
         }
-        const geo = await captureGeotag();
-        const confirmed = await syncActiveTimeSession(Date.now(), geo);
+        const geo = await GP_GEO.geotag({addressLookup:true});
+        const confirmed = await syncActiveTimeSession(punchAt, geo);
         if (!confirmed) {
           throw new Error("Supabase did not confirm the active clock-in. Please reconnect and retry.");
         }
@@ -1115,7 +1102,7 @@
         if(lunch.lunch_out_at&&!lunch.lunch_in_at)throw new Error("Select Return from Lunch before clocking out.");
         const reason=!lunch.lunch_out_at?document.getElementById("noLunchReason").value.trim():"";
         if(!lunch.lunch_out_at&&reason.length<10){document.getElementById("noLunchReason").focus();throw new Error("Enter a no-lunch explanation of at least 10 characters for manager review.");}
-        const geo=await captureGeotag();
+        const geo=await GP_GEO.geotag();
         const result=await GP_CLOCK.finishShift(supabaseClient,{startedAtMs:Number(savedStart),effectiveStartedAtMs:Date.parse(activeLunchState?.approved_clock_in_at||""),noLunchReason:reason,location:geo.address,coords:geo.coords});
         localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
         localStorage.removeItem("gp_clock_out_saved_"+activeUser.auth_user_id);

@@ -24,24 +24,23 @@ try {
   configured = Boolean(url && userKey && serverKey);
 } catch { /* The client can report that push needs setup. */ }
 
-type Delivery = {
-  delivery_id: string;
+type Device = {
   device_id: string;
   registered_at: string;
   endpoint: string;
   p256dh: string;
   auth_key: string;
-  attempts: number;
   ttl: number;
 };
+type Delivery = Device & { delivery_id: string; attempts: number };
 
-async function deliver(row: Delivery, id: string): Promise<number> {
+async function deliver(row: Device, payload: {announcementId: string} | {locationRequestId: string}): Promise<number> {
   if (!allowedPushEndpoint(row.endpoint)) return 400;
   try {
     const details = webPush.generateRequestDetails({
       endpoint: row.endpoint,
       keys: { p256dh: row.p256dh, auth: row.auth_key },
-    }, JSON.stringify({ announcementId: id }), { TTL: Math.max(0, row.ttl), urgency: "normal" });
+    }, JSON.stringify(payload), { TTL: Math.max(0, row.ttl), urgency: "normal" });
     const headers = new Headers(details.headers as Record<string, string>);
     // Fetch supplies framing based on the bytes we pass.
     headers.delete("Content-Length");
@@ -59,6 +58,21 @@ async function deliver(row: Delivery, id: string): Promise<number> {
   }
 }
 
+async function sendLocation(db: ReturnType<typeof createClient>, requestId: string, adminId: string) {
+  const { data, error } = await db.rpc("gp_claim_live_location_push", {p_request_id:requestId, p_admin:adminId});
+  if (error?.code === "42501") return json({error:"Only an active administrator can request a location."},403);
+  if (error) return json({error:"Could not load location push. Check the SQL update."},503);
+  const devices = data as Device[];
+  const statuses = await Promise.all(devices.map(async row => {
+    const status = await deliver(row, {locationRequestId:requestId});
+    if (status === 404 || status === 410) {
+      await db.from("gp_push_devices").delete().eq("id", row.device_id).eq("registered_at", row.registered_at);
+    }
+    return status;
+  }));
+  return json({accepted:statuses.filter(status => status >= 200 && status < 300).length});
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (request.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -73,6 +87,11 @@ Deno.serve(async (request) => {
     let body;
     try { body = JSON.parse(raw); } catch { return json({ error: "Invalid request." }, 400); }
     if (body?.action === "config") return json({ configured, publicKey: configured ? publicKey : null });
+    if (body?.action === "location") {
+      if (typeof body.requestId !== "string" || !uuid.test(body.requestId)) return json({error:"Choose a location request."},400);
+      if (!configured) return json({error:"Web Push is awaiting server setup."},503);
+      return await sendLocation(createClient(url, serverKey, clientOptions), body.requestId, auth.data.user.id);
+    }
     if (body?.action !== "send" || typeof body.announcementId !== "string" || !uuid.test(body.announcementId)) {
       return json({ error: "Choose a published announcement." }, 400);
     }
@@ -93,7 +112,7 @@ Deno.serve(async (request) => {
     let next = 0;
     async function worker() {
       for (let row = targets[next++]; row; row = targets[next++]) {
-        const status = await deliver(row, id);
+        const status = await deliver(row, {announcementId:id});
         const outcome = deliveryState(status, row.attempts);
         const update = await db.from("gp_push_deliveries").update({
           state: outcome, updated_at: new Date().toISOString(),

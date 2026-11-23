@@ -28,6 +28,10 @@
     return summary;
   }
 
+  function sendLocation(client, requestId) {
+    return request(client, {action:'location', requestId});
+  }
+
   async function detach(client, subscription) {
     if (!subscription) return;
     const results = await Promise.allSettled([
@@ -96,7 +100,7 @@
         button.disabled = !enabled && Notification.permission === 'denied';
         setStatus(message || (button.disabled
           ? 'Permission is blocked. Allow notifications in your browser or device settings, then reopen GLASSPRO.'
-          : enabled ? 'Announcement notifications are enabled on this device.' : 'Get a device notification when Management sends a team announcement.'));
+          : enabled ? 'GLASSPRO notifications are enabled on this device.' : 'Get notifications for team announcements and location requests.'));
       }
       showState();
       let busy = false;
@@ -109,7 +113,7 @@
             await detach(client, subscription);
             subscription = null;
             enabled = false;
-            showState('Announcement notifications are off on this device.');
+            showState('GLASSPRO notifications are off on this device.');
             return;
           }
           if (!subscription) {
@@ -136,5 +140,5 @@
     }
   }
 
-  root.GP_PUSH = Object.freeze({mount, readConfig, send, beforeSignOut});
+  root.GP_PUSH = Object.freeze({mount, readConfig, send, sendLocation, beforeSignOut});
 })(window);
