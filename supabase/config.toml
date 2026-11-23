@@ -1,0 +1,6 @@
+project_id = "gp"
+
+[functions.gp-announcement-push]
+# The handler checks the staff access token with Supabase Auth. This supports
+# asymmetric JWT signing keys as well as projects using the legacy JWT secret.
+verify_jwt = false

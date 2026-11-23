@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "GLASSPRO",
+  "short_name": "GLASSPRO",
+  "description": "GLASSPRO staff workspace",
+  "start_url": "./home.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06101e",
+  "theme_color": "#102944",
+  "icons": [
+    {"src": "icons/glasspro-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/glasspro-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

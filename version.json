@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.6",
-  "notes": "Split Fleet and Safety, add trailers, tag renewals and private unit photos, expand quote callbacks and publish staff announcements. Apply the fleet, callbacks and announcements SQL migration.",
+  "version": "2026.11.23.7",
+  "notes": "Add administrator live lunch corrections, opt-in Web Push for team announcements, and the restored GLASSPRO app icon.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }

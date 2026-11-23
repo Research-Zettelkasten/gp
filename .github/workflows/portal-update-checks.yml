@@ -7,6 +7,8 @@ on:
       - '**.html'
       - '**.js'
       - '**.css'
+      - 'glasspro.webmanifest'
+      - 'icons/**'
       - 'supabase/**'
       - 'scripts/build-time-installers.py'
       - 'tests/**'
@@ -36,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: JavaScript, permissions, and asset checks
-        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs tests/callback-tools.test.cjs
+        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs tests/callback-tools.test.cjs tests/push-worker.test.cjs
       - name: Build reproducible timekeeping installers
         run: |
           python3 scripts/build-time-installers.py
@@ -49,6 +51,8 @@ jobs:
         run: |
           createdb gp_operations_test
           PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/fleet-callbacks-announcements.sql
+      - name: Push subscription permissions, delivery claims and retries
+        run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/announcement-web-push.sql
       - name: Customer registry and reconciliation integration
         run: |
           createdb gp_customer_test
@@ -69,10 +73,19 @@ jobs:
         run: node tests/clock-in-race.cjs
       - name: Administrator live correction and per-account navigation permissions
         run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-navigation.sql
+      - name: Live lunch corrections, payroll and audit rollback
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-lunch.sql
       - name: Concurrent direct correction and clock-out
         run: node tests/admin-live-race.cjs
       - name: Complete installation with protected Cron permissions
         run: psql -X -v ON_ERROR_STOP=1 -f tests/installer-with-managed-cron.sql
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check the push sender and test provider validation
+        run: |
+          deno check --no-lock supabase/functions/gp-announcement-push/index.ts
+          deno test --no-lock supabase/functions/gp-announcement-push/push_test.ts
       - name: Install browser test runner
         timeout-minutes: 3
         run: |

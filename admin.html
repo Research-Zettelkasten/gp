@@ -2,91 +2,18 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123e"></script>
+  <script src="portal-utils.js?v=20261123f"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Executive Management & MultiplyOS Hub</title>
 
-  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
   <meta name="theme-color" content="#06101E" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
 
-  <!-- Desktop Browser Tab Icon (Inline SVG) -->
-  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
-  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
-
-  <script>
-    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
-    (function() {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext("2d");
-
-        // 1. Obsidian-Navy Background
-        const grad = ctx.createLinearGradient(0, 0, 512, 512);
-        grad.addColorStop(0, "#06101E");
-        grad.addColorStop(1, "#0B1F3A");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 512);
-
-        // 2. Top Crimson Red Accent Bar
-        ctx.fillStyle = "#DC2626";
-        ctx.fillRect(0, 0, 512, 76);
-
-        // 3. Subtle Diagonal Glass Reflection Slash
-        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-        ctx.beginPath();
-        ctx.moveTo(340, 76);
-        ctx.lineTo(460, 76);
-        ctx.lineTo(290, 512);
-        ctx.lineTo(170, 512);
-        ctx.closePath();
-        ctx.fill();
-
-        // 4. Center "GP" Monogram
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("GP", 256, 235);
-
-        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
-        ctx.fillStyle = "#DC2626";
-        ctx.beginPath();
-        ctx.roundRect(76, 365, 360, 74, 16);
-        ctx.fill();
-
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.fillText("GLASSPRO", 256, 404);
-
-        const pngDataUrl = canvas.toDataURL("image/png");
-        const appleLink = document.getElementById("gpAppleIcon");
-        if (appleLink) appleLink.href = pngDataUrl;
-
-        // 6. Inject Web App Manifest for Android/Desktop "Install App"
-        const manifest = {
-          name: "GLASSPRO Operations Portal",
-          short_name: "GLASSPRO",
-          start_url: "./index.html",
-          display: "standalone",
-          background_color: "#06101E",
-          theme_color: "#06101E",
-          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
-        const manifestLink = document.createElement("link");
-        manifestLink.rel = "manifest";
-        manifestLink.href = URL.createObjectURL(manifestBlob);
-        document.head.appendChild(manifestLink);
-      } catch (e) {}
-    })();
-  </script>
+  
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -750,7 +677,8 @@
 <script src="gp-ux.js?v=20261123d" defer></script>
 <script src="gp-time-core.js?v=20261123c"></script>
 <script src="gp-admin-live-correction.js?v=20261123d"></script>
-<link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123d">
+<script src="gp-admin-live-lunch.js?v=20261123g"></script>
+<link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123g">
 <script src="gp-clock-in-change.js?v=20261123e"></script>
 <link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
 <script src="gp-clock.js?v=20261123b"></script>
@@ -760,7 +688,11 @@
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
 <link rel="stylesheet" href="gp-operations.css?v=1">
-<script src="gp-announcements.js?v=1" defer></script>
+<script src="gp-announcements.js?v=2" defer></script>
+<link rel="icon" type="image/png" href="icons/glasspro-192.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/glasspro-180.png?v=2">
+<link rel="manifest" href="glasspro.webmanifest?v=2">
+<script src="gp-push.js?v=1" defer></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -838,6 +770,8 @@
           <label>Message<textarea name="body" rows="4" maxlength="2000" required></textarea></label>
           <label>Expires (optional, your local time)<input name="expires" type="datetime-local"></label>
           <label><input name="pinned" type="checkbox"> Pin to the top</label>
+          <label id="gpAnnouncementPushChoice" hidden><input name="notify" type="checkbox"> Notify opted-in devices</label>
+          <p id="gpAnnouncementPushSetup" class="gp-operations-note" hidden>Device push is awaiting server setup. You can publish to staff Home now.</p>
           <div class="gp-operations-controls">
             <button id="gpAnnouncementSave" type="submit">Publish announcement</button>
             <button id="gpAnnouncementReset" type="button">Clear form</button>
@@ -1345,7 +1279,7 @@
         </div>
       </div>
 
-      <div id="gpWidgetLiveTime" class="card live-sync-card gp-widget-section"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Review current shifts and use Clock Out to end a confirmed active shift with an audit reason. Timecards and lunch reviews update automatically.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th><th>Action</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
+      <div id="gpWidgetLiveTime" class="card live-sync-card gp-widget-section"><div class="card-title"><span><span class="live-sync-dot"></span>Live Time Monitoring</span><span id="timeLiveSyncStatus" class="badge badge-ok">Connecting…</span></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Correct clock-in or lunch punches while an employee is working, or use Clock Out to end the shift. Each change requires an audit reason.</p><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Clocked In</th><th>Paid Elapsed</th><th>Lunch status</th><th>Clock-In Location</th><th>Action</th></tr></thead><tbody id="adminActiveTimeTable"></tbody></table></div></div>
       <div id="gpWidgetTimeHistory" class="card gp-widget-section"><div class="card-title"><span>Shift History & Geotags — By Employee / Selected Week</span><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-outline" onclick="setAllTimeGroups(true)">Expand All</button><button type="button" class="btn-outline" onclick="setAllTimeGroups(false)">Collapse All</button><button type="button" class="btn-outline" style="border-color:var(--green);color:var(--green);" onclick="openAddMissingShiftModal()">+ Add Missing Shift</button><button type="button" class="btn-outline" onclick="exportTimeCSV()">Export Selected Week CSV</button></div></div><p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Only shifts belonging to the selected Monday–Sunday week are shown here. Select an employee to expand their shifts. <b>Edit Punch</b> now supports exact Lunch Out / Lunch Back timestamps, which calculate the unpaid break automatically. Every manual adjustment requires an audit reason.</p><div id="adminTimeGroups"></div></div>
     </div>
 
@@ -2005,17 +1939,14 @@
     function renderActiveTimeMonitor(){
       const body=document.getElementById("adminActiveTimeTable");if(!body)return;
       const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));
-      const fingerprint=JSON.stringify([activeTimeSessionsConfirmed,active.map(e=>[e.auth_user_id,e.employee_name,e.department,e.started_at_ms,e.started_at,e.approved_clock_in_at,e.lunch_out_at,e.lunch_in_at,e.location,e.coords])]);
+      const fingerprint=JSON.stringify([activeTimeSessionsConfirmed,active.map(e=>[e.auth_user_id,e.employee_name,e.department,e.started_at_ms,e.started_at,e.approved_clock_in_at,e.lunch_out_at,e.lunch_in_at,e.break_minutes,e.location,e.coords])]);
       if(body._gpFingerprint!==fingerprint){body._gpFingerprint=fingerprint;body.innerHTML=active.map(e=>{
         const ms=Date.parse(e.approved_clock_in_at||"")||Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now();
-        const gross=Math.max(0,(Date.now()-ms)/3600000);
-        const unpaid=GP_LUNCH.liveBreakMinutes(e)/60;
-        const elapsed=Math.max(0,gross-unpaid);
+        const {hours:elapsed,breakMinutes:unpaid,onLunch}=GP_CLOCK.preview(e);
         const started=new Date(ms);
-        const onLunch=!!e.lunch_out_at&&!e.lunch_in_at;
-        const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${Math.round(unpaid*60)}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
+        const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${unpaid}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
         const map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";
-        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);"><span data-live-hours>${format00(elapsed)}</span> hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<div class="gp-live-clock-actions"><button type="button" class="gp-clock-action" data-correct-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-clock-start="${Number(e.started_at_ms)}">Correct clock-in</button><button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button></div>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
+        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);"><span data-live-hours>${format00(elapsed)}</span> hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<div class="gp-live-clock-actions"><button type="button" class="gp-clock-action" data-correct-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-clock-start="${Number(e.started_at_ms)}">Correct clock-in</button><button type="button" class="gp-clock-action" data-correct-lunch-user="${GP.escapeHtml(e.auth_user_id)}" data-correct-lunch-start="${Number(e.started_at_ms)}">Correct Lunch</button><button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button></div>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
       }).join("")||`<tr><td colspan="7" style="text-align:center;color:var(--muted);">${activeTimeSessionsConfirmed?"No employees are currently clocked in.":"Active shifts could not be verified. Refresh before making changes."}</td></tr>`;}
       const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
@@ -3086,6 +3017,7 @@
       window.GP_CLOCK_IN?.mountAdmin?.({client:supabaseClient,onSaved:()=>loadAdminData()});
       window.GP_ADMIN_CLOCK.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ADMIN_LIVE.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
+      window.GP_ADMIN_LUNCH.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ANNOUNCEMENTS.mount(supabaseClient, true)?.();
       startAdminLiveSync();
     });
