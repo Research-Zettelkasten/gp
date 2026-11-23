@@ -746,9 +746,12 @@
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
-<script src="gp-clock.js?v=20261116d"></script>
-<script src="gp-admin-clock.js?v=20261116d"></script>
-<link rel="stylesheet" href="gp-clock.css?v=20261116d">
+<script src="gp-time-core.js?v=20261123a"></script>
+<script src="gp-clock.js?v=20261123a"></script>
+<script src="gp-admin-clock.js?v=20261123a"></script>
+<script src="gp-admin-clock-review.js?v=20261123a"></script>
+<link rel="stylesheet" href="gp-clock.css?v=20261123a">
+<link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -1434,6 +1437,7 @@
   <label for="gpClockMode">Clock-out time</label><select id="gpClockMode"><option value="now">Now — use server time</option><option value="custom">Enter the actual end time</option></select>
   <div id="gpClockCustomRow" hidden><label for="gpClockEnd">Actual clock-out date and time</label><input id="gpClockEnd" type="datetime-local"></div>
   <small id="gpClockTimezone"></small>
+  <div id="gpClockExisting" hidden><p>A completed timecard already matches this clock-in. Keep its saved hours and clear the leftover active clock. To correct hours, use Edit Punch on that timecard.</p><label for="gpClockSavedCard">Existing timecard</label><select id="gpClockSavedCard"></select><div id="gpClockSavedDetails"></div></div>
   <label for="gpClockReason">Audit reason <span aria-hidden="true">*</span></label>
   <textarea id="gpClockReason" rows="3" minlength="10" maxlength="500" required placeholder="For example: Employee left at 4:30 PM and forgot to clock out."></textarea>
   <div id="gpClockCloseLunchRow" hidden><label class="gp-clock-checkbox"><input id="gpClockCloseLunch" type="checkbox"><span>End the open lunch at the selected clock-out time. Time from Lunch Out to clock-out remains unpaid.</span></label></div>
