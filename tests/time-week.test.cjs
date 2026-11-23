@@ -1,5 +1,14 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),T=require('../gp-time-core');
 test('Eastern week rolls Monday even when the browser calendar is still Sunday',()=>{assert.equal(T.day(Date.parse('2026-11-23T04:59:59Z')),'2026-11-22');assert.equal(T.week(T.day(Date.parse('2026-11-23T05:00:00Z'))),'2026-11-23');assert.equal(T.week('2027-01-01'),'2026-12-28');});
+test('lunch review week holds through Monday and advances Tuesday at midnight Eastern',()=>{
+ for(const stamp of ['2026-11-22T23:59:59-05:00','2026-11-23T00:00:00-05:00','2026-11-23T23:59:59-05:00'])assert.equal(T.lunchReviewWeek(Date.parse(stamp)),'2026-11-16');
+ assert.equal(T.lunchReviewWeek(Date.parse('2026-11-24T00:00:00-05:00')),'2026-11-23');
+ assert.equal(T.lunchReviewWeek(Date.parse('2026-11-24T00:00:00-05:00')),T.lunchReviewWeek(Date.parse('2026-11-24T05:00:00Z')),'browser timezone does not affect the review boundary');
+ assert.equal(T.week('2026-11-23'),'2026-11-23','payroll still rolls on Monday');
+});
+test('Tuesday review boundaries remain calendar weeks through daylight saving and year changes',()=>{
+ for(const [stamp,expected] of [['2026-03-09T23:59:59-04:00','2026-03-02'],['2026-03-10T00:00:00-04:00','2026-03-09'],['2026-11-02T23:59:59-05:00','2026-10-26'],['2026-11-03T00:00:00-05:00','2026-11-02'],['2027-01-04T23:59:59-05:00','2026-12-28'],['2027-01-05T00:00:00-05:00','2027-01-04']])assert.equal(T.lunchReviewWeek(Date.parse(stamp)),expected);
+});
 test('weekly totals preserve old weeks, include every shift and use account identity',()=>{const u={auth_user_id:'one',employee_name:'Same Name'},rows=Array.from({length:12},(_,n)=>({auth_user_id:'one',work_date:'2026-11-18',clock_in:'08:00',decimal_hours:n%2?'0.20':'0.10'}));rows.push({auth_user_id:'other',employee_name:'Same Name',work_date:'2026-11-18',decimal_hours:99},{auth_user_id:'one',work_date:'2026-11-09',decimal_hours:8},{auth_user_id:'one',work_date:'bad',decimal_hours:100});assert.equal(T.summary(rows,u,'2026-11-16').hours,1.8);assert.equal(T.summary(rows,u,'2026-11-16').rows.length,12);assert.equal(T.summary(rows,u,'2026-11-09').hours,8);assert.equal(T.summary(rows,u,'2026-11-23').hours,0);});
 test('regular missed punches are due at 12:01 AM but default to previous-day 5 PM',()=>{const p=T.policy(Date.parse('2026-11-19T07:51:00-05:00'));assert.equal(new Date(p.dueAt).toISOString(),'2026-11-20T05:01:00.000Z');assert.equal(new Date(p.endAt).toISOString(),'2026-11-19T22:00:00.000Z');assert.equal(p.emergency,false);});
 test('only starts after 6 PM use the next-day 7:30 AM exception',()=>{assert.equal(T.policy(Date.parse('2026-11-19T18:00:00-05:00')).emergency,false);const p=T.policy(Date.parse('2026-11-19T18:00:01-05:00'));assert.equal(p.emergency,true);assert.equal(p.dueAt,p.endAt);assert.equal(new Date(p.dueAt).toISOString(),'2026-11-20T12:30:00.000Z');});
