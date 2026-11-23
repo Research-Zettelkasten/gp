@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="gp-theme-init.js?v=20261123b"></script>
   <script src="portal-utils.js?v=20261118c"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -732,11 +733,11 @@
 
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261123b">
 <link rel="stylesheet" href="gp-dashboard-builder.css?v=20261112e">
 <script src="gp-dashboard-core.js?v=20261112e"></script>
 <script src="gp-payroll-weeks.js?v=20261112d"></script>
-<script src="gp-sidebar.js?v=20261118c" defer></script>
+<script src="gp-sidebar.js?v=20261123b" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
 <link rel="stylesheet" href="gp-payroll-weeks.css?v=20261112d">
@@ -744,14 +745,17 @@
 <script src="gp-accounting-core.js?v=20261112e"></script>
 <script src="gp-accounting-bridge.js?v=20261112e"></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
-<link rel="stylesheet" href="gp-ux.css?v=20261113c">
-<script src="gp-ux.js?v=20261113c" defer></script>
-<script src="gp-time-core.js?v=20261123a"></script>
-<script src="gp-clock.js?v=20261123a"></script>
-<script src="gp-admin-clock.js?v=20261123a"></script>
-<script src="gp-admin-clock-review.js?v=20261123a"></script>
+<link rel="stylesheet" href="gp-ux.css?v=20261123b">
+<script src="gp-ux.js?v=20261123b" defer></script>
+<script src="gp-time-core.js?v=20261123b"></script>
+<script src="gp-clock-in-change.js?v=20261123b"></script>
+<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
+<script src="gp-clock.js?v=20261123b"></script>
+<script src="gp-admin-clock.js?v=20261123b"></script>
+<script src="gp-admin-clock-review.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-clock.css?v=20261123a">
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
+<link rel="stylesheet" href="gp-theme.css?v=20261123b">
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -1967,8 +1971,9 @@
     function renderActiveTimeMonitor(){
       const body=document.getElementById("adminActiveTimeTable");if(!body)return;
       const active=getActiveClockRows().sort((a,b)=>String(a.employee_name).localeCompare(String(b.employee_name)));
-      body.innerHTML=active.map(e=>{
-        const ms=Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now();
+      const fingerprint=JSON.stringify([activeTimeSessionsConfirmed,active.map(e=>[e.auth_user_id,e.employee_name,e.department,e.started_at_ms,e.started_at,e.approved_clock_in_at,e.lunch_out_at,e.lunch_in_at,e.location,e.coords])]);
+      if(body._gpFingerprint!==fingerprint){body._gpFingerprint=fingerprint;body.innerHTML=active.map(e=>{
+        const ms=Date.parse(e.approved_clock_in_at||"")||Number(e.started_at_ms||Date.parse(e.started_at||""))||Date.now();
         const gross=Math.max(0,(Date.now()-ms)/3600000);
         const unpaid=GP_LUNCH.liveBreakMinutes(e)/60;
         const elapsed=Math.max(0,gross-unpaid);
@@ -1976,8 +1981,9 @@
         const onLunch=!!e.lunch_out_at&&!e.lunch_in_at;
         const status=onLunch?`<span class="badge badge-warn">On Lunch</span>`:e.lunch_in_at?`<span class="badge badge-ok">Lunch: ${Math.round(unpaid*60)}m</span>`:'<span class="badge badge-navy">No lunch yet</span>';
         const map=e.coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(e.coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"";
-        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);">${format00(elapsed)} hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
-      }).join("")||`<tr><td colspan="7" style="text-align:center;color:var(--muted);">${activeTimeSessionsConfirmed?"No employees are currently clocked in.":"Active shifts could not be verified. Refresh before making changes."}</td></tr>`;
+        return `<tr><td><b>${GP.escapeHtml(e.employee_name||"Unknown")}</b></td><td>${GP.escapeHtml(e.department||"")}</td><td class="mono">${started.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</td><td class="mono" style="font-weight:800;color:var(--green);"><span data-live-hours>${format00(elapsed)}</span> hrs</td><td>${status}</td><td style="font-size:11px;">${GP.escapeHtml(e.location||"Location unavailable")} ${map}</td><td>${activeTimeSessionsConfirmed&&e.auth_user_id?`<button type="button" class="gp-clock-action" data-clock-user="${GP.escapeHtml(e.auth_user_id)}" data-clock-start="${Number(e.started_at_ms)}">Clock Out</button>`:'<span class="badge badge-warn">Refresh required</span>'}</td></tr>`;
+      }).join("")||`<tr><td colspan="7" style="text-align:center;color:var(--muted);">${activeTimeSessionsConfirmed?"No employees are currently clocked in.":"Active shifts could not be verified. Refresh before making changes."}</td></tr>`;}
+      const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
     function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dashboardPrefs.locked)loadDashboardPreferences();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
@@ -3006,6 +3012,7 @@
       const hashPane = decodeURIComponent((window.location.hash||"").slice(1));
       const pane = VALID_ADMIN_PANES.has(hashPane) ? hashPane : (dashboardPrefs.defaultPane || "adminOverviewPane");
       showAdminSubTab(pane, getDashboardButtonForPane(pane));
+      window.GP_CLOCK_IN?.mountAdmin?.({client:supabaseClient,onSaved:()=>loadAdminData()});
       window.GP_ADMIN_CLOCK.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       startAdminLiveSync();
     });

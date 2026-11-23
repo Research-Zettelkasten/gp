@@ -28,8 +28,8 @@ async function open(button){
     const session=await GP_CLOCK.readActive(config.client,userId);
     if(!session||Number(session.started_at_ms)!==start)throw new Error('This shift changed or already ended. Close this window and refresh the active shifts.');
     selected=session;id('gpClockEmployee').textContent=session.employee_name;
-    id('gpClockSession').textContent='Clocked in '+new Date(Number(session.started_at_ms)).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
-    id('gpClockEnd').min=GP_CLOCK.localInput(Number(session.started_at_ms)+60000);
+    id('gpClockSession').textContent='Clocked in '+new Date(Date.parse(session.approved_clock_in_at||'')||Number(session.started_at_ms)).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+    id('gpClockEnd').min=GP_CLOCK.localInput((Date.parse(session.approved_clock_in_at||'')||Number(session.started_at_ms))+60000);
     const onLunch=!!session.lunch_out_at&&!session.lunch_in_at;id('gpClockCloseLunchRow').hidden=!onLunch;
     id('gpClockTimezone').textContent='Time shown in '+Intl.DateTimeFormat().resolvedOptions().timeZone+'. Timecards use America/New_York.';
     savedCards=await GP_CLOCK.savedTimecards(config.client,userId,start)||[];
@@ -55,7 +55,7 @@ function mount(options){
       id('gpClockStatus').textContent='Confirm that the open lunch should end at clock-out, or review the lunch punches first.';id('gpClockCloseLunch').focus();return;
     }
     const custom=id('gpClockMode').value==='custom';
-    const options={employeeId:selected.auth_user_id,startedAtMs:Number(selected.started_at_ms),
+    const options={employeeId:selected.auth_user_id,startedAtMs:Number(selected.started_at_ms),effectiveStartedAtMs:Date.parse(selected.approved_clock_in_at||''),
       reason:id('gpClockReason').value,endedAt:custom?new Date(id('gpClockEnd').value).toISOString():null,
       closeLunch:id('gpClockCloseLunch').checked};
     setBusy(true);id('gpClockStatus').textContent='Saving the shift and audit record…';

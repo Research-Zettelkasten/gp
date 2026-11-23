@@ -1,11 +1,11 @@
-/* GLASSPRO 2.0 appearance. Local fallback, cloud sync for accounts with UI preferences migration. */
-(() => {
- 'use strict';
- let client=null,profile=null,theme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';
- function setTheme(next,persist=true){theme=next==='dark'?'dark':'light';document.documentElement.dataset.gpTheme=theme;localStorage.setItem('gp2_theme_default',theme);document.querySelectorAll('.gp2-display-switch').forEach(b=>b.textContent=theme==='dark'?'☀ Light mode':'☾ Dark mode');if(persist)saveTheme().catch(()=>{});}
- async function saveTheme(){if(!client||!profile?.auth_user_id)return;await client.rpc('gp_save_ui_preferences',{p_preferences:{theme}});}
- async function onSignedIn(p,c){profile=p;client=c;try{const {data,error}=await client.from('portal_preferences').select('ui_preferences').eq('auth_user_id',p.auth_user_id).maybeSingle();if(!error&&data?.ui_preferences?.theme)setTheme(data.ui_preferences.theme,false);}catch{} }
- function addToggle(){if(document.querySelector('.gp2-display-switch'))return;const b=document.createElement('button');b.type='button';b.className='gp2-display-switch';b.textContent=theme==='dark'?'☀ Light mode':'☾ Dark mode';b.addEventListener('click',()=>setTheme(theme==='dark'?'light':'dark'));(document.querySelector('header .header-right')||document.querySelector('header')||document.body).appendChild(b);}
- document.addEventListener('DOMContentLoaded',()=>{setTheme(theme,false);addToggle();});
- window.GP_UX={onSignedIn,setTheme};
-})();
+/* Appearance is controlled only inside sidebar Display preferences. */
+(()=>{'use strict';let client=null,profile=null,revision=0,theme=document.documentElement.dataset.gpTheme==='dark'?'dark':'light';
+ function remember(){try{localStorage.setItem('gp2_theme_default',theme);}catch{}}
+ function paint(){document.documentElement.dataset.gpTheme=theme;document.querySelectorAll('.gp2-display-switch').forEach(b=>{b.textContent=theme==='dark'?'☀ Light mode':'☾ Dark mode';b.setAttribute('aria-label',theme==='dark'?'Switch to light mode':'Switch to dark mode');});}
+ async function saveTheme(){if(!client||!profile?.auth_user_id)return;const {error}=await client.rpc('gp_save_ui_preferences',{p_preferences:{theme}});document.querySelectorAll('.gp-theme-status').forEach(s=>s.textContent=error?'Saved on this browser; account sync is unavailable.':'Saved to your account.');}
+ function setTheme(next,persist=true){theme=next==='dark'?'dark':'light';revision++;remember();paint();if(persist)saveTheme().catch(()=>{});}
+ async function onSignedIn(p,c){profile=p;client=c;const before=revision;try{const {data,error}=await c.from('portal_preferences').select('ui_preferences').eq('auth_user_id',p.auth_user_id).maybeSingle();if(!error&&before===revision&&data?.ui_preferences?.theme)setTheme(data.ui_preferences.theme,false);}catch{}}
+ function mountThemeControl(container){if(!container||container.querySelector('.gp2-display-switch'))return;const label=document.createElement('span');label.className='gp-theme-label';label.textContent='Color theme';const b=document.createElement('button');b.type='button';b.className='gp2-display-switch';b.onclick=()=>setTheme(theme==='dark'?'light':'dark');const status=document.createElement('small');status.className='gp-theme-status';status.setAttribute('role','status');container.prepend(label,b,status);paint();}
+ function attach(){document.querySelectorAll('header .gp2-display-switch').forEach(b=>b.remove());document.querySelectorAll('.gp-side-options').forEach(mountThemeControl);}
+ document.addEventListener('DOMContentLoaded',()=>{paint();attach();});document.addEventListener('gp:sidebar-ready',attach);window.addEventListener('storage',e=>{if(e.key==='gp2_theme_default'){theme=e.newValue==='dark'?'dark':'light';revision++;paint();}});
+ window.GP_UX={onSignedIn,setTheme,mountThemeControl};})();

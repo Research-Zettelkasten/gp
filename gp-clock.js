@@ -9,16 +9,16 @@
     const reason=String(o.reason||'').trim(),noLunch=String(o.noLunchReason||'').trim();
     if(admin&&(reason.length<10||reason.length>500))throw new Error('Enter an audit reason of 10–500 characters.');
     if(noLunch.length>1000)throw new Error('The no-lunch explanation must be 1,000 characters or fewer.');
-    const end=o.endedAt?Date.parse(o.endedAt):now;
-    if(!Number.isFinite(end)||end<=start||end>now+1000)throw new Error('Clock-out must be after clock-in and cannot be in the future.');
-    if(end-start>=24*3600000)throw new Error('Choose the actual end time within 24 hours of clock-in; older shifts need a timecard review.');
+    const effective=Number(o.effectiveStartedAtMs)||start,end=o.endedAt?Date.parse(o.endedAt):now;
+    if(!Number.isFinite(end)||end<=effective||end>now+1000)throw new Error('Clock-out must be after clock-in and cannot be in the future.');
+    if(end-effective>=24*3600000)throw new Error('Choose the actual end time within 24 hours of clock-in; older shifts need a timecard review.');
     if(!admin&&o.endedAt)throw new Error('Employee clock-out uses the server’s current time.');
     return {p_expected_start_ms:start,p_employee_id:admin?o.employeeId:null,p_ended_at:admin&&o.endedAt?new Date(end).toISOString():null,
       p_reason:reason,p_no_lunch_reason:noLunch,p_close_lunch:admin&&o.closeLunch===true,
       p_location:String(o.location||'').slice(0,500),p_coords:String(o.coords||'').slice(0,100)};
   }
   function preview(session,endMs=Date.now()){
-    const start=Number(session?.started_at_ms),out=Date.parse(session?.lunch_out_at||''),back=Date.parse(session?.lunch_in_at||'');
+    const start=Date.parse(session?.approved_clock_in_at||'')||Number(session?.started_at_ms),out=Date.parse(session?.lunch_out_at||''),back=Date.parse(session?.lunch_in_at||'');
     const gross=(Math.floor(endMs/60000)-Math.floor(start/60000));
     let unpaid=Number.isFinite(out)?Math.floor((Number.isFinite(back)?back:endMs)/60000)-Math.floor(out/60000):Math.max(0,Number(session?.break_minutes)||0);
     unpaid=Math.max(0,unpaid);

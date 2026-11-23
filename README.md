@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.1 — weekly timecards and automatic missed clock-outs**.
+Current release: **2026.11.23.2 — approved clock-in corrections, stable live panels and dark appearance**.
+
+See [live punch approval and appearance setup](INSTALL-LIVE-PUNCH-APPROVALS-AND-THEME.md) for installation, employee requests, administrator review and Display preferences.
 
 See [weekly time and missed clock-out setup](INSTALL-WEEKLY-TIME-AND-AUTO-CLOCK-OUT.md) for the SQL installer, 12:01 AM / 5 PM policy, emergency-call exception, saved-timecard recovery and manager review queue.
 

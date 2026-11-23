@@ -54,6 +54,10 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/auto-clock-out.sql
       - name: Concurrent scheduled and administrator clock-out
         run: node tests/auto-clock-race.cjs
+      - name: Approved clock-in changes and live-only entry
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-in-approval.sql
+      - name: Concurrent approval and clock-out
+        run: node tests/clock-in-race.cjs
       - name: Install browser test runner
         timeout-minutes: 3
         run: |
@@ -69,6 +73,8 @@ jobs:
         run: node tests/customers-browser.cjs
       - name: Weekly timecard and stale-clock browser workflows
         run: node tests/time-week-browser.cjs
+      - name: Live entry, correction approvals, stable layouts and theme
+        run: node tests/approval-theme-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

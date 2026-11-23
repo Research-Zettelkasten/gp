@@ -13,5 +13,6 @@
  function hours(value){const s=String(value??'').trim();return /^\d+(?:\.\d+)?$/.test(s)&&Number.isFinite(Number(s))?Math.round(Number(s)*100):0;}
  function own(row,user){return row.auth_user_id?String(row.auth_user_id)===String(user.auth_user_id):String(row.employee_name||'').trim().toLowerCase()===String(user.employee_name||'').trim().toLowerCase();}
  function summary(rows,user,start){const shifts=rows.filter(r=>own(r,user)&&inWeek(r.work_date,start)).sort((a,b)=>b.work_date.localeCompare(a.work_date)||String(b.clock_in||'').localeCompare(String(a.clock_in||'')));return{rows:shifts,hours:shifts.reduce((n,r)=>n+hours(r.decimal_hours),0)/100,unpaidMinutes:shifts.reduce((n,r)=>n+Math.max(0,Number(r.break_minutes)||0),0),review:shifts.filter(r=>r.clock_out_review_status==='pending'||r.lunch_review_status==='pending').length};}
- return{zone,parts,day,validDay,addDays,week,inWeek,wallTime,policy,summary};
+ function effectiveStart(session){return Date.parse(session?.approved_clock_in_at||'')||Number(session?.started_at_ms);}
+ return{zone,parts,day,validDay,addDays,week,inWeek,wallTime,policy,summary,effectiveStart};
 });
