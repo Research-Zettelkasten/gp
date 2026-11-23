@@ -7,7 +7,8 @@ on:
       - '**.html'
       - '**.js'
       - '**.css'
-      - 'supabase/migrations/**'
+      - 'supabase/**'
+      - 'scripts/build-time-installers.py'
       - 'tests/**'
       - '.github/workflows/portal-update-checks.yml'
 permissions:
@@ -36,6 +37,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: JavaScript, permissions, and asset checks
         run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs
+      - name: Build reproducible timekeeping installers
+        run: |
+          python3 scripts/build-time-installers.py
+          git diff --exit-code -- supabase/GLASSPRO-WEEKLY-TIME-INSTALL.sql supabase/GLASSPRO-LIVE-PUNCH-APPROVALS-INSTALL.sql supabase/GLASSPRO-NAVIGATION-AND-LIVE-CORRECTIONS-INSTALL.sql
       - name: Collections and quote database integration
         run: |
           createdb gp_collections_test
@@ -62,6 +67,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-navigation.sql
       - name: Concurrent direct correction and clock-out
         run: node tests/admin-live-race.cjs
+      - name: Complete installation with protected Cron permissions
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/installer-with-managed-cron.sql
       - name: Install browser test runner
         timeout-minutes: 3
         run: |

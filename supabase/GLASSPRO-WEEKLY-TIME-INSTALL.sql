@@ -1,13 +1,17 @@
--- GLASSPRO weekly time and automatic missed clock-out installation.
--- Existing portal only. Copy this entire SQL file into Supabase SQL Editor.
--- Last step schedules the worker and processes already-overdue sessions.
+-- GLASSPRO feature installation for the existing portal.
+-- Run this COMPLETE file in Supabase SQL Editor. Atomic and rerunnable.
+-- Cron setup is separate: this transaction does not install extensions,
+-- change Cron permissions/jobs, or run an overdue clock-out sweep.
+-- Existing scheduled jobs remain in place. For new scheduling, see
+-- ENABLE-AUTO-CLOCK-OUT-CRON.sql after enabling Cron in the Dashboard.
+begin;
 
--- migrations/2026-11-16-admin-clock-out.sql
+
+-- Included: migrations/2026-11-16-admin-clock-out.sql
 -- GLASSPRO 2026.11.16.4 — atomic employee and administrator clock-out.
 -- Run in Supabase SQL Editor BEFORE deploying the matching website.
 -- Requires the existing Auth/RLS, archive, exact-lunch and lunch-review updates.
 -- Additive only: preserves existing timecards, permissions and RLS policies.
-begin;
 
 do $preflight$
 begin
@@ -235,15 +239,13 @@ grant execute on function public.gp_finish_active_shift(bigint,uuid,timestamptz,
 comment on function public.gp_finish_active_shift(bigint,uuid,timestamptz,text,text,boolean,text,text)
 is 'Atomic authenticated clock-out. Explicit employee targets require an active administrator and an audit reason. Worksite timezone: America/New_York.';
 notify pgrst,'reload schema';
-commit;
 
 
--- migrations/2026-11-17-clock-out-text-hours-fix.sql
+-- Included: migrations/2026-11-17-clock-out-text-hours-fix.sql
 -- GLASSPRO 2026.11.17.2 — clock-out compatibility repair.
 -- Run this entire SQL file in Supabase SQL Editor, then refresh GLASSPRO.
 -- Supports existing text and numeric time_logs.decimal_hours columns.
 -- Replaces only the clock-out function; does not alter column types or records.
-begin;
 
 do $check$
 begin
@@ -424,13 +426,12 @@ comment on function public.gp_finish_active_shift(bigint,uuid,timestamptz,text,t
 is 'Atomic authenticated clock-out. Explicit employee targets require an active administrator and an audit reason. Worksite timezone: America/New_York.';
 
 notify pgrst,'reload schema';
-commit;
 
 
--- migrations/2026-11-23-weekly-time-and-auto-clock-out.sql
+-- Included: migrations/2026-11-23-weekly-time-and-auto-clock-out.sql
 -- Existing GLASSPRO project; apply after the November 16/17 clock-out migrations.
 -- No employee-specific records or credentials are included.
-begin;
+
 do $$begin
  if to_regprocedure('public.gp_finish_active_shift(bigint,uuid,timestamptz,text,text,boolean,text,text)') is null then raise exception 'Install the November 16/17 clock-out migrations first.';end if;
 end$$;
@@ -599,17 +600,6 @@ revoke all on function public.gp_auto_clock_out_due() from public,anon,authentic
 revoke all on function public.gp_saved_timecards_for_session(uuid,bigint),public.gp_clear_saved_active_shift(uuid,bigint,bigint,text),public.gp_review_auto_clock_out(bigint,text,bigint) from public,anon;
 grant execute on function public.gp_saved_timecards_for_session(uuid,bigint),public.gp_clear_saved_active_shift(uuid,bigint,bigint,text),public.gp_review_auto_clock_out(bigint,text,bigint) to authenticated;
 notify pgrst,'reload schema';
+
+
 commit;
-
--- ENABLE-AUTO-CLOCK-OUT-CRON.sql
--- Run AFTER 2026-11-23-weekly-time-and-auto-clock-out.sql in the existing project.
--- This is a Supabase database job: it runs while all browsers are closed.
-create extension if not exists pg_cron with schema pg_catalog;
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
-select cron.schedule('glasspro-missed-clock-out','* * * * *','select public.gp_auto_clock_out_due();');
--- Catch up sessions already overdue when this update is installed.
-select public.gp_auto_clock_out_due();
--- Confirm one active job. All date/time decisions inside the worker use Eastern time.
-select jobid,jobname,schedule,active from cron.job where jobname='glasspro-missed-clock-out';
-

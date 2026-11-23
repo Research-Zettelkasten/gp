@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.4",
-  "notes": "Simpler personalized sidebar and Team Management tabs; immediate audited administrator live clock-in correction; Mainstreet four-decimal quote CSV support. Run GLASSPRO-NAVIGATION-AND-LIVE-CORRECTIONS-INSTALL.sql for live corrections and account menu sync. Tuesday lunch-review rollover is retained.",
+  "version": "2026.11.23.5",
+  "notes": "Feature installers now run independently of Supabase-managed Cron permissions and jobs. Rerun the corrected complete SQL installer after a Cron dependency error. Existing jobs remain unchanged; new scheduling uses the separate Cron setup file.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }

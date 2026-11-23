@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.4 — personal menus, Team Management, live clock-in correction and Mainstreet quote precision**.
+Current release: **2026.11.23.5 — feature installation independent of managed Cron permissions**.
+
+The timekeeping feature installers no longer install extensions, modify Cron permissions/jobs, or sweep overdue sessions. If a previous install failed in Supabase Cron setup, rerun the current complete feature installer in a new SQL query. Existing scheduled jobs remain in place; new scheduling is configured separately through Supabase Integrations → Cron and `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql`.
 
 See [personal navigation, live corrections and quote uploads](NAVIGATION-LIVE-CORRECTIONS-AND-QUOTE-UPLOADS.md) for the combined SQL installer, personalized sidebar controls, consolidated Team Management tabs, immediate administrator clock-in correction and four-decimal CSV support.
 
