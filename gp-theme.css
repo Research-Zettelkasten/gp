@@ -1,4 +1,5 @@
 /* Consistent dark surfaces; status colors keep their meaning. */
+@media screen{
 html[data-gp-theme="dark"]{color-scheme:dark;--bg:#0b1523;--text:#edf3fb;--text-secondary:#c3cede;--muted:#a6b7cb;--border:#35465c;--border-strong:#4c6079;--green:#52d3ac;--green-bg:#12392f;--amber:#f3c76c;--amber-bg:#3b3020;--red:#fa7b86;--red-dark:#ffacb4;--mos-indigo:#b4b7ff;--mos-purple:#d0b4ff;--shadow-md:0 8px 25px #0003;--shadow-lg:0 18px 45px #0006;--gp2-bg:#0b1523;--gp2-surface:#152438;--gp2-text:#edf3fb;--gp2-muted:#a6b7cb;--gp2-border:#35465c;--gp2-accent:#ff7c89;--gp2-shadow:0 8px 25px #0003}
 html[data-gp-theme="dark"] body{background:var(--gp2-bg)!important;background-image:none!important;color:var(--gp2-text)}
 html[data-gp-theme="dark"] :is(.card,.panel,.modal-card,.gp-pin-dialog,.gp-login-panel,.gp2-dialog,.gp-widget-section,.gp-home-stat,.gp2-home-card,.gp2-home-editor,.table-wrap,.kpi-card,.gp-payroll-summary,.gp-week-summary>div,.gp-auto-review){background:var(--gp2-surface)!important;color:var(--gp2-text)!important;border-color:var(--gp2-border)!important;box-shadow:var(--gp2-shadow)}
@@ -6,6 +7,11 @@ html[data-gp-theme="dark"] :is(h2,h3,h4,h5,.card-title,.kpi-value,.gp-page-intro
 html[data-gp-theme="dark"] :is(.gp-page-intro p,.gp-week-hint,.gp-time-policy,.gp-home-stat p,.gp-home-stat-note,.gp-lunch-panel p,.gp-form-hint,.gp-pin-dialog p){color:var(--gp2-muted)!important}
 html[data-gp-theme="dark"] :is(table th,.table-wrap th){background:#1c2e45!important;color:#b9cade!important;border-color:var(--gp2-border)!important}
 html[data-gp-theme="dark"] table td{border-color:var(--gp2-border)!important}
+html[data-gp-theme="dark"] table{background:var(--gp2-surface)!important;color:var(--gp2-text)}
+html[data-gp-theme="dark"] :is(.time-group,.time-group summary){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
+html[data-gp-theme="dark"] :is(.check-item,.spec-drawer,.mos-bar,.mos-sop-chip){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
+html[data-gp-theme="dark"] :is(.gp-payroll-week-range,.gp-payroll-week-summary,.gp-payroll-week-jump,.gp-payroll-week-range small){color:var(--gp2-muted)!important}
+html[data-gp-theme="dark"] .gp-payroll-week-controls button{background:#203249!important;color:var(--gp2-text)!important;border-color:#52657d!important}
 html[data-gp-theme="dark"] table tbody tr:hover td{background:#1c2e45!important}
 html[data-gp-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:#101d2e!important;color:#edf3fb!important;border-color:#4c6079!important;color-scheme:dark}
 html[data-gp-theme="dark"] :is(input,textarea)::placeholder{color:#96a9c0;opacity:1}
@@ -18,9 +24,12 @@ html[data-gp-theme="dark"] :is(.badge-ok,.ot-safe){background:#123b30!important;
 html[data-gp-theme="dark"] :is(.badge-warn,.ot-approaching){background:#44341c!important;color:#ffe1a0!important;border-color:#806039!important}
 html[data-gp-theme="dark"] :is(.badge-issue,.ot-critical,.ot-exceeded){background:#482532!important;color:#ffc3cb!important;border-color:#945060!important}
 html[data-gp-theme="dark"] .badge-navy{background:#263d59!important;color:#c7e0ff!important}
+html[data-gp-theme="dark"] .badge-purple{background:#372951!important;color:#e1cbff!important}
 html[data-gp-theme="dark"] :is(.map-link,.gp-pin-dialog label){color:#aed1ff!important}
 html[data-gp-theme="dark"] :is([style*="background:#fff" i],[style*="background: #fff" i],[style*="background:#f8fafc" i],[style*="background: #f8fafc" i],[style*="background:#f1f5f9" i],[style*="background: #f1f5f9" i]){background:#192d44!important;color:#edf3fb!important;border-color:#405a75!important}
 html[data-gp-theme="dark"] :is(.btn-navy,.btn-red,.btn-green,.logout-btn,.gp-col-button-primary){color:#fff!important}
+html[data-gp-theme="dark"] :is(.btn-red,.logout-btn){background:#a82239!important}html[data-gp-theme="dark"] .btn-navy{background:#23496f!important}html[data-gp-theme="dark"] .btn-green{background:#146b55!important}
+}
 /* Stable numerical geometry on every timer and summary. */
 .mono,.decimal-box strong,.gp-home-stat>strong,.kpi-value,[data-live-hours],#empOvertimeText,.gp-week-summary strong{font-variant-numeric:tabular-nums lining-nums}
 .decimal-box strong{display:block;min-inline-size:6ch;line-height:1.15;white-space:nowrap}
@@ -31,3 +40,5 @@ html[data-gp-theme="dark"] :is(.btn-navy,.btn-red,.btn-green,.logout-btn,.gp-col
 .gp-side-options .gp2-display-switch{margin:0;width:100%;text-align:left;background:#203c59;color:#f0f6ff;border:1px solid #5c7794;min-height:38px}
 .gp-side-options .gp-theme-label{font-size:11px;color:#c5d8ed}.gp-side-options .gp-theme-status{font-size:10px;line-height:1.5;color:#bbd4ec}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+@media print{html[data-gp-theme="dark"] body{background:#fff!important;color:#111!important}html[data-gp-theme="dark"] :is(.card,.panel,.table-wrap,table,td,th){background:#fff!important;color:#111!important;border-color:#ccc!important;box-shadow:none!important}}

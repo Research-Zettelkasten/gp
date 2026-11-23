@@ -386,6 +386,7 @@
     const footer=document.createElement('div');footer.className='gp-side-foot';
     const settings=document.createElement('button');settings.type='button';settings.className='gp-side-settings-button';settings.innerHTML='<span aria-hidden="true">☷</span><span class="gp-side-foot-label">Display preferences</span>';
     settings.setAttribute('aria-expanded','false');
+    settings.setAttribute('aria-label','Display preferences');settings.title='Display preferences';
     const options=document.createElement('div');options.className='gp-side-options';
     window.GP_UX?.mountThemeControl?.(options);
     const compact=document.createElement('label');compact.className='gp-side-settings-row';
@@ -393,7 +394,7 @@
     compact.append(check,document.createTextNode('Compact cards and tables'));options.append(compact);
     check.addEventListener('change',()=>{storage.write('gp_nav_compact',check.checked);document.body.classList.toggle('gp-density-compact',check.checked);});
     const hint=document.createElement('small');hint.textContent='Expand Administration → Management for section links. Pin the tools you use most. Your display settings stay saved on this browser.';options.append(hint);
-    settings.addEventListener('click',()=>{const expanded=options.classList.toggle('is-open');settings.setAttribute('aria-expanded',String(expanded));});
+    settings.addEventListener('click',()=>{if(document.body.classList.contains('gp-side-collapsed'))nav.querySelector('.gp-side-collapse')?.click();const expanded=options.classList.toggle('is-open');settings.setAttribute('aria-expanded',String(expanded));});
     footer.append(settings,options);nav.append(footer);
     const scrim=document.createElement('div');scrim.className='gp-nav-scrim';scrim.addEventListener('click',closeMobile);document.body.append(scrim);
     mobileTrigger=document.createElement('button');mobileTrigger.type='button';mobileTrigger.className='gp-mobile-nav-trigger';mobileTrigger.innerHTML='<span aria-hidden="true">☰</span> Menu';

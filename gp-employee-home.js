@@ -22,7 +22,7 @@ function render(){
   const date=document.getElementById('gpHomeDate');if(date)date.textContent=new Date().toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
   const shiftLabel=!shiftReady?'Status unavailable':!session?'Off the clock':session.lunch_out_at&&!session.lunch_in_at?'On lunch':'Clocked in';
   const shiftDetail=session?'Since '+new Date(Date.parse(session.approved_clock_in_at||'')||Number(session.started_at_ms)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'Open Time Clock when your workday begins.';
-  mount.innerHTML=
+  const markup=
     '<section class="gp-home-summary" aria-label="Your workday summary">'+
     (canTime?'<article class="gp-home-stat"><span class="gp-home-eyebrow">THIS WEEK</span><strong>'+(summaryReady?stats.hours.toFixed(2)+'<small> hrs</small>':'—')+'</strong><p>'+(summaryReady?stats.shifts+' recorded '+(stats.shifts===1?'shift':'shifts')+' · Monday–Sunday':'Timecard summary unavailable')+'</p></article>'+
     '<article class="gp-home-stat"><span class="gp-home-eyebrow">SHIFT STATUS</span><strong class="gp-home-shift-status">'+(shiftReady&&session?'<span class="gp-home-live-dot"></span>':'')+esc(shiftLabel)+'</strong><p>'+esc(shiftReady?shiftDetail:'Refresh to check your active shift.')+'</p><a href="index.html#timeLivePane">Open Time Clock <span aria-hidden="true">↗</span></a></article>':'')+
@@ -35,6 +35,7 @@ function render(){
     '<section class="gp2-home-cards '+(prefs.layout==='one'?'gp2-one':'')+'" aria-label="Your assigned modules">'+visible.map(w=>
       '<a class="gp2-home-card gp-home-tool" href="'+w.url+'"><span class="gp-home-tool-icon" aria-hidden="true">'+w.icon+'</span><div><h3>'+esc(w.name)+'</h3><p>'+esc(w.description)+'</p></div><span class="gp-home-tool-arrow" aria-hidden="true">↗</span></a>').join('')+'</section>'+
     (!visible.length?'<div class="gp-home-empty"><h3>'+(allowed.length?'Make this space yours':'Your workspace is getting ready')+'</h3><p>'+(allowed.length?'Choose Customize home to bring your cards back. Your modules are also in the sidebar.':'Ask your administrator to assign the tools you need.')+'</p></div>':'');
+  if(mount._gpMarkup===markup)return;mount._gpMarkup=markup;mount.innerHTML=markup;
   mount.querySelector('#gp2Edit').onclick=()=>{draft=GP_HOME_CORE.normalize(saved);render();mount.querySelector('#gp2Columns')?.focus();};
   if(!editable)return;
   mount.querySelector('#gp2Cancel').onclick=()=>{draft=null;render();mount.querySelector('#gp2Edit')?.focus();};

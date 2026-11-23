@@ -18,6 +18,18 @@ drop policy if exists gp_clock_in_request_read on public.gp_clock_in_requests;
 create policy gp_clock_in_request_read on public.gp_clock_in_requests for select to authenticated using(private.gp_is_admin() or (auth_user_id=(select auth.uid()) and private.gp_has_permission('time')));
 create index if not exists gp_clock_in_review_pending on public.gp_clock_in_requests(status,created_at);
 
+create or replace function private.gp_record_live_clock_in()
+returns trigger language plpgsql security definer set search_path='' as $$begin
+ if auth.uid() is null then return new;end if;
+ if tg_op='INSERT' then
+  new.started_at:=clock_timestamp();new.started_at_ms:=floor(extract(epoch from new.started_at)*1000);
+ elsif new.started_at is distinct from old.started_at or new.started_at_ms is distinct from old.started_at_ms then
+  raise exception 'The recorded clock-in is immutable. Request an administrator-approved correction.';
+ end if;return new;
+end$$;
+drop trigger if exists gp_recorded_clock_in on public.active_time_sessions;
+create trigger gp_recorded_clock_in before insert or update on public.active_time_sessions for each row execute function private.gp_record_live_clock_in();
+
 create or replace function private.gp_guard_clock_in_approval()
 returns trigger language plpgsql security definer set search_path='' as $$begin
  if auth.uid() is not null and current_setting('gp.approved_clock_in',true) is distinct from 'yes' and ((tg_op='INSERT' and (new.approved_clock_in_at is not null or new.clock_in_correction_id is not null)) or (tg_op='UPDATE' and (new.approved_clock_in_at is distinct from old.approved_clock_in_at or new.clock_in_correction_id is distinct from old.clock_in_correction_id))) then raise exception 'Clock-in corrections require administrator approval.';end if;return new;
@@ -342,7 +354,7 @@ returns void language plpgsql security definer set search_path='' as $$declare r
  insert into public.audit_logs(actor_user_id,supervisor_name,action_type,details,"timestamp") values(auth.uid(),(select employee_name from public.app_users where auth_user_id=auth.uid()),'TIME_AUTO_CLOCK_OUT_REVIEW',jsonb_build_object('review_id',r.id,'shift_id',t.id,'note',btrim(p_note))::text,clock_timestamp());
 end$$;
 
-revoke all on function private.gp_guard_clock_in_approval(),private.gp_require_live_time_entry() from public,anon,authenticated;
+revoke all on function private.gp_guard_clock_in_approval(),private.gp_require_live_time_entry(),private.gp_record_live_clock_in() from public,anon,authenticated;
 revoke all on function public.gp_request_clock_in_change(bigint,timestamptz,text),public.gp_cancel_clock_in_change(bigint),public.gp_review_clock_in_change(bigint,boolean,text) from public,anon;
 grant execute on function public.gp_request_clock_in_change(bigint,timestamptz,text),public.gp_cancel_clock_in_change(bigint),public.gp_review_clock_in_change(bigint,boolean,text) to authenticated;
 notify pgrst,'reload schema';

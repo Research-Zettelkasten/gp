@@ -1051,12 +1051,12 @@
             clock_in_coords: geo.coords || "", break_minutes:breakMinutes,
             updated_at:new Date().toISOString()
           };
-          result = await supabaseClient.from("active_time_sessions").insert([row]).select("auth_user_id");
+          result = await supabaseClient.from("active_time_sessions").insert([row]).select("*");
         } else {
           // Breaks are exclusively changed by the server-side Lunch Out/Back RPCs.
           return false;
         }
-        return !result.error && !!result.data?.length;
+        return !result.error && result.data?.[0] ? result.data[0] : false;
       } catch (e) { return false; }
     }
 
@@ -1105,10 +1105,11 @@
           return;
         }
         const geo = await captureGeotag();
-        const startedAtMs = Date.now();
-        if (!await syncActiveTimeSession(startedAtMs, geo)) {
+        const confirmed = await syncActiveTimeSession(Date.now(), geo);
+        if (!confirmed) {
           throw new Error("Supabase did not confirm the active clock-in. Please reconnect and retry.");
         }
+        const startedAtMs=Number(confirmed.started_at_ms);
         localStorage.setItem(getClockKey(), String(startedAtMs));
         localStorage.setItem(getClockLocKey(), geo.address);
         localStorage.setItem(getClockCoordsKey(), geo.coords);
@@ -1182,7 +1183,7 @@
         const reason=!lunch.lunch_out_at?document.getElementById("noLunchReason").value.trim():"";
         if(!lunch.lunch_out_at&&reason.length<10){document.getElementById("noLunchReason").focus();throw new Error("Enter a no-lunch explanation of at least 10 characters for manager review.");}
         const geo=await captureGeotag();
-        const result=await GP_CLOCK.finishShift(supabaseClient,{startedAtMs:Number(savedStart),noLunchReason:reason,location:geo.address,coords:geo.coords});
+        const result=await GP_CLOCK.finishShift(supabaseClient,{startedAtMs:Number(savedStart),effectiveStartedAtMs:Date.parse(activeLunchState?.approved_clock_in_at||""),noLunchReason:reason,location:geo.address,coords:geo.coords});
         localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
         localStorage.removeItem("gp_clock_out_saved_"+activeUser.auth_user_id);
         activeLunchState=null;
@@ -1287,13 +1288,13 @@
       const summary=GP_TIME.summary(timeLogs,activeUser,employeeWeek),myLogs=summary.rows;
       const dateLabel=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'});
       document.getElementById('empWeekRange').textContent=dateLabel(employeeWeek)+' – '+dateLabel(GP_TIME.addDays(employeeWeek,6))+(employeeWeek===current?' · Current week':' · Previous week');
-      document.getElementById('empWeekDate').value=employeeWeek;document.getElementById('empWeekDate').max=GP_TIME.day();
+      if(document.activeElement!==document.getElementById('empWeekDate'))document.getElementById('empWeekDate').value=employeeWeek;document.getElementById('empWeekDate').max=GP_TIME.day();
       document.getElementById('empWeekNext').disabled=employeeWeek>=current;
       document.getElementById('empWeekHours').textContent=summary.hours.toFixed(2)+' hrs';document.getElementById('empWeekShifts').textContent=String(myLogs.length);document.getElementById('empWeekReviews').textContent=String(summary.review);document.getElementById('empWeekFooter').textContent=summary.hours.toFixed(2);
       const originalStart=Number(localStorage.getItem(getClockKey())),start=originalStart?GP_TIME.effectiveStart({...activeLunchState,started_at_ms:originalStart}):0,active=start&&GP_TIME.inWeek(GP_TIME.day(start),employeeWeek),estimate=active?activeWeekEstimate():0;
       document.getElementById('empWeekLive').textContent=active?'Active shift estimate: '+estimate.toFixed(2)+' hrs · Total including active: '+(summary.hours+estimate).toFixed(2)+' hrs. Active estimates are separate from saved timecards.':summary.unpaidMinutes+' recorded unpaid lunch minutes. Recorded totals include entries awaiting manager review.';
       const tbody = document.getElementById('recentTimeTable');
-      tbody.innerHTML=myLogs.map(r=>{
+      const markup=myLogs.map(r=>{
         const validCoords=/^-?\d{1,3}(?:\.\d+)?,-?\d{1,3}(?:\.\d+)?$/.test(r.clock_in_coords||'');
         const mapLink=validCoords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:'';
         return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td>${GP.escapeHtml(r.clock_in)} – ${GP.escapeHtml(r.clock_out)}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||r.notes||'Standard Punch')} ${mapLink}
@@ -1303,6 +1304,7 @@
         ${r.clock_out_review_status==='pending'?'<div class="badge badge-warn">Clock-out pending manager review</div>':r.clock_out_review_status==='approved'?'<div class="badge badge-ok">Clock-out reviewed</div>':''}
         ${r.lunch_review_status==='pending'?'<div class="badge badge-warn">No lunch — pending manager review</div>':r.lunch_review_status==='rejected'?'<div class="badge badge-issue">Lunch exception rejected — contact manager</div>':r.lunch_review_status==='approved'?'<div class="badge badge-ok">No lunch approved</div>':''}</td><td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td></tr>`;
       }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--muted);">No completed shifts for this week. Use Previous week or Jump to a date to view earlier records.</td></tr>';
+      if(tbody._gpMarkup!==markup){tbody._gpMarkup=markup;tbody.innerHTML=markup;}
     }
 
     // PRIVATE ON-DEMAND PAY CALCULATOR

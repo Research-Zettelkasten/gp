@@ -4,7 +4,7 @@ select set_config('request.jwt.claim.sub','',false);
 \ir ../supabase/migrations/2026-11-23-clock-in-approval.sql
 \ir ../supabase/migrations/2026-11-23-clock-in-approval.sql
 delete from public.active_time_sessions;
-select public.test_seed_shift('22222222-2222-4222-8222-222222222222',3) as correction_start \gset
+select public.test_clock_at(date_trunc('minute',clock_timestamp()-interval '181 minutes')+interval '10 seconds') as correction_start \gset
 update public.active_time_sessions set lunch_out_at=started_at+interval '1 hour',lunch_in_at=started_at+interval '90 minutes';
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
 select public.gp_request_clock_in_change(:correction_start,to_timestamp(:correction_start/1000.0)-interval '30 minutes','Started work thirty minutes before the recorded punch') as request_id \gset
@@ -12,6 +12,7 @@ select public.test_assert((select approved_clock_in_at is null and started_at_ms
 select public.test_expect_error('select public.gp_request_clock_in_change('||:correction_start||',clock_timestamp()+interval ''1 hour'',''Checking future clock in rejection'')','not in the future');
 select public.test_expect_error('select public.gp_request_clock_in_change('||:correction_start||',to_timestamp('||:correction_start||'/1000.0)-interval ''15 minutes'',''Duplicate pending request is not allowed'')','already awaiting');
 select public.test_expect_error('update public.active_time_sessions set approved_clock_in_at=started_at-interval ''1 hour''','administrator approval');
+select public.test_expect_error('update public.active_time_sessions set started_at=started_at-interval ''1 hour'',started_at_ms=started_at_ms-3600000','immutable');
 select public.test_expect_error($q$insert into public.time_logs(auth_user_id,employee_name,work_date,clock_in,clock_out,decimal_hours,no_lunch_reason) values('22222222-2222-4222-8222-222222222222','Test Employee',current_date,'08:00','17:00',9,'Attempt to use a legacy manual-entry client')$q$,'Use live');
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
 select public.test_expect_error('select public.gp_review_clock_in_change('||:request_id||',true,''Employee cannot approve another employee correction'')','administrator');
@@ -25,7 +26,7 @@ select public.gp_finish_active_shift(:correction_start,null,null,'','');
 select public.test_assert((select session_started_at_ms=:correction_start and approved_clock_in_at=to_timestamp(:correction_start/1000.0)-interval '30 minutes' and decimal_hours::numeric>=3 and decimal_hours::numeric<3.1 and break_minutes=30 and clock_in_correction_id=:request_id from public.time_logs where session_started_at_ms=:correction_start),'employee clock-out uses approved start and exact lunch with same immutable session');
 -- Approval may arrive after the employee has clocked out.
 select set_config('request.jwt.claim.sub','',false);
-select public.test_seed_shift('22222222-2222-4222-8222-222222222222',4) as completed_start \gset
+select public.test_clock_at(date_trunc('minute',clock_timestamp()-interval '4 hours')+interval '10 seconds') as completed_start \gset
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
 select public.gp_request_clock_in_change(:completed_start,to_timestamp(:completed_start/1000.0)-interval '30 minutes','Actual work started before this second recorded shift') as completed_request \gset
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
@@ -35,7 +36,7 @@ select public.test_assert((select decimal_hours::numeric=3.5 and session_started
 select public.test_assert((select count(*)=1 from public.time_logs where session_started_at_ms=:completed_start),'completed correction does not duplicate payroll');
 -- Rejection, withdrawal and audit rollback all preserve current punches.
 select set_config('request.jwt.claim.sub','',false);
-select public.test_seed_shift('22222222-2222-4222-8222-222222222222',5) as rejected_start \gset
+select public.test_clock_at(date_trunc('minute',clock_timestamp()-interval '5 hours')+interval '10 seconds') as rejected_start \gset
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
 select public.gp_request_clock_in_change(:rejected_start,to_timestamp(:rejected_start/1000.0)-interval '15 minutes','Request to check another clock in correction') as rejected_request \gset
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
@@ -71,5 +72,13 @@ select public.test_assert((select count(*)=0 from public.gp_clock_in_requests),'
 reset role;
 select public.test_assert(not has_table_privilege('authenticated','public.gp_clock_in_requests','insert'),'requests cannot be inserted directly');
 select public.test_assert(not has_function_privilege('anon','public.gp_review_clock_in_change(bigint,boolean,text)','execute'),'anonymous review denied');
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
+insert into public.active_time_sessions(auth_user_id,employee_pin,employee_name,department,started_at,started_at_ms) values('22222222-2222-4222-8222-222222222222','22222222-2222-4222-8222-222222222222','Test Employee','Operations','2020-01-01',1);
+select public.test_assert((select started_at>clock_timestamp()-interval '1 minute' and abs(extract(epoch from started_at)*1000-started_at_ms)<1 from public.active_time_sessions),'live clock-in uses server time instead of a backdated client value');
 select set_config('request.jwt.claim.sub','',false);
+delete from public.active_time_sessions;
+select public.test_clock_at('2026-11-03 08:00-05') as approved_auto_start \gset
+update public.active_time_sessions set approved_clock_in_at='2026-11-03 07:30-05';
+select public.gp_auto_clock_out_due();
+select public.test_assert((select decimal_hours::numeric=9.5 and approved_clock_in_at='2026-11-03 07:30-05'::timestamptz and clock_in='07:30' and session_started_at_ms=:approved_auto_start from public.time_logs where session_started_at_ms=:approved_auto_start),'automatic worker uses approved actual start while retaining original identity');
 \echo 'PASS: live-only enforcement, pending approvals, immutable punches, completed payroll corrections, review RLS and rollback.'
