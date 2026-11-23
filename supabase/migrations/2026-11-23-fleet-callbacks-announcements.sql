@@ -65,6 +65,39 @@ drop trigger if exists gp_guard_manager_callback on public.outstanding_quotes;
 create trigger gp_guard_manager_callback before update on public.outstanding_quotes
   for each row execute function private.gp_guard_manager_callback();
 
+create or replace function public.gp_request_manager_callback(
+  p_quote_number bigint, p_note text, p_method text
+) returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  result public.outstanding_quotes%rowtype;
+  note text := btrim(coalesce(p_note, ''));
+  channel text := coalesce(p_method, '');
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in to send a manager handoff.' using errcode = '42501';
+  end if;
+  if length(note) not between 1 and 1000 or channel not in ('','phone','text','email') then
+    raise exception 'Enter handoff notes and a valid contact method.';
+  end if;
+  update public.outstanding_quotes
+  set status = 'admin_review',
+      contact_attempts = coalesce(contact_attempts, 0) + case when channel = '' then 0 else 1 end,
+      call_data = coalesce(call_data, '{}'::jsonb) || jsonb_build_object(
+        'manager_close_required', true, 'manager_note', note,
+        'manager_requested_by', auth.uid(), 'contact_method', channel,
+        'date_reviewed', (now() at time zone 'America/New_York')::date
+      )
+  where quote_number = p_quote_number and status in ('open','follow_up')
+  returning * into result;
+  if not found then
+    raise exception 'Quote is no longer on the active board or you do not have callback access.';
+  end if;
+  return to_jsonb(result);
+end;
+$$;
+revoke all on function public.gp_request_manager_callback(bigint,text,text) from public, anon;
+grant execute on function public.gp_request_manager_callback(bigint,text,text) to authenticated;
+
 create table if not exists public.gp_announcements (
   id uuid primary key default gen_random_uuid(),
   title text not null check (length(btrim(title)) between 1 and 120),

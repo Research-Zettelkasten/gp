@@ -47,7 +47,8 @@ select pg_temp.check_that((select count(*)=1 and bool_and(title='Staff notice') 
 select pg_temp.expect_denied($q$insert into public.gp_announcements(title,body) values ('Staff post','Unauthorized')$q$);
 select pg_temp.check_that((select count(*)=1 from storage.objects),'fleet viewer can read photos');
 select pg_temp.expect_denied($q$insert into storage.objects values ('gp-fleet-photos','801/12345678-abcd-1234-abcd-123456789001.jpg')$q$);
-update public.outstanding_quotes set status='admin_review',call_data='{"manager_close_required":true,"notes":"Review price"}' where quote_number=900;
+select pg_temp.check_that((public.gp_request_manager_callback(900,'Review price','phone')->>'status')='admin_review','callback routes through the database');
+select pg_temp.check_that((select contact_attempts=1 and call_data->>'manager_note'='Review price' from public.outstanding_quotes where quote_number=900),'handoff records actual contact method and notes');
 select pg_temp.expect_denied($q$update public.outstanding_quotes set status='won' where quote_number=900$q$);
 select pg_temp.expect_denied($q$update public.outstanding_quotes set call_data='{}' where quote_number=900$q$);
 reset role;

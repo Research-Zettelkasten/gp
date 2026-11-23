@@ -1942,12 +1942,11 @@
       if (!note) return showToast("Add notes for the closing manager.", "warning");
       const button = document.getElementById("callbackSendToManager");
       button.disabled = true;
-      const receipt = {...quote.call_data, manager_close_required:true, notes:note,
-        contact_method:method, csr_stamp:activeCsr + " • " + GP.localDate(), date_reviewed:GP.localDate()};
       try {
-        const result = await supabaseClient.from("outstanding_quotes")
-          .update({status:"admin_review",call_data:receipt,contact_attempts:(Number(quote.contact_attempts)||0)+(method?1:0)})
-          .eq("quote_number",quote.quote_number).eq("status",quote.status).select("*").single();
+        const result = await supabaseClient.rpc("gp_request_manager_callback", {
+          p_quote_number:quote.quote_number, p_note:note, p_method:method
+        });
+        if (result.error?.code === "PGRST202") throw Error("Install the fleet, callbacks and announcements SQL first.");
         if (result.error) throw result.error;
         Object.assign(quote, quoteFromCloudRow(result.data));
         await logPortalAudit("QUOTE_MANAGER_CLOSE", "Manager close requested for quote #" + quote.quote_number);
@@ -2036,7 +2035,7 @@
                 <td class="py-3.5 px-4"><div class="font-extrabold text-slate-900">#${q.quote_number} — ${GP.escapeHtml(q.customer_name)}</div><div class="text-xs text-slate-500 font-mono">${GP.escapeHtml(q.phone)} • ${GP.escapeHtml(q.module)}</div></td>
                 <td class="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">${formatCurrency(q.total)}</td>
                 <td class="py-3.5 px-4">${pathBadge}</td>
-                <td class="py-3.5 px-4 text-xs text-slate-700 max-w-xs">${GP.escapeHtml(cd.notes || cd.future_feedback || '—')}</td>
+                <td class="py-3.5 px-4 text-xs text-slate-700 max-w-xs">${GP.escapeHtml(cd.manager_note || cd.notes || cd.future_feedback || '—')}</td>
                 <td class="py-3.5 px-4 font-mono text-[11px] text-slate-600 whitespace-nowrap">${GP.escapeHtml(cd.csr_stamp || q.csr)}</td>
                 <td class="py-3.5 px-4 text-right whitespace-nowrap">
                   <button onclick="openAdminInspectorModal(${q.quote_number})" class="bg-slate-900 hover:bg-glasspro-red text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">Inspect Receipt</button>
@@ -2071,7 +2070,7 @@
             <div><span class="text-slate-500">3. Competitor Installed Yet?:</span> <strong class="uppercase">${GP.escapeHtml(cd.competitor_finished || 'N/A')}</strong></div>
             <div><span class="text-slate-500">4. Reason / Outcome:</span> <strong>${GP.escapeHtml(cd.why_went_with_them || cd.not_done_outcome || 'N/A')}</strong></div>
             <div class="sm:col-span-2"><span class="text-slate-500">Customer Feedback:</span> <em>"${GP.escapeHtml(cd.future_feedback || cd.find_out_how_details || cd.earn_back_no_why || 'None recorded')}"</em></div>
-            <div class="sm:col-span-2"><span class="text-slate-500">CSR Notes:</span> <p class="mt-1 p-2 bg-slate-50 rounded border border-slate-200">${GP.escapeHtml(cd.notes || 'No additional notes.')}</p></div>
+            <div class="sm:col-span-2"><span class="text-slate-500">CSR Notes:</span> <p class="mt-1 p-2 bg-slate-50 rounded border border-slate-200">${GP.escapeHtml(cd.manager_note || cd.notes || 'No additional notes.')}</p></div>
           </div>
         </div>
         <div class="bg-amber-50 border border-amber-300 rounded-xl p-3.5">

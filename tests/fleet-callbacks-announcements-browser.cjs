@@ -53,6 +53,14 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
       };
       return chain;
     };
+    const existingRpc = client.rpc.bind(client);
+    client.rpc = async (name,args) => {
+      if (name !== 'gp_request_manager_callback') return existingRpc(name,args);
+      const quote = sample.outstanding_quotes.find(row=>row.quote_number===args.p_quote_number);
+      quote.status = 'admin_review';
+      quote.call_data = {...quote.call_data,manager_close_required:true,manager_note:args.p_note,contact_method:args.p_method};
+      return {data:quote,error:null};
+    };
     client.storage = {from:()=>({
       list:async id=>({data:window.__uploads.filter(path=>path.startsWith(id+'/')).map(path=>({id:path,name:path.split('/')[1]})),error:null}),
       upload:async path=>{window.__uploads.push(path);return {data:{path},error:null};},
