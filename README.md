@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.3 — weekly lunch reviews with Tuesday rollover**.
+Current release: **2026.11.23.4 — personal menus, Team Management, live clock-in correction and Mainstreet quote precision**.
+
+See [personal navigation, live corrections and quote uploads](NAVIGATION-LIVE-CORRECTIONS-AND-QUOTE-UPLOADS.md) for the combined SQL installer, personalized sidebar controls, consolidated Team Management tabs, immediate administrator clock-in correction and four-decimal CSV support.
 
 Lunch Exception Review now has independent Monday–Sunday week navigation. The current review week stays on the prior week throughout Monday for weekend follow-up and advances at midnight Eastern on Tuesday. Use Previous/Next week, Jump to a date, or All outstanding to review older pending and rejected items. Rollover never resolves or deletes exceptions. See [lunch review weeks](LUNCH-REVIEW-WEEKS.md). This release requires no new SQL.
 

@@ -46,7 +46,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();
     assert.equal(await page.locator('html').getAttribute('data-gp-theme'),'dark');
     await page.getByRole('searchbox',{name:'Find a workspace or Management section'}).fill('time');
-    assert.equal(await page.locator('.gp-side-link-row:not(.gp-search-hidden)').count(),1,'navigation search filters modules');
+    assert.equal(await page.locator('.gp-side-link-row:visible').count(),1,'navigation search filters permitted modules');
     await page.getByRole('searchbox').fill('');
     await page.setViewportSize({width:390,height:844});
     await page.waitForFunction(()=>parseFloat(getComputedStyle(document.body).paddingLeft)===0&&document.querySelector('.gp-sidebar').getBoundingClientRect().right<=0);

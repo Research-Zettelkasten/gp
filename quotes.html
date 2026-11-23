@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261118c"></script>
+  <script src="portal-utils.js?v=20261123d"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Quote Call-Back & Admin Review Portal</title>
@@ -163,11 +163,12 @@
     }
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261123b">
-<script src="gp-sidebar.js?v=20261123b" defer></script>
+<link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
+<script src="gp-sidebar-core.js?v=20261123d"></script>
+<script src="gp-sidebar.js?v=20261123d" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
-<script src="gp-ux.js?v=20261123b" defer></script>
+<script src="gp-ux.js?v=20261123d" defer></script>
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
 </head>
 <body class="min-h-screen flex flex-col gp-app">
@@ -908,7 +909,7 @@
       <div class="bg-glasspro-navy text-white px-5 py-4 flex items-center justify-between border-b-4 border-glasspro-red">
         <div>
           <h3 class="text-base font-extrabold">Upload Mainstreet Quotes CSV</h3>
-          <p class="text-xs text-slate-300">Auto-groups multi-part rows & blocks returning customer names or duplicate Quote #s</p>
+          <p class="text-xs text-slate-300">Groups multi-part quotes and skips existing quote numbers. New quotes for returning customers are welcome.</p>
         </div>
         <button onclick="closeCsvUploadModal()" class="text-slate-300 hover:text-white p-1 rounded-lg">✕</button>
       </div>
@@ -924,7 +925,7 @@
         <label class="block border-2 border-dashed border-slate-300 hover:border-glasspro-red rounded-2xl p-8 text-center cursor-pointer bg-slate-50 hover:bg-red-50/20 transition">
           <input type="file" id="csvFileInput" accept=".csv" onchange="handleCsvFileUpload(event)" class="hidden" />
           <div class="text-sm font-bold text-slate-900">Click to select Mainstreet <span class="font-mono text-glasspro-red">Quotes.csv</span> file</div>
-          <div class="text-xs text-slate-500 mt-1">Supports standard Glas-Avenue / Mainstreet export headers</div>
+          <div class="text-xs text-slate-500 mt-1">Supports standard Glas-Avenue / Mainstreet exports, including four-decimal amounts.</div>
         </label>
 
         <div id="csvUploadReportBox" class="hidden rounded-xl border-2 border-slate-200 bg-slate-50 p-4 space-y-3"></div>
@@ -950,7 +951,7 @@
 
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md"></div>
 
-  <script src="quote-import-core.js?v=20261118"></script>
+  <script src="quote-import-core.js?v=20261123d"></script>
   <script>
     // =======================================================================
     // SUPABASE & PORTAL SESSION BRIDGE

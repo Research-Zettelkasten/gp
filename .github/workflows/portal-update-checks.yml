@@ -58,6 +58,10 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-in-approval.sql
       - name: Concurrent approval and clock-out
         run: node tests/clock-in-race.cjs
+      - name: Administrator live correction and per-account navigation permissions
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-navigation.sql
+      - name: Concurrent direct correction and clock-out
+        run: node tests/admin-live-race.cjs
       - name: Install browser test runner
         timeout-minutes: 3
         run: |
@@ -77,6 +81,8 @@ jobs:
         run: node tests/approval-theme-browser.cjs
       - name: Tuesday lunch review weeks and retained outstanding items
         run: node tests/lunch-review-browser.cjs
+      - name: Personalized navigation, Team Management and immediate live corrections
+        run: node tests/personal-navigation-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
