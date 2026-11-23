@@ -47,7 +47,7 @@ The previous policy remains: a regular missed clock-out checked at **12:01 AM Ea
 
 Live Time Monitoring uses fixed column proportions and a scrollable minimum-width table. Timer ticks update elapsed text in the existing rows instead of rebuilding the entire table. Tabular digits and reserved dimensions prevent a change such as 9.99 → 10.00 from resizing the panel. Genuine employee/lunch changes can still update the content.
 
-Unchanged home cards and weekly history rows are reused as well. Refreshing history does not overwrite a date field while the employee is selecting a week. Approval queues avoid replacing a manager's draft explanation when background refresh finds new requests.
+Unchanged home cards and weekly history rows are reused as well. Refreshing history does not overwrite a date field while the employee is selecting a week. Approval and automatic-close queues keep a manager's draft explanation during background refresh and preserve existing forms when a refresh fails.
 
 ## Dark appearance
 
