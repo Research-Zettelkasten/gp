@@ -7,7 +7,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
     and active is true and (perm_admin is true or (needed = 'time' and perm_time is true)));
 $$;
 create table public.active_time_sessions (auth_user_id uuid primary key, started_at_ms bigint not null);
-create table public.audit_logs (actor_user_id uuid, supervisor_name text, action_type text, details text, "timestamp" timestamptz);
+alter table public.audit_logs add column actor_user_id uuid, add column "timestamp" timestamptz;
 \ir ../supabase/migrations/2026-11-23-live-location-requests.sql
 \ir ../supabase/migrations/2026-11-23-live-location-requests.sql
 
@@ -78,7 +78,8 @@ set role authenticated;
 select pg_temp.assert_location((select count(*)=1 from public.gp_live_location_requests where id=:'fresh_id'
     and status='shared' and accuracy_m=14 and latitude=30.83344), 'manager sees consented location and accuracy');
 reset role;
-select pg_temp.assert_location((select count(*)=4 and bool_and(details not like '%30.83344%') from public.audit_logs),
+select pg_temp.assert_location((select count(*)=4 and bool_and(details not like '%30.83344%') from public.audit_logs
+    where action_type in ('TIME_LIVE_LOCATION_REQUEST', 'TIME_LIVE_LOCATION_RESPONSE')),
   'request and response audit trail excludes precise coordinates');
 
 delete from public.active_time_sessions where auth_user_id = :'employee';
