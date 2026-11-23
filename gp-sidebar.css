@@ -119,3 +119,39 @@ body.gp-side-collapsed .gp-side-search{display:none}
 .gp-permission-hidden{display:none!important}
 .gp-sidebar a.gp-side-link.gp-search-hidden{display:none!important}
 
+/* Personal menu and consolidated Team Management. */
+.gp-personal-hidden{display:none!important}
+.gp-search-no-results{font-size:12px;color:#c4d5e8;padding:10px 12px;line-height:1.6}
+.gp-search-no-results[hidden]{display:none}
+.gp-side-foot .gp-customize-menu{background:#23415f;color:#fff;border:1px solid #567393;border-radius:11px}
+.gp-nav-save-status{min-height:28px;padding:0 12px;font-size:10px;line-height:1.4;color:#aec5dc}
+body.gp-side-collapsed .gp-nav-save-status{display:none}
+.gp-team-management{margin-bottom:18px;padding:18px 20px;background:var(--gp2-surface,#fff);color:var(--gp2-text,#17314f);border:1px solid var(--gp2-border,#dce5f0);border-radius:16px}
+.gp-team-management[hidden]{display:none!important}
+.gp-team-management h3{margin:0 0 5px;font-size:18px}.gp-team-management>p{margin:0 0 14px;color:var(--gp2-muted,#64748b);font-size:12px}
+#gpTeamTabs{display:flex;flex-wrap:wrap;gap:8px}
+#gpTeamTabs button{padding:11px 15px;border-radius:10px;border:1px solid var(--gp2-border,#cbd5e1);background:var(--gp2-surface,#fff);color:var(--gp2-text,#17314f);font-size:12px;font-weight:750;cursor:pointer}
+#gpTeamTabs button[aria-pressed="true"]{background:#1b3c60;color:#fff;border-color:#40668c;box-shadow:inset 0 -3px 0 #ff7d8c}
+#gpTeamTabs button:focus-visible,.gp-menu-editor :focus-visible{outline:3px solid #79a9e3;outline-offset:2px}
+.gp-menu-editor{box-sizing:border-box;width:min(760px,calc(100% - 28px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--gp2-border,#cbd5e1);border-radius:19px;background:var(--gp2-surface,#fff);color:var(--gp2-text,#17314f);box-shadow:0 24px 80px #04132659;overflow:hidden;font-family:inherit}
+.gp-menu-editor::backdrop{background:#061526bf}
+.gp-menu-editor-shell{display:flex;flex-direction:column;max-height:calc(100dvh - 34px);margin:0}
+.gp-menu-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:22px 24px 16px;border-bottom:1px solid var(--gp2-border,#dce5f0)}
+.gp-menu-editor-head h2{margin:0 0 7px;font-size:23px;letter-spacing:-.02em}.gp-menu-editor-head p{margin:0;font-size:12px;line-height:1.6;color:var(--gp2-muted,#64748b)}
+.gp-menu-editor button{border:1px solid var(--gp2-border,#cbd5e1);border-radius:9px;background:var(--gp2-surface,#fff);color:var(--gp2-text,#17314f);padding:9px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;min-height:38px}
+.gp-menu-editor button:disabled{opacity:.4;cursor:default}.gp-menu-editor-head>button{font-size:22px;padding:1px 11px}
+.gp-menu-editor-body{padding:18px 24px;overflow-y:auto;overscroll-behavior:contain}
+.gp-menu-settings{display:grid;gap:10px;padding:14px;border-radius:11px;background:var(--gp2-bg,#f1f5f9);margin-bottom:20px}
+.gp-menu-editor .gp-menu-check{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;color:inherit;line-height:1.6;margin:0}
+.gp-menu-editor .gp-menu-check input{width:16px!important;height:16px;margin:0;flex:0 0 16px;accent-color:#b32943}
+#gpMenuItems h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--gp2-muted,#64748b);margin:19px 0 8px}
+.gp-menu-item{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--gp2-border,#e2e8f0)}
+.gp-menu-open{font-weight:750;color:var(--gp2-text,#17314f);font-size:13px;text-decoration:none}.gp-menu-open:hover{text-decoration:underline}
+.gp-menu-item-controls{display:flex;align-items:center;gap:12px}.gp-menu-item-controls>button{padding:4px 10px;min-width:34px}
+.gp-menu-sections{width:100%;font-size:12px;color:var(--gp2-muted,#64748b)}.gp-menu-sections summary{cursor:pointer;line-height:1.8}.gp-menu-sections .gp-menu-check{margin-top:8px;margin-left:8px}
+.gp-menu-editor-hint,#gpMenuSyncStatus{font-size:11px;line-height:1.7;color:var(--gp2-muted,#64748b);margin:16px 0 0}
+.gp-menu-editor-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid var(--gp2-border,#dce5f0);padding:14px 24px;background:var(--gp2-bg,#f8fafc)}
+.gp-menu-editor-actions>span{flex:1}#gpMenuSave{background:#a82239;color:#fff;border-color:#a82239}
+#gpWidgetLunchReview table{min-width:850px}
+@media(max-width:560px){.gp-menu-editor-head,.gp-menu-editor-body{padding:16px}.gp-menu-editor-head h2{font-size:21px}.gp-menu-editor-actions{padding:12px 16px}.gp-menu-item-controls{width:100%;justify-content:flex-end}.gp-menu-editor-actions>span{display:none}.gp-menu-editor-actions button{flex:1}.gp-side-collapsed .gp-nav-save-status{display:block}#gpTeamTabs button{flex:1 1 45%;min-height:44px}}
+

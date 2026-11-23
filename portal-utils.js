@@ -190,6 +190,7 @@
       return null;
     }
     applyNavPermissions(result.profile);
+    window.GP_SIDEBAR?.onSignedIn?.(result.profile,client).catch(()=>{});
     watchProfileAccess(client);
     return result.profile;
   };
