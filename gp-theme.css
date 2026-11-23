@@ -9,6 +9,21 @@ html[data-gp-theme="dark"] :is(table th,.table-wrap th){background:#1c2e45!impor
 html[data-gp-theme="dark"] table td{border-color:var(--gp2-border)!important}
 html[data-gp-theme="dark"] table{background:var(--gp2-surface)!important;color:var(--gp2-text)}
 html[data-gp-theme="dark"] :is(.time-group,.time-group summary){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
+html[data-gp-theme="dark"] :is(.dashboard-pref-bar,.dashboard-builder){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
+html[data-gp-theme="dark"] .gp-page-kicker{color:#ff9da7!important}
+html[data-gp-theme="dark"] .gp-sidebar .gp-side-search input{background:transparent!important}
+html[data-gp-theme="dark"] :is(.bg-white,.bg-slate-50,.bg-slate-100,.bg-gray-50,.bg-gray-100,[class~="bg-slate-200/90"]){background:var(--gp2-surface)!important}
+html[data-gp-theme="dark"] :is(.text-slate-950,.text-slate-900,.text-slate-800,.text-gray-900,.text-gray-800){color:var(--gp2-text)!important}
+html[data-gp-theme="dark"] :is(.text-slate-700,.text-gray-700){color:var(--text-secondary)!important}
+html[data-gp-theme="dark"] :is(.bg-blue-50,.bg-indigo-50,.bg-purple-50){background:#243854!important;color:#d1e3ff!important}
+html[data-gp-theme="dark"] .gp-radio:checked+div{background:#482532!important;color:#ffc3cb!important}html[data-gp-theme="dark"] .gp-radio-green:checked+div{background:#123b30!important;color:#9af0cf!important}
+html[data-gp-theme="dark"] :is(.text-slate-500,.text-slate-600,.text-gray-500,.text-gray-600){color:var(--gp2-muted)!important}
+html[data-gp-theme="dark"] :is(.border-slate-200,.border-slate-300,.border-gray-200,.border-gray-300){border-color:var(--gp2-border)!important}
+html[data-gp-theme="dark"] :is(.bg-red-50,.bg-red-100){background:#482532!important;color:#ffc3cb!important}
+html[data-gp-theme="dark"] :is(.bg-emerald-50,.bg-green-50,.bg-emerald-100,.bg-green-100){background:#123b30!important;color:#9af0cf!important}
+html[data-gp-theme="dark"] :is(.bg-amber-50,.bg-yellow-50,.bg-amber-100){background:#44341c!important;color:#ffe1a0!important}
+html[data-gp-theme="dark"] :is(.text-red-700,.text-red-800,.text-red-900){color:#ffc3cb!important}html[data-gp-theme="dark"] :is(.text-blue-600,.text-blue-700,.text-indigo-600,.text-indigo-700){color:#b6d5ff!important}
+html[data-gp-theme="dark"] .choice-btn.selected-no{background:#a82239!important;color:#fff!important;border-color:#d75a6b!important}
 html[data-gp-theme="dark"] :is(.check-item,.spec-drawer,.mos-bar,.mos-sop-chip){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
 html[data-gp-theme="dark"] :is(.gp-payroll-week-range,.gp-payroll-week-summary,.gp-payroll-week-jump,.gp-payroll-week-range small){color:var(--gp2-muted)!important}
 html[data-gp-theme="dark"] .gp-payroll-week-controls button{background:#203249!important;color:var(--gp2-text)!important;border-color:#52657d!important}
@@ -39,6 +54,7 @@ html[data-gp-theme="dark"] :is(.btn-red,.logout-btn){background:#a82239!importan
 #adminActiveTimeTable td{height:72px;overflow-wrap:anywhere;vertical-align:middle}#adminActiveTimeTable td:nth-child(3),#adminActiveTimeTable td:nth-child(4),#adminActiveTimeTable td:nth-child(5){white-space:nowrap}#adminActiveTimeTable [data-live-hours]{display:inline-block;min-width:7ch;text-align:right;white-space:nowrap}#adminActiveTimeTable .badge{white-space:nowrap}
 .gp-side-options .gp2-display-switch{margin:0;width:100%;text-align:left;background:#203c59;color:#f0f6ff;border:1px solid #5c7794;min-height:38px}
 .gp-side-options .gp-theme-label{font-size:11px;color:#c5d8ed}.gp-side-options .gp-theme-status{font-size:10px;line-height:1.5;color:#bbd4ec}
+.gp-sidebar .gp-side-settings-row{display:flex!important;align-items:center;text-transform:none;letter-spacing:0;line-height:1.5;font-size:12px;text-align:left}.gp-sidebar .gp-side-settings-row input[type="checkbox"]{width:15px!important;height:15px;flex:0 0 15px;margin:0}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 @media print{html[data-gp-theme="dark"] body{background:#fff!important;color:#111!important}html[data-gp-theme="dark"] :is(.card,.panel,.table-wrap,table,td,th){background:#fff!important;color:#111!important;border-color:#ccc!important;box-shadow:none!important}}

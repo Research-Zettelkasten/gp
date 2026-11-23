@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.1",
-  "notes": "Weekly timecard navigation and totals, saved-timecard recovery, reviewed automatic 5 PM defaults at the 12:01 AM cutoff, and 7:30 AM emergency cutoff. Run GLASSPRO-WEEKLY-TIME-INSTALL.sql in Supabase.",
+  "version": "2026.11.23.2",
+  "notes": "Live-only employee time entry, administrator-approved clock-in corrections, immutable server punches, stable live panels, and shared dark appearance inside Display preferences. Run GLASSPRO-LIVE-PUNCH-APPROVALS-INSTALL.sql.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }
