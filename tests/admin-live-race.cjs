@@ -1,7 +1,7 @@
 const {execFile,execFileSync}=require('node:child_process'),assert=require('node:assert/strict');
 const employee='22222222-2222-4222-8222-222222222222',admin='11111111-1111-4111-8111-111111111111';
 const sql=q=>execFileSync('psql',['-XqAt','-v','ON_ERROR_STOP=1','-c',q],{encoding:'utf8'}).trim();
-const call=q=>new Promise((resolve,reject)=>execFile('psql',['-XqAt','-v','ON_ERROR_STOP=1','-c',q],{encoding:'utf8'},(e,out)=>e?reject(e):resolve(JSON.parse(out.trim().split('\n').pop()))));
+const call=q=>new Promise((resolve,reject)=>execFile('psql',['-XqAt','-v','ON_ERROR_STOP=1','-c',q],{encoding:'utf8'},(error,out,stderr)=>error?reject(Object.assign(error,{stderr})):resolve(JSON.parse(out.trim().split('\n').pop()))));
 (async()=>{
  assert.equal(sql('select current_database()'),'gp_clock_test');
  const start=sql("select public.test_clock_at(date_trunc('minute',clock_timestamp()-interval '8 hours')+interval '23 seconds')");

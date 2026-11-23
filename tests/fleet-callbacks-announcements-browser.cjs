@@ -86,7 +86,6 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     await context.route('https://fonts.googleapis.com/**',route=>route.fulfill({contentType:'text/css',body:''}));
     await context.route('https://cdnjs.cloudflare.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.Papa={parse(){}};'}));
     await context.route('https://unpkg.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.lucide={createIcons(){}};'}));
-    await context.route('https://cdn.tailwindcss.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.tailwind={};'}));
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror',error=>errors.push(error.message));
@@ -110,7 +109,7 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     await trailer.filter({hasText:'2099-11-30'}).waitFor();
 
     await page.goto(base+'/fleet.html#safetyPane');
-    await page.waitForURL('**/safety.html');
+    await page.waitForURL('**/safety.html',{waitUntil:'domcontentloaded'});
     await page.getByRole('heading',{name:'Workplace safety',exact:true}).waitFor();
     assert.equal(await page.locator('#navLinkSafety').getAttribute('aria-current'),'page');
     assert.equal(await page.locator('#fleetGarageTable').count(),0);

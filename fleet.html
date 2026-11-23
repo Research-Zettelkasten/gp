@@ -5,7 +5,13 @@
   <script src="portal-utils.js?v=20261123e"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <script>if (location.hash === '#safetyPane') location.replace('safety.html');</script>
+  <script>
+    function redirectLegacySafetyLink() {
+      if (location.hash === '#safetyPane') location.replace('safety.html');
+    }
+    redirectLegacySafetyLink();
+    window.addEventListener('hashchange', redirectLegacySafetyLink);
+  </script>
   <title>GLASSPRO | Vehicle Inspection & Safety Portal</title>
 
   <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
