@@ -44,7 +44,8 @@ select pg_temp.location_error(format('select public.gp_claim_live_location_push(
 reset role;
 
 set role service_role;
-select pg_temp.assert_location((select count(*) = 1 and bool_and(endpoint='https://web.push.apple.com/location-test')
+select pg_temp.assert_location((select count(*) = 2 and bool_and(endpoint in
+    ('https://web.push.apple.com/location-test', 'https://fcm.googleapis.com/fcm/send/fixture'))
   from public.gp_claim_live_location_push(:'request_id', :'manager')), 'alerts only go to the selected employee');
 select pg_temp.assert_location((select count(*) = 0 from public.gp_claim_live_location_push(:'request_id', :'manager')),
   'same request can only notify once');
