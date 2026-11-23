@@ -221,7 +221,7 @@
 <script src="gp-ux.js?v=20261123d" defer></script>
 <script src="gp-time-core.js?v=20261123b"></script>
 <script src="gp-clock-in-change.js?v=20261123e"></script>
-<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123h">
+<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123i">
 <script src="gp-lunch-requests.js?v=1" defer></script>
 <script src="gp-clock.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
@@ -374,7 +374,7 @@
         <span id="empOvertimeBadge" class="badge badge-ok">Within Limit</span>
       </div>
 
-      <div class="sub-bar" role="group" aria-label="Time Clock views">
+      <div id="gpClockViews" class="sub-bar" role="group" aria-label="Time Clock views">
         <button type="button" id="timeSubBtnLive" class="sub-btn active" aria-controls="timeLivePane" aria-pressed="true" onclick="switchTimeTab('timeLivePane', this)">Live Punch Clock</button>
         <button type="button" id="timeSubBtnLunchRequest" class="sub-btn" aria-controls="timeLunchRequestPane" aria-pressed="false" onclick="switchTimeTab('timeLunchRequestPane', this)">Request Lunch Correction</button>
 
