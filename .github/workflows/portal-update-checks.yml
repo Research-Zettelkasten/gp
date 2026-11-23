@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: JavaScript, permissions, and asset checks
-        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs
+        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs tests/callback-tools.test.cjs
       - name: Build reproducible timekeeping installers
         run: |
           python3 scripts/build-time-installers.py
@@ -45,6 +45,10 @@ jobs:
         run: |
           createdb gp_collections_test
           PGDATABASE=gp_collections_test psql -X -v ON_ERROR_STOP=1 -f tests/collections.sql
+      - name: Fleet photo, callback handoff and announcement policies
+        run: |
+          createdb gp_operations_test
+          PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/fleet-callbacks-announcements.sql
       - name: Customer registry and reconciliation integration
         run: |
           createdb gp_customer_test
@@ -90,6 +94,8 @@ jobs:
         run: node tests/lunch-review-browser.cjs
       - name: Personalized navigation, Team Management and immediate live corrections
         run: node tests/personal-navigation-browser.cjs
+      - name: Fleet and Safety, callback tools and announcements workflow
+        run: node tests/fleet-callbacks-announcements-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

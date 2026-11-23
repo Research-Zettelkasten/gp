@@ -4,20 +4,22 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GLASSPRO 2.0 | My Home</title>
 <meta name="theme-color" content="#102944">
-<script src="portal-utils.js?v=20261123d"></script>
+<script src="portal-utils.js?v=20261123e"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="glasspro-theme.css?v=20261113c">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
 <script>try { document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light'; }catch(e){}</script>
-<script src="gp-sidebar-core.js?v=20261123d"></script>
-<script src="gp-sidebar.js?v=20261123d" defer></script>
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
 <script src="gp-clock.js?v=20261116d"></script>
-<script src="gp-home-core.js?v=20261118c"></script>
+<script src="gp-home-core.js?v=20261123e"></script>
 <script src="gp-employee-home.js?v=20261123b" defer></script>
 <script src="gp-ux.js?v=20261123d" defer></script>
 <link rel="stylesheet" href="gp-home.css?v=20261118c">
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
+<link rel="stylesheet" href="gp-operations.css?v=1">
+<script src="gp-announcements.js?v=1" defer></script>
 </head>
 <body class="gp-app gp-home-page">
 <header class="gp-exec-header">
@@ -36,6 +38,11 @@
 </nav>
 <main class="gp-home-outer">
 <section class="gp-page-intro" aria-label="Your workspace"><div><span class="gp-page-kicker">MY GLASSPRO</span><h2 id="gpHomeGreeting">Your workday, in one place</h2><p>A clear view of your day, with the tools you use most.</p></div><div class="gp-home-date"><span id="gpHomeDate"></span><span id="homeLoadMessage" role="status">Verifying your account…</span><button type="button" id="gpHomeRefresh" class="gp-home-refresh" disabled>Refresh</button></div></section>
+  <section id="gpHomeAnnouncements" class="gp-operations-card" aria-labelledby="gpAnnouncementHeading" hidden>
+    <h3 id="gpAnnouncementHeading">Team announcements</h3>
+    <p id="gpAnnouncementStatus" class="gp-operations-note" role="status"></p>
+    <div id="gpAnnouncementList"></div>
+  </section>
   <div id="gp2StandaloneHome"></div>
 </main>
 <script>
@@ -44,11 +51,12 @@
   const SUPABASE_ANON_KEY='sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j';
   const client=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_ANON_KEY)||null;
   window.supabaseClient=client; // Shared Account & PIN controls use this client.
-  let me=null,logs=[],loading=false;
+  let me=null,logs=[],loading=false,loadAnnouncements=null;
   const status=document.getElementById('homeLoadMessage'),refresh=document.getElementById('gpHomeRefresh');
   document.getElementById('gp2HomeSignOut').addEventListener('click',()=>GP.signOut(client));
   async function load(){
     if(!me||loading)return;loading=true;refresh.disabled=true;
+    const announcements = loadAnnouncements?.();
     try{
       const canTime=me.perm_time===true||me.perm_admin===true;
       if(!canTime){status.textContent='Your workspace is ready';GP_HOME.updateData({summaryReady:false,session:null,shiftReady:false});return;}
@@ -60,7 +68,7 @@
       logs=ready?results[0].value:[];
       GP_HOME.updateData({summaryReady:ready,session:shiftReady?results[1].value:null,shiftReady});
       status.textContent=ready&&shiftReady?'Updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'Some details could not load. Try Refresh.';
-    }finally{loading=false;refresh.disabled=false;}
+    }finally{await announcements;loading=false;refresh.disabled=false;}
   }
   document.addEventListener('DOMContentLoaded',async()=>{
     try{
@@ -69,9 +77,11 @@
       document.getElementById('mainNavBar').classList.remove('hidden');GP.applyNavPermissions(me);
       await window.GP_UX?.onSignedIn?.(me,client);
       GP_HOME.mount(me,()=>logs,client);GP_HOME.updateData({summaryReady:false,session:null,shiftReady:false});
+      document.getElementById('gpHomeAnnouncements').hidden=false;
+      loadAnnouncements=window.GP_ANNOUNCEMENTS.mount(client);
       refresh.addEventListener('click',load);
       await load();
-      setInterval(()=>{if(!document.hidden)load();},30000);
+      setInterval(()=>{if(!document.hidden)load();},60000);
       document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
     }catch(e){status.textContent='Unable to load your workspace. Refresh to retry.';refresh.disabled=false;}
   });
