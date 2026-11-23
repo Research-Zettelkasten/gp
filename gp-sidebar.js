@@ -23,7 +23,6 @@
     navLinkFleet:{path:'fleet.html',views:[
       ['inspectPane','Vehicle Check','subBtnInspect'],
       ['historyPane','Inspection History','subBtnHistory'],
-      ['safetyPane','Safety & SOPs','subBtnSafety'],
       ['garagePane','Fleet Garage','subBtnGarage']]}
   };
   const ADMIN_VIEWS = [
@@ -117,7 +116,6 @@
       const admin=u.perm_admin===true;
       if(sectionId==='inspectPane')return admin||u.perm_vehicle_submit===true;
       if(sectionId==='historyPane'||sectionId==='garagePane')return admin||u.perm_vehicle_view===true;
-      if(sectionId==='safetyPane')return admin||u.perm_safety===true;
     }
     return !source||!source.classList.contains('hidden');
   }
@@ -448,6 +446,11 @@
     nav.dataset.gpSidebarReady='true';nav.setAttribute('aria-label','GLASSPRO modules and Management sections');
     nav.classList.add('gp-sidebar');
     if(!nav.querySelector('#navLinkCustomers')){const customerLink=document.createElement('a');customerLink.id='navLinkCustomers';customerLink.href='customers.html';customerLink.textContent='Customers';customerLink.className='gp-nav-btn';nav.append(customerLink);}
+    const safetyLink=document.createElement('a');
+    safetyLink.id='navLinkSafety';safetyLink.href='safety.html';safetyLink.textContent='Safety';
+    safetyLink.className='gp-nav-btn hidden';
+    if (location.pathname.toLowerCase().endsWith('/safety.html')) safetyLink.classList.add('active');
+    nav.append(safetyLink);
     moduleLinks=new Map([...nav.querySelectorAll('a[href][id]')].map(a=>[a.id,a]));
     nav.replaceChildren();
     const brand=document.createElement('div');brand.className='gp-side-brand';

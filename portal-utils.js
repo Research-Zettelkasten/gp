@@ -40,7 +40,7 @@
     return localDate(d);
   };
 
-  const canAccessFleet = user => !!(user && user.active === true && (user.perm_admin === true || user.perm_vehicle_submit === true || user.perm_vehicle_view === true || user.perm_safety === true));
+  const canAccessFleet = user => !!(user && user.active === true && (user.perm_admin === true || user.perm_vehicle_submit === true || user.perm_vehicle_view === true));
 
   const applyNavPermissions = user => {
     if (!user || typeof document === "undefined") return;
@@ -49,6 +49,7 @@
       navLinkQuotes: user.perm_admin === true || user.perm_quotes === true,
       navLinkComm: user.perm_admin === true || user.perm_commission === true,
       navLinkFleet: canAccessFleet(user),
+      navLinkSafety: user.perm_admin === true || user.perm_safety === true,
       navLinkAdmin: !!user.perm_admin,
       navLinkCollections: user.perm_admin === true || user.perm_collections === true,
       navLinkCustomers: user.perm_admin === true || user.perm_collections === true || user.perm_quotes === true

@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.5",
-  "notes": "Feature installers now run independently of Supabase-managed Cron permissions and jobs. Rerun the corrected complete SQL installer after a Cron dependency error. Existing jobs remain unchanged; new scheduling uses the separate Cron setup file.",
+  "version": "2026.11.23.6",
+  "notes": "Split Fleet and Safety, add trailers, tag renewals and private unit photos, expand quote callbacks and publish staff announcements. Apply the fleet, callbacks and announcements SQL migration.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }

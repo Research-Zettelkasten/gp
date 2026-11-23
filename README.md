@@ -1,6 +1,15 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.5 — feature installation independent of managed Cron permissions**.
+Current release: **2026.11.23.6 — fleet records, callback tools and announcements**.
+
+Apply [the fleet, callbacks and announcements migration](supabase/migrations/2026-11-23-fleet-callbacks-announcements.sql) in the GLASSPRO Supabase SQL Editor. It expects the existing fleet, quote and employee tables and Supabase Storage. This update has no Cron setup step.
+
+- **Fleet → Fleet Garage**: choose Vehicle or Trailer, add the tag expiration and last renewal date, and filter the directory by renewal status. Open **Photos** on a saved unit to attach JPEG, PNG, or WebP images. Fleet viewers can open photos. Administrators can upload and remove them. Trailers remain separate from the motor-vehicle inspection checklist.
+- **Safety** has its own navigation entry and keeps the existing Safety permission. Fleet continues to use the vehicle-view and submit permissions.
+- **Quote Call-Backs** uses rule-based priority and filters for due dates, quote dates, minimum amount and phone availability. In a quote, Call, Text and Email open drafts on the user's device. Staff select the contact method when recording the receipt. Use **Manager close or escalation** to send the quote and notes into Admin Review. A manager can requeue, close or convert it to Won.
+- **Management → Command Center → Team announcements** lets administrators publish, pin, edit, expire and archive notices for signed-in staff Home pages.
+- Background database polling uses a one-minute fallback on visible pages. Saves and supported Realtime updates refresh immediately. Live clock displays continue to update locally between server reads.
+
 
 The timekeeping feature installers no longer install extensions, modify Cron permissions/jobs, or sweep overdue sessions. If a previous install failed in Supabase Cron setup, rerun the current complete feature installer in a new SQL query. Existing scheduled jobs remain in place; new scheduling is configured separately through Supabase Integrations → Cron and `supabase/ENABLE-AUTO-CLOCK-OUT-CRON.sql`.
 

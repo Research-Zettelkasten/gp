@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="gp-theme-init.js?v=20261123b"></script>
+  <script src="portal-utils.js?v=20261123e"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Safety · GLASSPRO | Vehicle Inspection & Safety Portal</title>
+
+  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
+  <meta name="theme-color" content="#06101E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
+
+  <!-- Desktop Browser Tab Icon (Inline SVG) -->
+  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
+  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
+
+  <script>
+    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
+    (function() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        // 1. Obsidian-Navy Background
+        const grad = ctx.createLinearGradient(0, 0, 512, 512);
+        grad.addColorStop(0, "#06101E");
+        grad.addColorStop(1, "#0B1F3A");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 2. Top Crimson Red Accent Bar
+        ctx.fillStyle = "#DC2626";
+        ctx.fillRect(0, 0, 512, 76);
+
+        // 3. Subtle Diagonal Glass Reflection Slash
+        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.beginPath();
+        ctx.moveTo(340, 76);
+        ctx.lineTo(460, 76);
+        ctx.lineTo(290, 512);
+        ctx.lineTo(170, 512);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Center "GP" Monogram
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GP", 256, 235);
+
+        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
+        ctx.fillStyle = "#DC2626";
+        ctx.beginPath();
+        ctx.roundRect(76, 365, 360, 74, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+        ctx.fillText("GLASSPRO", 256, 404);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const appleLink = document.getElementById("gpAppleIcon");
+        if (appleLink) appleLink.href = pngDataUrl;
+
+        // 6. Inject Web App Manifest for Android/Desktop "Install App"
+        const manifest = {
+          name: "GLASSPRO Operations Portal",
+          short_name: "GLASSPRO",
+          start_url: "./index.html",
+          display: "standalone",
+          background_color: "#06101E",
+          theme_color: "#06101E",
+          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        const manifestLink = document.createElement("link");
+        manifestLink.rel = "manifest";
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+      } catch (e) {}
+    })();
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --obsidian: #06101E; --navy: #0B1F3A; --navy-light: #16325B; --red: #DC2626;
+      --green: #059669; --mos-indigo: #4F46E5; --mos-purple: #6D28D9; --white: #FFFFFF;
+      --bg: #F4F7FB; --border: #E2E8F0; --border-strong: #CBD5E1; --text: #0F172A;
+      --text-secondary: #334155; --muted: #64748B; --shadow-md: 0 4px 20px -2px rgba(6,16,30,0.06);
+      --radius-md: 10px; --radius-lg: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .hidden { display: none !important; }
+
+    header {
+      background: linear-gradient(135deg, var(--obsidian) 0%, var(--navy) 60%, #112A4E 100%);
+      color: var(--white); border-bottom: 3px solid var(--red); padding: 14px 24px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-badge { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); font-weight: 900; font-size: 14px; padding: 7px 12px; border-radius: 7px; letter-spacing: 1.2px; }
+    .brand-text h1 { font-size: 16px; font-weight: 800; color: #F8FAFC; }
+    .brand-text p { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-pill { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.14); color: #E2E8F0; display: inline-flex; align-items: center; gap: 6px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; }
+    .mos-launch-pill { font-size: 11px; font-weight: 700; background: linear-gradient(135deg, var(--mos-indigo) 0%, var(--mos-purple) 100%); color: var(--white); padding: 6px 12px; border-radius: 6px; text-decoration: none; }
+    .user-pill { font-size: 12px; font-weight: 700; background: var(--white); color: var(--obsidian); padding: 6px 12px; border-radius: 6px; }
+    .logout-btn { background: var(--red); color: var(--white); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+
+    .nav-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; overflow-x: auto; padding: 0 16px; }
+    .nav-btn { flex: 1; min-width: 125px; padding: 15px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; text-transform: uppercase; letter-spacing: 0.6px; text-align: center; text-decoration: none; display: inline-block; }
+    .nav-btn.active { color: var(--obsidian); border-bottom-color: var(--red); font-weight: 800; background: rgba(220,38,38,0.03); }
+
+    .sub-bar { display: flex; background: #E2E8F0; border-radius: var(--radius-md); padding: 5px; margin-bottom: 18px; gap: 5px; }
+    .sub-btn { flex: 1; padding: 10px 12px; border: none; background: transparent; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer; border-radius: 7px; text-transform: uppercase; }
+    .sub-btn.active { background: var(--obsidian); color: var(--white); font-weight: 800; }
+
+    .container { max-width: 1140px; margin: 20px auto; padding: 0 16px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid rgba(15,23,42,0.08); padding: 20px; margin-bottom: 18px; box-shadow: var(--shadow-md); }
+    .card-title { font-size: 14px; font-weight: 800; color: var(--obsidian); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 700px) { .brand-text p { display: none; } .grid-3, .grid-2 { grid-template-columns: 1fr; gap: 10px; } .sub-bar { display: grid; grid-template-columns: 1fr; } }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+    input, select, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-weight: 500; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--white); color: var(--text); }
+    input[readonly] { background: #F1F5F9; color: #475569; font-weight: 700; }
+
+    .btn { display: inline-block; width: 100%; padding: 14px 18px; font-size: 14px; font-weight: 800; text-align: center; border: none; border-radius: 9px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.6px; }
+    .btn-red { background: linear-gradient(135deg, #EF4444 0%, var(--red) 100%); color: var(--white); }
+    .btn-outline { background: var(--white); color: var(--obsidian); border: 1.5px solid var(--border-strong); padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+
+    .section-banner { background: linear-gradient(90deg, var(--obsidian) 0%, var(--navy) 100%); color: var(--white); padding: 12px 16px; border-radius: 8px; font-weight: 800; font-size: 12px; margin: 20px 0 10px 0; text-transform: uppercase; }
+    .check-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; background: var(--white); }
+    .check-item.flagged { border-color: var(--red); background: #FEF2F2; }
+    .check-item.passed { border-color: #6EE7B7; }
+    .check-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .check-question { font-size: 14px; font-weight: 600; flex: 1; min-width: 220px; }
+    .choice-group { display: flex; gap: 6px; }
+    .choice-btn { padding: 9px 16px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border-strong); background: var(--bg); border-radius: 6px; cursor: pointer; min-width: 60px; }
+    @media (max-width: 650px) { .choice-group { width: 100%; } .choice-btn { flex: 1; padding: 10px 0; } }
+    .choice-btn.selected-yes { background: var(--obsidian); color: var(--white); border-color: var(--obsidian); }
+    .choice-btn.selected-no { background: var(--red); color: var(--white); border-color: var(--red); }
+    .choice-btn.selected-na { background: #64748B; color: var(--white); border-color: #64748B; }
+    .issue-drawer { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-strong); display: none; }
+    .issue-drawer.open { display: block; }
+
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--white); }
+    th { background: #F8FAFC; color: var(--text-secondary); text-align: left; padding: 11px 12px; text-transform: uppercase; font-size: 10px; font-weight: 800; border-bottom: 1.5px solid var(--border-strong); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .badge-ok { background: #D1FAE5; color: #065F46; }
+    .badge-issue { background: #FEE2E2; color: #991B1B; }
+    .badge-warn { background: #FEF3C7; color: #92400E; }
+    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
+    @media print { header, .nav-bar, .sub-bar, .no-print { display: none !important; } body { background: white; padding: 0; } .container { max-width: 100%; margin: 0; padding: 0; } .print-sheet { display: block !important; } }
+  </style>
+  <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
+<link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
+<script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
+<link rel="stylesheet" href="gp-ux.css?v=20261123b">
+<script src="gp-ux.js?v=20261123d" defer></script>
+<link rel="stylesheet" href="gp-theme.css?v=20261123b">
+</head>
+<body class="gp-app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">GLASSPRO</div>
+      <div class="brand-text">
+        <h1>GLASS PRO BY AMERICAN GLASS</h1>
+        <p>Workplace Safety &amp; SOPs</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="dbStatus" class="hidden"></div>
+      <div id="activeUserBanner" style="display:flex; align-items:center; gap:8px;">
+        <span id="activeUserName" class="user-pill">SIGNED-IN EMPLOYEE</span>
+        <button type="button" class="gp-account-btn" onclick="GP_PIN.openSettings()" title="Manage your linked account PIN">Account &amp; PIN</button>
+        <span id="activeUserTypeBadge" class="hidden"></span>
+        <button type="button" class="logout-btn" onclick="logoutPortal()">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="mainNavBar" class="nav-bar hidden">
+    <a href="index.html" id="navLinkTime" class="nav-btn">Time Clock</a>
+    <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
+    <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission & WOs</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn">Vehicle Check & Safety</a>
+    <a href="admin.html" id="navLinkAdmin" class="nav-btn">Management & MOS Hub</a>
+    <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">Collections</a>
+  </nav>
+
+  <div class="container">
+    <section class="gp-page-intro" aria-label="Workplace safety">
+      <div><span class="gp-page-kicker">SAFETY</span><h2>Workplace safety</h2><p>Review shop and field procedures before your route.</p></div>
+    </section>
+    <div id="safetyPane" class="no-print" hidden>
+      <div class="card">
+        <div class="card-title">
+          <span>Workplace Safety & MultiplyOS Standard Operating Procedures</span>
+          <span class="badge badge-purple">MultiplyOS Aligned</span>
+        </div>
+        <div class="grid-3">
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">1. Required PPE Compliance</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - ANSI Z87.1 safety glasses required in shop and field.<br>
+              - Kevlar sleeves and cut-resistant gloves for raw glass.<br>
+              - Closed-toe safety footwear required on all routes.
+            </p>
+          </div>
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">2. Fleet & Mobile Rig SOP</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - Complete 35-point Weekly Vehicle Inspection prior to route.<br>
+              - Verify glass racks, tie-downs, and vacuum cups daily.<br>
+              - Flagged vehicle defects automatically alert Operations.
+            </p>
+          </div>
+          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
+            <div class="card-title" style="font-size:13px;">3. MultiplyOS Handbook Sign-Off</div>
+            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
+              - Clock-in/out requires high-precision street geotagging.<br>
+              - Full-Time (&gt;35h) and Part-Time (&gt;25h) require supervisor approval prior to exceeding cap.<br>
+              - Log all completed WOs daily for scoreboard accuracy.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+<script>
+  const SUPABASE_URL = "https://ohddwksazinynqlynycm.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_9x19th40YQMjftz2HgbH5Q_rDS4Fw2j";
+  const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window.logoutPortal = () => GP.signOut(supabaseClient);
+  document.addEventListener('DOMContentLoaded', async () => {
+    const user = await GP.requireAuth(supabaseClient, 'perm_safety');
+    if (!user) return;
+    document.getElementById('safetyPane').hidden = false;
+    document.getElementById('activeUserName').textContent = user.employee_name;
+    document.getElementById('mainNavBar').classList.remove('hidden');
+    void window.GP_UX?.onSignedIn?.(user, supabaseClient);
+    GP.applyNavPermissions(user);
+  });
+</script>
+<script src="gp-pin.js?v=20261112"></script>
+</body>
+</html>

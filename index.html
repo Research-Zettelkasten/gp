@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123d"></script>
+  <script src="portal-utils.js?v=20261123e"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Sign-In & Time Clock</title>
@@ -284,8 +284,8 @@
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
-<script src="gp-sidebar-core.js?v=20261123d"></script>
-<script src="gp-sidebar.js?v=20261123d" defer></script>
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
 <script src="gp-employee-home.js?v=20261123b" defer></script>
@@ -293,11 +293,11 @@
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
 <script src="gp-ux.js?v=20261123d" defer></script>
 <script src="gp-time-core.js?v=20261123b"></script>
-<script src="gp-clock-in-change.js?v=20261123d"></script>
+<script src="gp-clock-in-change.js?v=20261123e"></script>
 <link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
 <script src="gp-clock.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
-<script src="gp-home-core.js?v=20261118c"></script>
+<script src="gp-home-core.js?v=20261123e"></script>
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
 </head>
 <body class="gp-app gp-auth-mode">
@@ -838,6 +838,7 @@
       if (user.perm_quotes !== false) { window.location.href = "quotes.html"; return true; }
       if (user.perm_commission !== false) { window.location.href = "commissions.html"; return true; }
       if (GP.canAccessFleet(user)) { window.location.href = "fleet.html"; return true; }
+      if (user.perm_safety === true) { window.location.href = "safety.html"; return true; }
       if (user.perm_admin) { window.location.href = "admin.html"; return true; }
       return false;
     }
@@ -1356,7 +1357,7 @@
       document.getElementById('empWeekCurrent').onclick=()=>selectEmployeeWeek(GP_TIME.day(),true);
       document.getElementById('empWeekDate').onchange=e=>{if(GP_TIME.validDay(e.target.value)&&e.target.value<=GP_TIME.day())selectEmployeeWeek(e.target.value);};
       setInterval(()=>{if(activeUser&&!document.hidden){renderHistoryTable();updateOvertimeBanner();}},15000);
-      setInterval(()=>{if(activeUser&&!document.hidden)fetchTimeLogs();},60000);
+
 
       document.getElementById("authPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") signInPortal(); });
       document.getElementById("pinLoginCode")?.addEventListener("input", e => { e.target.value=e.target.value.replace(/\D/g,'').slice(0,6); });
@@ -1364,8 +1365,13 @@
       document.getElementById("pinLoginEmail")?.addEventListener("keydown", e => { if(e.key === 'Enter') document.getElementById('pinLoginCode')?.focus(); });
       document.getElementById("authEmail")?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("authPassword")?.focus(); });
       await initializeAuthPortal();
-      setInterval(()=>{if(activeUser&&!document.hidden&&!document.getElementById("btnClockOut").disabled)resumeClockState();},15000);
-      document.addEventListener("visibilitychange",()=>{if(activeUser&&!document.hidden){renderHistoryTable();fetchTimeLogs();if(!document.getElementById("btnClockOut").disabled)resumeClockState();}});
+      function refreshEmployeeClock() {
+        if (!activeUser || document.hidden) return;
+        fetchTimeLogs();
+        if (!document.getElementById("btnClockOut").disabled) resumeClockState();
+      }
+      setInterval(refreshEmployeeClock,60000);
+      document.addEventListener("visibilitychange",refreshEmployeeClock);
     });
   </script>
 <script src="gp-pin.js?v=20261112"></script>

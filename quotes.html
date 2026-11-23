@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123d"></script>
+  <script src="portal-utils.js?v=20261123e"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Quote Call-Back & Admin Review Portal</title>
@@ -164,12 +164,13 @@
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
-<script src="gp-sidebar-core.js?v=20261123d"></script>
-<script src="gp-sidebar.js?v=20261123d" defer></script>
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
 <script src="gp-ux.js?v=20261123d" defer></script>
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
+<link rel="stylesheet" href="gp-operations.css?v=1">
 </head>
 <body class="min-h-screen flex flex-col gp-app">
 
@@ -316,9 +317,10 @@
           </select>
 
           <select id="boardStatusFilter" onchange="renderBoardTable()" class="bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-glasspro-red">
-            <option value="ACTIVE">Active Board (Open + Follow-Up Due)</option>
+            <option value="ACTIVE">Active Board (Open + Follow-Ups)</option>
             <option value="OPEN_ONLY">Unworked Open Quotes Only</option>
             <option value="FOLLOW_UP">Scheduled Follow-Ups ("Up for Review = Yes")</option>
+            <option value="MANAGER">Manager close requested</option>
             <option value="ALL">All Quotes (Including Admin Review & Closed)</option>
           </select>
         </div>
@@ -334,6 +336,19 @@
           />
         </div>
       </div>
+
+      <section class="gp-operations-card" aria-label="Callback filters">
+        <div class="gp-operations-controls" id="callbackFilters">
+          <label>Sort<select id="callbackSort"><option value="priority">Callback priority</option><option value="newest">Newest quote</option><option value="oldest">Oldest quote</option><option value="value">Highest quote value</option></select></label>
+          <label>Follow-up<select id="callbackDue"><option value="">Any due date</option><option value="overdue">Overdue</option><option value="today">Due today</option><option value="upcoming">Upcoming</option><option value="first">First contact</option></select></label>
+          <label>Contact<select id="callbackChannel"><option value="">Any contact</option><option value="phone">Has phone</option><option value="text">Has mobile</option><option value="missing">Missing phone</option></select></label>
+          <label>Quoted from<input id="callbackFrom" type="date"></label>
+          <label>Quoted through<input id="callbackThrough" type="date"></label>
+          <label>Minimum quote total<input id="callbackMinimum" type="number" min="0" step=".01" placeholder="Any amount"></label>
+          <button type="button" id="callbackResetFilters">Reset filters</button>
+        </div>
+        <p id="callbackFilterCount" class="gp-operations-note" role="status"></p>
+      </section>
 
       <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-sm border-l-4 border-glasspro-red">
         <div class="flex items-center gap-2.5 text-xs sm:text-sm">
@@ -637,6 +652,26 @@
             </button>
           </div>
         </div>
+
+        <section class="gp-operations-card" aria-labelledby="callbackToolsTitle">
+          <h3 id="callbackToolsTitle">Contact and scripts</h3>
+          <div class="gp-operations-controls">
+            <a id="callbackCall" class="gp-operations-link" hidden>Call customer</a>
+            <a id="callbackText" class="gp-operations-link" hidden>Text customer</a>
+            <label>Customer email<input id="callbackEmailAddress" type="email" maxlength="254" placeholder="Confirm recipient"></label>
+            <a id="callbackEmail" class="gp-operations-link" hidden>Email customer</a>
+            <label>Contact method for this receipt<select id="callbackUsedMethod"><option value="">Choose if contacted</option><option value="phone">Phone</option><option value="text">Text</option><option value="email">Email</option></select></label>
+          </div>
+          <p id="callbackEmailHint" class="gp-operations-note">Contact buttons open your device’s apps. Select the method when recording the contact.</p>
+          <div class="gp-operations-controls">
+            <label>Script<select id="callbackScript"><option value="voicemail">Voicemail</option><option value="scheduling">Scheduling</option><option value="pricing">Price objection</option><option value="manager">Manager close or escalation</option></select></label>
+          </div>
+          <p id="callbackScriptText"></p>
+          <div id="callbackManagerBox" class="gp-operations-form" hidden>
+            <label>Manager handoff notes<textarea id="callbackManagerNotes" maxlength="1000" rows="3" placeholder="What needs approval, customer’s availability and what you promised"></textarea></label>
+            <button type="button" id="callbackSendToManager">Send to manager for closing</button>
+          </div>
+        </section>
 
         <!-- STEP 1 -->
         <div class="bg-white rounded-xl border-2 border-slate-200 p-4 shadow-xs">
@@ -952,6 +987,7 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md"></div>
 
   <script src="quote-import-core.js?v=20261123d"></script>
+  <script src="gp-callback-tools.js?v=1"></script>
   <script>
     // =======================================================================
     // SUPABASE & PORTAL SESSION BRIDGE
@@ -1219,6 +1255,15 @@
         } catch (e) {document.getElementById('quoteSyncStatus').textContent='Load failed: '+(e.message||'connection error')+'. Use Refresh quotes to retry.';showToast('Current quote records could not be loaded. '+(e.message||''),'warning');}
       }
       await refreshQuoteRecords(false);
+      const extraFilters = ["callbackSort","callbackDue","callbackChannel","callbackFrom","callbackThrough","callbackMinimum"];
+      document.getElementById("callbackFilters").addEventListener("input",renderBoardTable);
+      document.getElementById("callbackResetFilters").onclick = () => {
+        extraFilters.forEach(id => { document.getElementById(id).value = id === "callbackSort" ? "priority" : ""; });
+        document.getElementById("boardCsrFilter").value = "ALL";
+        document.getElementById("boardStatusFilter").value = "ACTIVE";
+        document.getElementById("boardSearchInput").value = "";
+        setModuleFilter("ALL");
+      };
       document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!quoteImportBusy)void refreshQuoteRecords(false);});
       window.setInterval(()=>{if(!document.hidden&&!quoteImportBusy)void refreshQuoteRecords(false);},60000);
       refreshAllViews();
@@ -1356,25 +1401,16 @@
     // =======================================================================
     function renderBoardTable() {
       const tbody = document.getElementById("quoteTableBody");
-      const csrFilter = document.getElementById("boardCsrFilter").value;
-      const statusFilter = document.getElementById("boardStatusFilter").value;
-      const searchVal = (document.getElementById("boardSearchInput").value || "").trim().toLowerCase();
       const todayStr = GP.localDate();
-
-      const filtered = quotesState.filter(q => {
-        if (currentModuleFilter !== "ALL" && q.module !== currentModuleFilter) return false;
-        if (csrFilter !== "ALL" && q.csr !== csrFilter) return false;
-
-        if (statusFilter === "ACTIVE" && q.status !== "open" && q.status !== "follow_up") return false;
-        if (statusFilter === "OPEN_ONLY" && q.status !== "open") return false;
-        if (statusFilter === "FOLLOW_UP" && q.status !== "follow_up") return false;
-
-        if (searchVal) {
-          const hay = `${q.quote_number} ${q.customer_name} ${q.phone} ${q.module} ${q.csr} ${JSON.stringify(q.parts)}`.toLowerCase();
-          if (!hay.includes(searchVal)) return false;
-        }
-        return true;
-      });
+      const field = id => document.getElementById(id).value;
+      const ranked = GP_CALLBACKS.select(quotesState, {
+        module:currentModuleFilter, csr:field("boardCsrFilter"), status:field("boardStatusFilter"),
+        search:field("boardSearchInput"), sort:field("callbackSort"), due:field("callbackDue"),
+        contact:field("callbackChannel"), from:field("callbackFrom"), to:field("callbackThrough"), min:field("callbackMinimum")
+      }, todayStr);
+      const filtered = ranked.map(row => row.quote);
+      const reasonFor = new Map(ranked.map(row => [row.quote.quote_number,row.reason]));
+      document.getElementById("callbackFilterCount").textContent = `${filtered.length} of ${quotesState.length} quotes · Priority uses due date, contact attempts and contact details.`;
 
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-slate-500 font-bold">No quotes match your current filter criteria.</td></tr>`;
@@ -1384,7 +1420,7 @@
       tbody.innerHTML = filtered.map(q => {
         const isZeroTotal = !q.total || Number(q.total) === 0;
         const partSummary = getPrimaryPartSummary(q);
-        const isDueToday = q.status === "follow_up" && q.call_data && q.call_data.expected_answer_date <= todayStr;
+        const isDueToday = q.status === "follow_up" && GP_CALLBACKS.dateOnly(q.call_data?.expected_answer_date) && GP_CALLBACKS.dateOnly(q.call_data.expected_answer_date) <= todayStr;
 
         let statusBadge = "";
         if (q.status === "open") {
@@ -1393,7 +1429,7 @@
             : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">Open Call-Back</span>`;
         } else if (q.status === "follow_up") {
           statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${isDueToday ? 'bg-amber-500 text-slate-950 animate-pulse' : 'bg-amber-100 text-amber-900 border border-amber-300'}">
-            ${isDueToday ? '🔔 Answer Due Today!' : '⏳ Review: ' + (q.call_data?.expected_answer_date || 'Pending')}
+            ${isDueToday ? reasonFor.get(q.quote_number) : 'Review: ' + GP.escapeHtml(q.call_data?.expected_answer_date || 'Pending')}
           </span>`;
         } else if (q.status === "admin_review") {
           statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">In Admin Review</span>`;
@@ -1429,7 +1465,7 @@
                 : `<div class="font-extrabold text-slate-900 text-sm">${formatCurrency(q.total)}</div><div class="text-[10px] text-slate-400">Tax: ${formatCurrency(q.tax)}</div>`
               }
             </td>
-            <td class="py-3.5 px-4 text-center whitespace-nowrap">${statusBadge}</td>
+            <td class="py-3.5 px-4 text-center whitespace-nowrap">${statusBadge}${reasonFor.get(q.quote_number) ? `<div class="gp-operations-note">${reasonFor.get(q.quote_number)}</div>` : ""}</td>
             <td class="py-3.5 px-4 text-right whitespace-nowrap">
               <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 group-hover:bg-glasspro-red text-white text-xs font-bold transition">
                 <span>Call / Review</span>
@@ -1451,8 +1487,8 @@
 
       document.getElementById("modalCustomerName").textContent = quote.customer_name;
       document.getElementById("modalPhoneText").textContent = quote.phone || "No Phone Listed";
-      const cleanDigits = String(quote.phone || "").replace(/\D/g, "");
-      document.getElementById("modalPhoneLink").href = cleanDigits ? `tel:${cleanDigits}` : "#";
+      document.getElementById("modalPhoneLink").href = GP_CALLBACKS.links(quote.phone,"","","",false).call || "#";
+      prepareCallbackContact(quote);
 
       const cellBadge = document.getElementById("modalCellBadge");
       cellBadge.textContent = quote.has_cell ? "CELL / SMS READY" : "LANDLINE";
@@ -1772,7 +1808,8 @@
         still_for_review: stillForReview,
         expected_answer_date: stillForReview === "yes" ? expectedAnswerDate : "",
         notes: notes,
-        csr_stamp: stamp
+        csr_stamp: stamp,
+        contact_method: document.getElementById("callbackUsedMethod").value
       };
 
       let auditAction, auditDetails, notice, noticeType;
@@ -1849,6 +1886,78 @@
       refreshAllViews();
     }
 
+    function contactMessage(quote) {
+      return `Hi ${quote.customer_name}, this is ${getCsrInfo(activeCsr).firstName} with GLASSPRO. I’m following up on quote #${quote.quote_number}. Do you have any questions or would you like to discuss scheduling? You can reach us at (229) 244-8484.`;
+    }
+
+    function prepareCallbackContact(quote) {
+      const address = document.getElementById("callbackEmailAddress");
+      const script = document.getElementById("callbackScript");
+      const method = document.getElementById("callbackUsedMethod");
+      const notes = document.getElementById("callbackManagerNotes");
+      const hint = document.getElementById("callbackEmailHint");
+      const field = id => document.getElementById(id);
+      const prompt = {};
+      address.callbackContact = prompt;
+      address.value = "";
+      script.value = "voicemail";
+      method.value = "";
+      notes.value = "";
+      const instruction = "Contact buttons open your device’s apps. Select the method when recording the contact.";
+      hint.textContent = instruction;
+      function renderLinks() {
+        const actions = GP_CALLBACKS.links(quote.phone, address.value, "GLASSPRO quote #" + quote.quote_number, contactMessage(quote), quote.has_cell);
+        for (const [id, target] of [["callbackCall",actions.call],["callbackText",actions.text],["callbackEmail",actions.email]]) {
+          const link = field(id);
+          link.hidden = !target;
+          if (target) link.href = target;
+          else link.removeAttribute("href");
+        }
+      }
+      function renderScript() {
+        field("callbackScriptText").textContent = GP_CALLBACKS.scripts[script.value]
+          .replace("{csr}",getCsrInfo(activeCsr).firstName).replace("{quote}",quote.quote_number);
+        field("callbackManagerBox").hidden = script.value !== "manager";
+        field("callbackSendToManager").disabled = !["open","follow_up"].includes(quote.status);
+      }
+      address.oninput = renderLinks;
+      script.onchange = renderScript;
+      field("callbackSendToManager").onclick = () => routeCallbackToManager(quote, notes.value, method.value);
+      renderLinks();
+      renderScript();
+      if (quote.customer_id) void (async () => {
+        try {
+          const {data,error} = await supabaseClient.from("gp_customers").select("email").eq("id",quote.customer_id).eq("identity_status","verified").maybeSingle();
+          if (error || address.callbackContact !== prompt || Number(activeModalQuoteNumber) !== Number(quote.quote_number) || address.value || !GP_CALLBACKS.email(data?.email)) return;
+          address.value = data.email;
+          hint.textContent = "Email from the verified customer profile. Confirm the recipient before sending.";
+          renderLinks();
+        } catch (_) { /* Staff may still enter a verified address for this contact. */ }
+      })();
+    }
+
+    async function routeCallbackToManager(quote, note, method) {
+      if (!["open","follow_up"].includes(quote.status)) return showToast("This callback is already out of the active queue.", "warning");
+      note = note.trim();
+      if (!note) return showToast("Add notes for the closing manager.", "warning");
+      const button = document.getElementById("callbackSendToManager");
+      button.disabled = true;
+      const receipt = {...quote.call_data, manager_close_required:true, notes:note,
+        contact_method:method, csr_stamp:activeCsr + " • " + GP.localDate(), date_reviewed:GP.localDate()};
+      try {
+        const result = await supabaseClient.from("outstanding_quotes")
+          .update({status:"admin_review",call_data:receipt,contact_attempts:(Number(quote.contact_attempts)||0)+(method?1:0)})
+          .eq("quote_number",quote.quote_number).eq("status",quote.status).select("*").single();
+        if (result.error) throw result.error;
+        Object.assign(quote, quoteFromCloudRow(result.data));
+        await logPortalAudit("QUOTE_MANAGER_CLOSE", "Manager close requested for quote #" + quote.quote_number);
+        showToast("Callback sent to Admin Review for closing.", "success");
+        closeCallbackModal();
+        refreshAllViews();
+      } catch (error) { showToast("Manager handoff could not be saved. " + error.message,"warning"); }
+      finally { button.disabled = false; }
+    }
+
     function copySmsTemplate() {
       const quote = quotesState.find(q => q.quote_number === Number(activeModalQuoteNumber));
       if (!quote) return;
@@ -1857,10 +1966,11 @@
       const priceText = (!quote.total || Number(quote.total) === 0) ? "" : ` (${formatCurrency(quote.total)} total w/ tax)`;
       const smsText = `Hi ${quote.customer_name}, this is ${csrInfo.firstName} with GLASSPRO in Valdosta following up on your ${quote.module.toLowerCase()} glass quote #${quote.quote_number} for your ${partSummary}${priceText}. Have you had a chance to get that completed yet, or would you like to get on our schedule this week? Reply here or call us at (229) 244-8484!`;
 
-      navigator.clipboard.writeText(smsText).catch(() => {});
-      document.getElementById("smsBtnText").textContent = "Copied SMS!";
-      setTimeout(() => { document.getElementById("smsBtnText").textContent = "Copy SMS"; }, 2000);
-      showToast(`SMS template copied for ${quote.customer_name}!`, "success");
+      navigator.clipboard.writeText(smsText).then(() => {
+        document.getElementById("smsBtnText").textContent = "Copied SMS!";
+        setTimeout(() => { document.getElementById("smsBtnText").textContent = "Copy SMS"; }, 2000);
+        showToast("SMS template copied.", "success");
+      }).catch(() => showToast("Clipboard access was denied. Use Text customer to open the draft.", "warning"));
     }
 
     // =======================================================================
@@ -1910,7 +2020,9 @@
         ? `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-xs">No job receipts currently waiting in this view.</td></tr>`
         : receipts.map(q => {
             const cd = q.call_data || {};
-            let pathBadge = cd.job_already_acquired
+            let pathBadge = q.status === "admin_review" && cd.manager_close_required
+              ? '<span class="badge badge-warn">Manager close requested</span>'
+              : cd.job_already_acquired
               ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-teal-100 text-teal-800">Already Acquired</span>`
               : (q.status === "won"
                   ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">Won / Scheduled</span>`
@@ -1949,8 +2061,10 @@
           <div><span class="text-slate-500 block">Amount + Tax</span><strong class="font-mono text-glasspro-red text-sm">${formatCurrency(q.total)}</strong></div>
           <div><span class="text-slate-500 block">Date Reviewed</span><strong class="font-mono">${GP.escapeHtml(cd.date_reviewed || q.quote_date || GP.localDate())}</strong></div>
         </div>
+        ${cd.manager_close_required ? '<p class="gp-operations-note">Manager close requested. Confirm the scope, final price and schedule before converting to Won.</p>' : ''}
         <div class="space-y-2 text-xs sm:text-sm border border-slate-200 rounded-xl p-4 bg-white">
           <div class="font-extrabold text-slate-900 uppercase text-xs tracking-wider border-b pb-1.5 mb-2">Recorded Call-Back Path Answers</div>
+          ${cd.contact_method ? `<p>Contact method: ${GP.escapeHtml(cd.contact_method)}</p>` : ""}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div><span class="text-slate-500">1. Work Completed?:</span> <strong class="uppercase">${GP.escapeHtml(cd.work_completed || 'N/A')}</strong></div>
             <div><span class="text-slate-500">2. Competitor Chosen:</span> <strong>${GP.escapeHtml(cd.competitor_name || 'None')}</strong></div>
@@ -1989,6 +2103,7 @@
       let actionName = "QUOTE_ARCHIVED", description = "Archived quote receipt", toast = "Receipt archived";
       if (action === "REQUEUE") {
         q.status = "open";
+        if (q.call_data?.manager_close_required) q.call_data = {...q.call_data, manager_close_required:false};
         if (coachingNote) q.admin_coaching_note = coachingNote;
         actionName = "QUOTE_REQUEUE"; description = `Re-queued Quote #${q.quote_number} (${q.customer_name}) with note: ${coachingNote || 'Re-work'}`;
         toast = `Quote #${q.quote_number} re-queued to active CSR Call-Back Board`;

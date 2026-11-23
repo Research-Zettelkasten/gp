@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123d"></script>
+  <script src="portal-utils.js?v=20261123e"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Executive Management & MultiplyOS Hub</title>
@@ -737,8 +737,8 @@
 <link rel="stylesheet" href="gp-dashboard-builder.css?v=20261112e">
 <script src="gp-dashboard-core.js?v=20261112e"></script>
 <script src="gp-payroll-weeks.js?v=20261112d"></script>
-<script src="gp-sidebar-core.js?v=20261123d"></script>
-<script src="gp-sidebar.js?v=20261123d" defer></script>
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
 <link rel="stylesheet" href="gp-payroll-weeks.css?v=20261123c">
@@ -751,7 +751,7 @@
 <script src="gp-time-core.js?v=20261123c"></script>
 <script src="gp-admin-live-correction.js?v=20261123d"></script>
 <link rel="stylesheet" href="gp-admin-live-correction.css?v=20261123d">
-<script src="gp-clock-in-change.js?v=20261123d"></script>
+<script src="gp-clock-in-change.js?v=20261123e"></script>
 <link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
 <script src="gp-clock.js?v=20261123b"></script>
 <script src="gp-admin-clock.js?v=20261123b"></script>
@@ -759,6 +759,8 @@
 <link rel="stylesheet" href="gp-clock.css?v=20261123a">
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
+<link rel="stylesheet" href="gp-operations.css?v=1">
+<script src="gp-announcements.js?v=1" defer></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -828,6 +830,23 @@
          PANE 1: EXECUTIVE COMMAND CENTER
          ==================================================================== -->
     <div id="adminOverviewPane" class="gp-managed-pane">
+      <section class="gp-operations-card" aria-labelledby="gpAnnouncementHeading">
+        <h3 id="gpAnnouncementHeading">Team announcements</h3>
+        <p class="gp-operations-note">Published announcements appear on staff Home pages.</p>
+        <form id="gpAnnouncementForm" class="gp-operations-form">
+          <label>Title<input name="title" maxlength="120" required></label>
+          <label>Message<textarea name="body" rows="4" maxlength="2000" required></textarea></label>
+          <label>Expires (optional, your local time)<input name="expires" type="datetime-local"></label>
+          <label><input name="pinned" type="checkbox"> Pin to the top</label>
+          <div class="gp-operations-controls">
+            <button id="gpAnnouncementSave" type="submit">Publish announcement</button>
+            <button id="gpAnnouncementReset" type="button">Clear form</button>
+            <button id="gpAnnouncementRefresh" type="button">Refresh announcements</button>
+          </div>
+        </form>
+        <p id="gpAnnouncementStatus" class="gp-operations-note" role="status"></p>
+        <div id="gpAnnouncementList"></div>
+      </section>
       <div id="dashWidgetKpis" class="grid-4 gp-widget-section" style="margin-bottom:18px;">
         <div class="kpi-card">
           <label>Total Logged Hours</label>
@@ -2000,8 +2019,8 @@
       }).join("")||`<tr><td colspan="7" style="text-align:center;color:var(--muted);">${activeTimeSessionsConfirmed?"No employees are currently clocked in.":"Active shifts could not be verified. Refresh before making changes."}</td></tr>`;}
       const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
-    function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
-    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden){renderLunchApprovalQueue();if(dashboardPrefs.locked)loadDashboardPreferences();}});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(()=>{renderActiveTimeMonitor();renderLunchApprovalQueue();},10000);}
+    function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>{if(!document.hidden)loadAdminData();},350);}
+    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden){renderLunchApprovalQueue();loadAdminData(true);if(dashboardPrefs.locked)loadDashboardPreferences();}});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>{if(!document.hidden)loadAdminData(true);},60000);liveClockRenderTimer=setInterval(()=>{renderActiveTimeMonitor();renderLunchApprovalQueue();},10000);}
 
     function requireManagementCloud() {
       if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable. No changes were made. Reconnect and retry.");
@@ -2029,7 +2048,18 @@
       localStorage.setItem("gp_audit_logs", JSON.stringify(auditLogs));
     }
 
-    async function loadAdminData() {
+    let pendingAdminLoad = null;
+    async function loadAdminData(background = false) {
+      if (pendingAdminLoad) {
+        if (background) return pendingAdminLoad;
+        await pendingAdminLoad;
+        if (pendingAdminLoad) return pendingAdminLoad;
+      }
+      pendingAdminLoad = readAdminData().finally(() => { pendingAdminLoad = null; });
+      return pendingAdminLoad;
+    }
+
+    async function readAdminData() {
       activeTimeSessionsConfirmed = false;
       const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
       if (localUsers.length > 0) usersList = localUsers;
@@ -3056,6 +3086,7 @@
       window.GP_CLOCK_IN?.mountAdmin?.({client:supabaseClient,onSaved:()=>loadAdminData()});
       window.GP_ADMIN_CLOCK.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
       window.GP_ADMIN_LIVE.mount({client:supabaseClient,getUser:()=>activeUser,onSaved:message=>{showToast(message);loadAdminData();}});
+      window.GP_ANNOUNCEMENTS.mount(supabaseClient, true)?.();
       startAdminLiveSync();
     });
   </script>

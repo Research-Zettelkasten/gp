@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123d"></script>
+  <script src="portal-utils.js?v=20261123e"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script>if (location.hash === '#safetyPane') location.replace('safety.html');</script>
   <title>GLASSPRO | Vehicle Inspection & Safety Portal</title>
 
   <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
@@ -175,12 +176,14 @@
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
 <link rel="stylesheet" href="gp-sidebar.css?v=20261123d">
-<script src="gp-sidebar-core.js?v=20261123d"></script>
-<script src="gp-sidebar.js?v=20261123d" defer></script>
+<script src="gp-sidebar-core.js?v=20261123e"></script>
+<script src="gp-sidebar.js?v=20261123e" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
 <script src="gp-ux.js?v=20261123d" defer></script>
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
+<link rel="stylesheet" href="gp-operations.css?v=1">
+<script src="gp-fleet-records.js?v=1"></script>
 </head>
 <body class="gp-app">
 
@@ -189,7 +192,7 @@
       <div class="brand-badge">GLASSPRO</div>
       <div class="brand-text">
         <h1>GLASS PRO BY AMERICAN GLASS</h1>
-        <p>Vehicle Check, Fleet Garage & Workplace Safety Portal</p>
+        <p>Vehicle Inspections &amp; Fleet Garage</p>
       </div>
     </div>
     <div class="header-right">
@@ -207,26 +210,25 @@
     <a href="index.html" id="navLinkTime" class="nav-btn">Time Clock</a>
     <a href="quotes.html" id="navLinkQuotes" class="nav-btn">Quote Call-Backs</a>
     <a href="commissions.html" id="navLinkComm" class="nav-btn">Commission & WOs</a>
-    <a href="fleet.html" id="navLinkFleet" class="nav-btn active">Vehicle Check & Safety</a>
+    <a href="fleet.html" id="navLinkFleet" class="nav-btn active">Fleet</a>
     <a href="admin.html" id="navLinkAdmin" class="nav-btn">Management & MOS Hub</a>
     <a href="collections.html" id="navLinkCollections" class="gp-nav-btn">Collections</a>
   </nav>
 
   <div class="container">
     <section class="gp-page-intro" aria-label="Vehicles, inspections & readiness">
-      <div><span class="gp-page-kicker">FLEET & SAFETY</span><h2>Vehicles, inspections & readiness</h2><p>A clearer view of fleet status, inspections and the safety items that need attention.</p></div>
+      <div><span class="gp-page-kicker">FLEET</span><h2>Vehicles, inspections & readiness</h2><p>Manage vehicle inspections, trailers, registration tags and fleet photos.</p></div>
       <div class="gp-page-mark"><span class="gp-online-dot"></span>Operational workspace</div>
     </section>
 
     <div class="sub-bar no-print">
       <button type="button" id="subBtnInspect" class="sub-btn active" onclick="switchFleetTab('inspectPane', this)">35-Point Vehicle Check</button>
       <button type="button" id="subBtnHistory" class="sub-btn" onclick="switchFleetTab('historyPane', this)">Fleet Inspection History</button>
-      <button type="button" id="subBtnSafety" class="sub-btn" onclick="switchFleetTab('safetyPane', this)">Safety & MultiplyOS SOPs</button>
       <button type="button" id="subBtnGarage" class="sub-btn" onclick="switchFleetTab('garagePane', this)">Fleet Garage</button>
     </div>
 
     <!-- PANE 1: 35-POINT VEHICLE INSPECTION -->
-    <div id="inspectPane" class="no-print">
+    <div id="inspectPane" class="no-print hidden">
       <div class="card">
         <div class="card-title">
           <span>Fleet Vehicle Inspection</span>
@@ -312,52 +314,21 @@
       </div>
     </div>
 
-    <!-- PANE 3: WORKPLACE & FIELD SAFETY SOPs -->
-    <div id="safetyPane" class="hidden no-print">
-      <div class="card">
-        <div class="card-title">
-          <span>Workplace Safety & MultiplyOS Standard Operating Procedures</span>
-          <span class="badge badge-purple">MultiplyOS Aligned</span>
-        </div>
-        <div class="grid-3">
-          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
-            <div class="card-title" style="font-size:13px;">1. Required PPE Compliance</div>
-            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
-              - ANSI Z87.1 safety glasses required in shop and field.<br>
-              - Kevlar sleeves and cut-resistant gloves for raw glass.<br>
-              - Closed-toe safety footwear required on all routes.
-            </p>
-          </div>
-          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
-            <div class="card-title" style="font-size:13px;">2. Fleet & Mobile Rig SOP</div>
-            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
-              - Complete 35-point Weekly Vehicle Inspection prior to route.<br>
-              - Verify glass racks, tie-downs, and vacuum cups daily.<br>
-              - Flagged vehicle defects automatically alert Operations.
-            </p>
-          </div>
-          <div class="card" style="margin-bottom:0; background:#F8FAFC;">
-            <div class="card-title" style="font-size:13px;">3. MultiplyOS Handbook Sign-Off</div>
-            <p style="font-size:13px; line-height:1.6; color:var(--text-secondary);">
-              - Clock-in/out requires high-precision street geotagging.<br>
-              - Full-Time (&gt;35h) and Part-Time (&gt;25h) require supervisor approval prior to exceeding cap.<br>
-              - Log all completed WOs daily for scoreboard accuracy.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- PANE 4: FLEET GARAGE DIRECTORY / ADMIN EDITOR -->
     <div id="garagePane" class="hidden no-print">
       <div id="garageAdminEditor" class="card">
         <div class="card-title">
-          <span id="vehicleFormTitle">Add or Update Garage Vehicle</span>
+          <span id="vehicleFormTitle">Add or Update Fleet Unit</span>
           <span class="badge badge-navy">Admin Controls</span>
         </div>
         <input type="hidden" id="editingVehicleId" />
+        <div class="gp-operations-controls">
+          <label>Unit type<select id="garageAssetType"><option value="vehicle">Vehicle</option><option value="trailer">Trailer</option></select></label>
+          <label>Tag expiration date<input type="date" id="garageTagExpiry"></label>
+          <label>Last renewed on<input type="date" id="garageTagRenewed"></label>
+        </div>
         <div class="grid-2" style="margin-bottom:10px;">
-          <div><label>Unit / Truck Name *</label><input type="text" id="garageUnitName" placeholder="e.g. Truck 1 - Auto" /></div>
+          <div><label>Unit Name *</label><input type="text" id="garageUnitName" placeholder="e.g. Truck 1 - Auto" /></div>
           <div><label>Assigned Driver</label><select id="garageAssignedEmp"><option value="Unassigned">Unassigned (Shop Spare)</option></select></div>
         </div>
         <div class="grid-2" style="margin-bottom:10px;">
@@ -370,7 +341,7 @@
           <div><label>Current Mileage</label><input type="number" id="garageMileage" placeholder="e.g. 45000" /></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-          <button type="button" class="btn btn-red" onclick="saveGarageVehicle()">Save Vehicle to Garage</button>
+          <button type="button" class="btn btn-red" onclick="saveGarageVehicle()">Save Fleet Unit</button>
           <button type="button" class="btn-outline" onclick="resetVehicleForm()">Clear Form</button>
         </div>
       </div>
@@ -380,14 +351,32 @@
           <span>Company Fleet Garage Directory</span>
           <span id="garageAccessBadge" class="badge badge-navy">Directory</span>
         </div>
+        <p id="fleetTagSummary" class="gp-operations-note" role="status"></p>
+        <div class="gp-operations-controls">
+          <label>Unit type<select id="fleetAssetFilter"><option value="">All units</option><option value="vehicle">Vehicles</option><option value="trailer">Trailers</option></select></label>
+          <label>Tag renewal<select id="fleetTagFilter"><option value="">All tags</option><option value="attention">Expired or due in 60 days</option><option value="expired">Expired</option><option value="soon">Due in 30 days</option><option value="upcoming">Due in 31–60 days</option><option value="missing">No expiration date</option><option value="current">Current</option></select></label>
+          <label>Find a unit<input id="fleetUnitSearch" type="search" placeholder="Unit, plate, VIN or driver"></label>
+          <button type="button" id="fleetRefresh">Refresh fleet</button>
+        </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Truck / Unit</th><th>Vehicle Info</th><th>Driver</th><th>Mileage</th><th>Last Inspected</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Unit</th><th>Vehicle Info</th><th>Driver</th><th>Mileage</th><th>Last Inspected</th><th>Status</th><th>Tag Renewal</th><th>Actions</th></tr></thead>
             <tbody id="fleetGarageTable"></tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <dialog id="fleetPhotosDialog" class="gp-operations-dialog" aria-labelledby="fleetPhotosTitle">
+      <h3 id="fleetPhotosTitle">Fleet record photos</h3>
+      <div class="gp-operations-controls">
+        <label>Attach photos<input id="fleetPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+        <button type="button" id="fleetPhotoUpload">Upload photos</button>
+        <button type="button" id="fleetPhotoClose">Close</button>
+      </div>
+      <p id="fleetPhotoStatus" role="status"></p>
+      <div id="fleetPhotoList" class="gp-fleet-photo-grid"></div>
+    </dialog>
 
     <!-- PRINTABLE OFFICIAL REPORT AREA -->
     <div id="printReportArea" class="hidden print-sheet"></div>
@@ -482,12 +471,13 @@
       setTimeout(() => { t.style.display = "none"; }, 3000);
     }
 
+    let garageSaving = false;
+
     window.logoutPortal = async function() { await GP.signOut(supabaseClient); };
 
     window.switchFleetTab = function(paneId, btn) {
       document.getElementById("inspectPane").classList.add("hidden");
       document.getElementById("historyPane").classList.add("hidden");
-      document.getElementById("safetyPane").classList.add("hidden");
       document.getElementById("garagePane").classList.add("hidden");
       document.getElementById("printReportArea").classList.add("hidden");
       document.getElementById(paneId).classList.remove("hidden");
@@ -574,6 +564,7 @@
       const plate = document.getElementById("vPlate").value.trim();
       const mileage = document.getElementById("vMileage").value.trim();
 
+      if (garageList.find(v => String(v.id) === String(vId))?.asset_type === "trailer") return alert("Choose a vehicle for this inspection.");
       if (!vId || !make || !plate || !mileage) return alert("Please select a vehicle and enter current mileage.");
       if (!/^\d{1,8}$/.test(mileage)) return alert("Mileage must be a whole number between 0 and 99,999,999.");
       const selectedVehicle = garageList.find(v => String(v.id) === String(vId));
@@ -652,7 +643,7 @@
             vehicleLogs = vRes.data;
             localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
-        } catch (e) {}
+        } catch (e) { showToast("Fleet refresh failed. Showing the last available records."); }
       }
 
       const driverSelect = document.getElementById("garageAssignedEmp");
@@ -663,12 +654,14 @@
       }
 
       const sel = document.getElementById("garageVehicleSelect");
+      const previousUnit = sel.value;
       let html = `<option value="">-- Choose Assigned or Spare Vehicle --</option>`;
-      garageList.forEach(v => {
+      garageList.filter(v => v.asset_type !== "trailer").forEach(v => {
         const isMine = v.assigned_employee && v.assigned_employee.toLowerCase() === activeUser.employee_name.toLowerCase();
         html += `<option value="${v.id}" ${isMine ? 'selected' : ''}>${GP.escapeHtml(v.unit_name)} (${GP.escapeHtml(v.make)}${GP.escapeHtml(v.model)} - ${GP.escapeHtml(v.license_plate)})${isMine ? '[Assigned To You]' : ''}</option>`;
       });
       sel.innerHTML = html;
+      if ([...sel.options].some(option => previousUnit && option.value === previousUnit)) sel.value = previousUnit;
       onSelectGarageVehicle();
 
       document.getElementById("employeeVehicleInfoTable").innerHTML = vehicleLogs.map((v, idx) => `
@@ -682,20 +675,44 @@
         </tr>
       `).join("") || `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No vehicle inspections submitted yet.</td></tr>`;
 
-      const garageBody = document.getElementById("fleetGarageTable");
-      if (garageBody) {
-        garageBody.innerHTML = garageList.map(v => `
-          <tr>
-            <td><b>${GP.escapeHtml(v.unit_name)}</b></td>
-            <td>${GP.escapeHtml(v.make)} ${GP.escapeHtml(v.model)} (${GP.escapeHtml(v.license_plate)})</td>
-            <td><span class="badge badge-navy">${GP.escapeHtml(v.assigned_employee || "Unassigned")}</span></td>
-            <td class="mono">${GP.escapeHtml(v.current_mileage || "0")} mi</td>
-            <td>${GP.escapeHtml(v.last_inspected_date || "Never")}</td>
-            <td><span class="badge ${v.status === "Flagged" ? "badge-issue" : "badge-ok"}">${GP.escapeHtml(v.status || "Pending")}</span></td>
-            <td>${activeUser?.perm_admin ? `<button type="button" class="btn-outline" style="padding:4px 7px;" onclick="loadVehicleEditor('${v.id}')">Edit</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:4px 7px;" onclick="deleteVehicle('${v.id}')">Del</button>` : `<span style="color:var(--muted);font-size:11px;">View only</span>`}</td>
-          </tr>
-        `).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--muted);">No fleet vehicles registered.</td></tr>`;
-      }
+      renderFleetGarage();
+    }
+
+    function renderFleetGarage() {
+      const byId = id => document.getElementById(id);
+      const today = new Intl.DateTimeFormat("en-CA", {timeZone:"America/New_York", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date());
+      const totals = {expired:0, soon:0, upcoming:0, current:0, missing:0};
+      const type = byId("fleetAssetFilter").value, filter = byId("fleetTagFilter").value;
+      const search = byId("fleetUnitSearch").value.toLowerCase().trim();
+      const rows = garageList.map(asset => {
+        const status = GP_FLEET_RECORDS.tagStatus(asset.tag_expires_on, today);
+        totals[status]++;
+        return {asset, status};
+      }).filter(({asset, status}) =>
+        (!type || (asset.asset_type || "vehicle") === type) &&
+        (!filter || (filter === "attention" ? ["expired","soon","upcoming"].includes(status) : filter === status)) &&
+        [asset.unit_name,asset.make,asset.model,asset.license_plate,asset.vin_number,asset.assigned_employee].join(" ").toLowerCase().includes(search)
+      ).sort((a,b) => (a.asset.tag_expires_on || "9999").localeCompare(b.asset.tag_expires_on || "9999")
+        || String(a.asset.unit_name).localeCompare(String(b.asset.unit_name)));
+      byId("fleetTagSummary").textContent = `${rows.length} of ${garageList.length} units · ${totals.expired} expired · ${totals.soon} due within 30 days · ${totals.upcoming} due in 31–60 days · ${totals.missing} missing dates`;
+      const esc = GP.escapeHtml;
+      byId("fleetGarageTable").innerHTML = rows.map(({asset:v}) => `
+        <tr>
+          <td><b>${esc(v.unit_name)}</b><br>${v.asset_type === "trailer" ? "Trailer" : "Vehicle"}</td>
+          <td>${esc(v.make)} ${esc(v.model)} (${esc(v.license_plate)})</td>
+          <td>${esc(v.assigned_employee || "Unassigned")}</td>
+          <td>${v.asset_type === "trailer" ? "—" : esc(v.current_mileage || "0") + " mi"}</td>
+          <td>${esc(v.last_inspected_date || "Never")}</td>
+          <td><span class="badge ${v.status === "Flagged" ? "badge-issue" : "badge-ok"}">${esc(v.status || "Pending")}</span></td>
+          <td>${GP_FLEET_RECORDS.tagBadge(v,today)}<br>${esc(v.tag_expires_on || "—")}${v.tag_renewed_on ? "<br>Renewed " + esc(v.tag_renewed_on) : ""}</td>
+          <td><button type="button" class="btn-outline" data-fleet-action="photos" data-fleet-unit="${esc(v.id)}">Photos</button>
+          ${activeUser?.perm_admin ? `<button type="button" class="btn-outline" data-fleet-action="edit" data-fleet-unit="${esc(v.id)}">Edit</button>
+          <button type="button" class="btn-outline" data-fleet-action="delete" data-fleet-unit="${esc(v.id)}">Delete</button>` : ""}</td>
+        </tr>`).join("") || '<tr><td colspan="8">No fleet units match these filters.</td></tr>';
+    }
+
+    function setFleetAssetFields() {
+      document.getElementById("garageMileage").disabled = document.getElementById("garageAssetType").value === "trailer";
     }
 
     window.resetVehicleForm = function() {
@@ -708,7 +725,11 @@
       document.getElementById("garagePlate").value = "";
       document.getElementById("garageVin").value = "";
       document.getElementById("garageMileage").value = "";
-      document.getElementById("vehicleFormTitle").textContent = "Add or Update Garage Vehicle";
+      document.getElementById("garageAssetType").value = "vehicle";
+      document.getElementById("garageTagExpiry").value = "";
+      document.getElementById("garageTagRenewed").value = "";
+      setFleetAssetFields();
+      document.getElementById("vehicleFormTitle").textContent = "Add or Update Fleet Unit";
     };
 
     window.loadVehicleEditor = function(id) {
@@ -723,15 +744,20 @@
       document.getElementById("garagePlate").value = v.license_plate || "";
       document.getElementById("garageVin").value = v.vin_number || "";
       document.getElementById("garageMileage").value = v.current_mileage || "";
+      document.getElementById("garageAssetType").value = v.asset_type || "vehicle";
+      document.getElementById("garageTagExpiry").value = v.tag_expires_on || "";
+      document.getElementById("garageTagRenewed").value = v.tag_renewed_on || "";
+      setFleetAssetFields();
       document.getElementById("vehicleFormTitle").textContent = `Editing: ${v.unit_name}`;
       switchFleetTab("garagePane", document.getElementById("subBtnGarage"));
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     window.saveGarageVehicle = async function() {
+      if (garageSaving) return;
       if (!activeUser?.perm_admin) return showToast("Admin role required to update Fleet Garage");
       const editId = document.getElementById("editingVehicleId").value;
-      const existing = editId ? garageList.find(v => String(v.id) === String(editId)) : null;
+      if (editId && !garageList.some(v => String(v.id) === String(editId))) return alert("This unit is no longer in the garage.");
       const obj = {
         unit_name: document.getElementById("garageUnitName").value.trim(),
         assigned_employee: document.getElementById("garageAssignedEmp").value,
@@ -739,14 +765,20 @@
         model: document.getElementById("garageModel").value.trim(),
         license_plate: document.getElementById("garagePlate").value.trim(),
         vin_number: document.getElementById("garageVin").value.trim(),
-        current_mileage: document.getElementById("garageMileage").value.trim() || "0",
-        last_inspected_date: existing?.last_inspected_date || "Never",
-        status: existing?.status || "Pending"
+        asset_type: document.getElementById("garageAssetType").value,
+        tag_expires_on: document.getElementById("garageTagExpiry").value || null,
+        tag_renewed_on: document.getElementById("garageTagRenewed").value || null
       };
-      if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit Name, Make, and Plate required.");
+      if (!obj.unit_name || !obj.make || !obj.license_plate) return alert("Unit name, make and plate are required.");
+      const mileage = document.getElementById("garageMileage").value.trim();
+      if (obj.asset_type === "vehicle" && mileage && !/^\d{1,8}$/.test(mileage)) return alert("Enter a whole mileage between 0 and 99,999,999.");
+      if (obj.tag_expires_on && obj.tag_renewed_on && obj.tag_renewed_on >= obj.tag_expires_on) return alert("Tag expiration must be after the last renewal date.");
+      if (obj.asset_type === "vehicle" && mileage) obj.current_mileage = mileage;
+      if (!editId) Object.assign(obj, {current_mileage:obj.current_mileage || "0", last_inspected_date:"Never", status:"Pending"});
       const duplicatePlate = garageList.find(v => String(v.id) !== String(editId) && String(v.license_plate || "").trim().toUpperCase() === obj.license_plate.toUpperCase());
       if (duplicatePlate) return alert(`License plate ${obj.license_plate} is already assigned to ${duplicatePlate.unit_name}.`);
       if (!isCloudConnected || !supabaseClient) return alert("Supabase is unavailable. Vehicle was NOT saved.");
+      garageSaving = true;
       try {
         let result;
         if (editId) {
@@ -762,9 +794,9 @@
           if (idx >= 0) garageList[idx] = cloudRow;
         } else garageList.push(cloudRow);
       } catch (e) {
-        return alert(`Vehicle was NOT saved: ${e.message || e}`);
-      }
-      localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList));
+        return alert(`Fleet unit was not saved: ${e.message || e}`);
+      } finally { garageSaving = false; }
+      try { localStorage.setItem("gp_fleet_garage", JSON.stringify(garageList)); } catch (_) {}
       resetVehicleForm();
       showToast("Fleet Garage vehicle saved");
       await loadFleetData();
@@ -772,9 +804,12 @@
 
     window.deleteVehicle = async function(id) {
       if (!activeUser?.perm_admin) return showToast("Admin role required to update Fleet Garage");
-      if (!confirm("Remove vehicle from Fleet Garage?")) return;
+      if (!confirm("Remove this unit from Fleet Garage?")) return;
       if (!isCloudConnected || !supabaseClient) return alert("Supabase is unavailable. Vehicle NOT deleted.");
       try {
+        const {data: photos, error: photoError} = await supabaseClient.storage.from("gp-fleet-photos").list(String(id), {limit:1});
+        if (photoError) throw photoError;
+        if (photos.length) return alert("Remove photos from this unit before deleting it.");
         const {data,error} = await supabaseClient.from("fleet_vehicles").delete().eq("id",id).select("id");
         if (error) throw error;
         if (!data?.length) throw new Error("Vehicle not found or permission denied.");
@@ -873,20 +908,33 @@
 
       const canSubmit = !!(activeUser.perm_admin || activeUser.perm_vehicle_submit);
       const canView = !!(activeUser.perm_admin || activeUser.perm_vehicle_view);
-      const canSafety = !!(activeUser.perm_admin || activeUser.perm_safety);
       document.getElementById("subBtnInspect").classList.toggle("hidden", !canSubmit);
       document.getElementById("subBtnHistory").classList.toggle("hidden", !canView);
-      document.getElementById("subBtnSafety").classList.toggle("hidden", !canSafety);
       document.getElementById("subBtnGarage").classList.toggle("hidden", !canView && !activeUser.perm_admin);
       document.getElementById("garageAdminEditor").classList.toggle("hidden", !activeUser.perm_admin);
       document.getElementById("garageAccessBadge").textContent = activeUser.perm_admin ? "Admin Edit Enabled" : "View Only";
 
+      const openPhotos = GP_FLEET_RECORDS.mountPhotos(supabaseClient, activeUser.perm_admin === true);
+      document.getElementById("garageAssetType").onchange = setFleetAssetFields;
+      for (const id of ["fleetAssetFilter","fleetTagFilter","fleetUnitSearch"]) {
+        document.getElementById(id).addEventListener("input", renderFleetGarage);
+      }
+      document.getElementById("fleetRefresh").onclick = loadFleetData;
+      document.getElementById("fleetGarageTable").onclick = event => {
+        const button = event.target.closest("[data-fleet-action]");
+        if (!button) return;
+        const asset = garageList.find(v => String(v.id) === button.dataset.fleetUnit);
+        if (!asset) return;
+        if (button.dataset.fleetAction === "photos") openPhotos(asset);
+        if (button.dataset.fleetAction === "edit") loadVehicleEditor(asset.id);
+        if (button.dataset.fleetAction === "delete") deleteVehicle(asset.id);
+      };
       renderChecklistUI();
-      await loadFleetData();
-
-      if (canSubmit) switchFleetTab("inspectPane", document.getElementById("subBtnInspect"));
+      const requested = document.getElementById({inspectPane:"subBtnInspect",historyPane:"subBtnHistory",garagePane:"subBtnGarage"}[location.hash.slice(1)]);
+      if (requested && !requested.classList.contains("hidden")) requested.click();
+      else if (canSubmit) switchFleetTab("inspectPane", document.getElementById("subBtnInspect"));
       else if (canView) switchFleetTab("historyPane", document.getElementById("subBtnHistory"));
-      else if (canSafety) switchFleetTab("safetyPane", document.getElementById("subBtnSafety"));
+      await loadFleetData();
     });
   </script>
 <script src="gp-pin.js?v=20261112"></script>
