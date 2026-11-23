@@ -10,16 +10,45 @@
     const form = byId('gpAnnouncementForm');
     const status = byId('gpAnnouncementStatus');
     let loading, writing = false, editingId = null;
+    let pushReady = false;
+    const pushChoice = byId('gpAnnouncementPushChoice');
+    const pushConfig = admin ? window.GP_PUSH.readConfig(client).then(config => {
+      pushReady = config?.configured === true;
+      pushChoice.hidden = !pushReady;
+      byId('gpAnnouncementPushSetup').hidden = pushReady;
+    }) : null;
     const table = () => client.from('gp_announcements');
     const sort = query => query.order('pinned',{ascending:false}).order('published_at',{ascending:false}).order('id');
     function setStatus(text) { status.textContent = text; }
-    function reset() { form.reset(); editingId = null; byId('gpAnnouncementSave').textContent = 'Publish announcement'; }
+    function reset() {
+      form.reset();
+      editingId = null;
+      pushChoice.hidden = !pushReady;
+      byId('gpAnnouncementSave').textContent = 'Publish announcement';
+    }
+    async function notify(id) {
+      setStatus('Sending announcement notifications…');
+      try {
+        const result = await window.GP_PUSH.send(client, id);
+        const incomplete = result.retry + result.queued + result.sending;
+        if (!result.accepted && !result.unavailable && !incomplete) return 'No opted-in devices found.';
+        const counts = [`${result.accepted} accepted by push services`];
+        if (result.unavailable) counts.push(`${result.unavailable} unavailable`);
+        if (incomplete) counts.push(`${incomplete} pending. Use Notify devices again in five minutes.`);
+        return counts.join(' · ');
+      } catch (error) {
+        return (error.message || 'Push could not be confirmed.') + ' Use Notify devices to retry.';
+      }
+    }
+    const requested = new URLSearchParams(location.search).get('announcement');
+    let notificationOpened = false;
     function render(rows) {
       host.replaceChildren();
       if (!rows.length) host.textContent = 'No announcements.';
       for (const row of rows) {
         const entry = document.createElement('article');
         entry.className = 'gp-announcement-entry';
+        if (row.id === requested) entry.id = 'gpRequestedAnnouncement';
         const title = document.createElement('h4');
         title.textContent = row.title;
         const meta = document.createElement('div');
@@ -38,6 +67,7 @@
             form.elements.body.value = row.body;
             form.elements.pinned.checked = row.pinned;
             form.elements.expires.value = row.expires_at ? GP_CLOCK.localInput(Date.parse(row.expires_at)) : '';
+            pushChoice.hidden = true;
             byId('gpAnnouncementSave').textContent = 'Save announcement';
             form.elements.title.focus();
           };
@@ -59,9 +89,26 @@
           const actions = document.createElement('div');
           actions.className = 'gp-operations-controls';
           actions.append(edit, archive);
+          if (pushReady && Date.parse(row.published_at) <= Date.now() &&
+              (!row.expires_at || Date.parse(row.expires_at) > Date.now())) {
+            const push = document.createElement('button');
+            push.textContent = 'Notify devices';
+            push.onclick = async () => {
+              if (writing) return;
+              writing = true;
+              push.disabled = true;
+              try { setStatus(await notify(row.id)); }
+              finally { writing = false; push.disabled = false; }
+            };
+            actions.append(push);
+          }
           entry.append(actions);
         }
         host.append(entry);
+      }
+      if (!admin && requested && !notificationOpened) {
+        notificationOpened = true;
+        (byId('gpRequestedAnnouncement') || byId('gpHomeAnnouncements'))?.scrollIntoView();
       }
     }
     function load() {
@@ -75,6 +122,7 @@
           }
           const {data, error} = await sort(query).limit(50);
           if (error) throw error;
+          await pushConfig;
           render(data || []);
           setStatus('');
         } catch (error) {
@@ -99,6 +147,7 @@
         if (!title || !body) { setStatus('Enter a title and message.'); return; }
         if (expiry && !(new Date(expiry).getTime() > Date.now())) { setStatus('Choose a future expiration.'); return; }
         const values = {title, body, pinned:form.elements.pinned.checked, expires_at:expiry ? new Date(expiry).toISOString() : null};
+        const sendPush = !editingId && pushReady && form.elements.notify.checked;
         writing = true;
         const submit = byId('gpAnnouncementSave');
         submit.disabled = true;
@@ -108,7 +157,7 @@
           if (response.error) throw response.error;
           reset();
           await refreshAfterWrite();
-          setStatus('Announcement saved.');
+          setStatus(sendPush ? 'Announcement published. ' + await notify(response.data.id) : 'Announcement saved.');
         } catch(error) { setStatus('Could not save announcement. ' + error.message); }
         finally { writing = false; submit.disabled = false; }
       };

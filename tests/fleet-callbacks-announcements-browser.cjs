@@ -21,6 +21,7 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
   sample.gp_announcements = stored;
   window.__fixture = sample;
   window.__uploads = [];
+  window.__pushCalls = [];
   window.supabase.createClient = () => {
     const client = original(), from = client.from.bind(client);
     client.from = table => {
@@ -55,12 +56,21 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     };
     const existingRpc = client.rpc.bind(client);
     client.rpc = async (name,args) => {
+      if (name === 'gp_save_push_device' || name === 'gp_remove_push_device') {
+        window.__pushCalls.push({name,args});
+        return {data:null,error:null};
+      }
       if (name !== 'gp_request_manager_callback') return existingRpc(name,args);
       const quote = sample.outstanding_quotes.find(row=>row.quote_number===args.p_quote_number);
       quote.status = 'admin_review';
       quote.call_data = {...quote.call_data,manager_close_required:true,manager_note:args.p_note,contact_method:args.p_method};
       return {data:quote,error:null};
     };
+    client.functions = {invoke:async (name,{body}) => {
+      window.__pushCalls.push({name,body});
+      if (body.action === 'config') return {data:{configured:true, publicKey:'B'+ 'A'.repeat(86)},error:null};
+      return {data:{accepted:1,queued:0,sending:0,retry:0,unavailable:0},error:null};
+    }};
     client.storage = {from:()=>({
       list:async id=>({data:window.__uploads.filter(path=>path.startsWith(id+'/')).map(path=>({id:path,name:path.split('/')[1]})),error:null}),
       upload:async path=>{window.__uploads.push(path);return {data:{path},error:null};},
@@ -81,7 +91,31 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     }
     browser = await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE});
     const context = await browser.newContext();
-    await context.addInitScript(() => { window.__testRole = 'admin'; });
+    await context.addInitScript(() => {
+      window.__testRole = 'admin';
+      let current = null;
+      const endpoint = 'https://web.push.apple.com/synthetic-device';
+      const registration = {
+        active:{scriptURL:location.origin+'/gp-push-sw.js'},
+        pushManager:{
+          getSubscription:async () => current,
+          subscribe:async options => {
+            if (!options.userVisibleOnly || options.applicationServerKey.length !== 65) throw Error('Missing application key');
+            current = {
+              endpoint,
+              toJSON:() => ({endpoint,keys:{p256dh:'A'.repeat(87),auth:'B'.repeat(22)}}),
+              unsubscribe:async () => { current = null; return true; }
+            };
+            return current;
+          }
+        }
+      };
+      Object.defineProperty(navigator,'serviceWorker',{value:{
+        register:async () => registration,
+        getRegistration:async () => registration,
+        ready:Promise.resolve(registration)
+      }});
+    });
     await context.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',route=>route.fulfill({contentType:'application/javascript',body:fixture}));
     await context.route('https://fonts.googleapis.com/**',route=>route.fulfill({contentType:'text/css',body:''}));
     await context.route('https://cdnjs.cloudflare.com/**',route=>route.fulfill({contentType:'application/javascript',body:'window.Papa={parse(){}};'}));
@@ -140,13 +174,24 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     await page.locator('#gpAnnouncementForm [name=title]').fill('Synthetic staff announcement');
     await page.locator('#gpAnnouncementForm [name=body]').fill('An example of a pinned team update.');
     await page.locator('#gpAnnouncementForm [name=pinned]').check();
+    await page.getByText('Notify opted-in devices',{exact:true}).waitFor();
+    await page.locator('#gpAnnouncementForm [name=notify]').check();
     await page.locator('#gpAnnouncementSave').click();
-    await page.locator('#gpAnnouncementStatus').filter({hasText:'Announcement saved.'}).waitFor();
+    await page.locator('#gpAnnouncementStatus').filter({hasText:'1 accepted by push services'}).waitFor();
+    assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.body?.action==='send').body.announcementId),100);
     await page.goto(base+'/home.html');
     const announcement = page.locator('#gpHomeAnnouncements');
     await announcement.getByText('Synthetic staff announcement',{exact:true}).waitFor();
     assert.match(await announcement.textContent(),/Pinned/);
+    await page.getByRole('button',{name:'Enable notifications'}).click();
+    await page.getByRole('button',{name:'Disable notifications'}).waitFor();
+    assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.name==='gp_save_push_device').args.p_endpoint),
+      'https://web.push.apple.com/synthetic-device');
+    await page.getByRole('button',{name:'Disable notifications'}).click();
+    await page.getByRole('button',{name:'Enable notifications'}).waitFor();
+    assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.name==='gp_remove_push_device').args.p_endpoint),
+      'https://web.push.apple.com/synthetic-device');
     assert.deepEqual(errors,[]);
-    console.log('PASS: fleet filtering, tag updates, photo uploads, Safety links, callback actions and publishing announcements');
+    console.log('PASS: fleet, Safety, callbacks, announcement push, enrollment and opt-out');
   } finally { await browser?.close(); server.kill(); }
 })().catch(error=>{ console.error(error); process.exitCode=1; });

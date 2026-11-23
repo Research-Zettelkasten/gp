@@ -226,6 +226,17 @@
   };
 
   const signOut = async (client, redirectUrl = "index.html") => {
+    if (typeof window !== "undefined" && window.GP_PUSH) {
+      let timer;
+      try {
+        await Promise.race([
+          window.GP_PUSH.beforeSignOut(client),
+          new Promise(resolve => { timer = setTimeout(resolve, 2500); })
+        ]);
+      } catch (e) {
+        // Sign-out takes priority if the device or server is offline.
+      } finally { clearTimeout(timer); }
+    }
     try { if (client?.auth) await client.auth.signOut(); } catch (e) {}
     clearSensitiveLocalCache();
     try { localStorage.removeItem("gp_auth_cache_owner"); } catch (e) {}

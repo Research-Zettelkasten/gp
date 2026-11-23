@@ -2,91 +2,18 @@
 <html lang="en">
 <head>
 <script src="gp-theme-init.js?v=20261123b"></script>
-  <script src="portal-utils.js?v=20261123e"></script>
+  <script src="portal-utils.js?v=20261123f"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>GLASSPRO | Executive Management & MultiplyOS Hub</title>
 
-  <!-- GLASSPRO APP LOGO, FAVICON & FULL-SCREEN MOBILE WEB APP CONFIG -->
   <meta name="theme-color" content="#06101E" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="GLASSPRO" />
 
-  <!-- Desktop Browser Tab Icon (Inline SVG) -->
-  <link id="gpFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2306101E'/%3E%3Cstop offset='100%25' stop-color='%230B1F3A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='url(%23bg)'/%3E%3Cpath d='M0 90 C0 40 40 0 90 0 L422 0 C472 0 512 40 512 90 L512 105 L0 105 Z' fill='%23DC2626'/%3E%3Cpolygon points='350,105 460,105 310,512 200,512' fill='rgba(255,255,255,0.04)'/%3E%3Ctext x='256' y='315' font-family='Inter, Arial, sans-serif' font-size='210' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='-8'%3EGP%3C/text%3E%3Crect x='96' y='370' width='320' height='58' rx='14' fill='%23DC2626'/%3E%3Ctext x='256' y='410' font-family='Inter, Arial, sans-serif' font-size='40' font-weight='900' fill='%23FFFFFF' text-anchor='middle' letter-spacing='5'%3EGLASSPRO%3C/text%3E%3C/svg%3E" />
-  <link id="gpAppleIcon" rel="apple-touch-icon" sizes="512x512" href="" />
-
-  <script>
-    // Dynamically builds a crisp 512x512 PNG for iPhone/Android Home Screens & Web App Manifest
-    (function() {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext("2d");
-
-        // 1. Obsidian-Navy Background
-        const grad = ctx.createLinearGradient(0, 0, 512, 512);
-        grad.addColorStop(0, "#06101E");
-        grad.addColorStop(1, "#0B1F3A");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 512);
-
-        // 2. Top Crimson Red Accent Bar
-        ctx.fillStyle = "#DC2626";
-        ctx.fillRect(0, 0, 512, 76);
-
-        // 3. Subtle Diagonal Glass Reflection Slash
-        ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-        ctx.beginPath();
-        ctx.moveTo(340, 76);
-        ctx.lineTo(460, 76);
-        ctx.lineTo(290, 512);
-        ctx.lineTo(170, 512);
-        ctx.closePath();
-        ctx.fill();
-
-        // 4. Center "GP" Monogram
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 215px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("GP", 256, 235);
-
-        // 5. Bottom Crimson Pill Badge with "GLASSPRO"
-        ctx.fillStyle = "#DC2626";
-        ctx.beginPath();
-        ctx.roundRect(76, 365, 360, 74, 16);
-        ctx.fill();
-
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "900 44px 'Inter', -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-        ctx.fillText("GLASSPRO", 256, 404);
-
-        const pngDataUrl = canvas.toDataURL("image/png");
-        const appleLink = document.getElementById("gpAppleIcon");
-        if (appleLink) appleLink.href = pngDataUrl;
-
-        // 6. Inject Web App Manifest for Android/Desktop "Install App"
-        const manifest = {
-          name: "GLASSPRO Operations Portal",
-          short_name: "GLASSPRO",
-          start_url: "./index.html",
-          display: "standalone",
-          background_color: "#06101E",
-          theme_color: "#06101E",
-          icons: [{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
-        const manifestLink = document.createElement("link");
-        manifestLink.rel = "manifest";
-        manifestLink.href = URL.createObjectURL(manifestBlob);
-        document.head.appendChild(manifestLink);
-      } catch (e) {}
-    })();
-  </script>
+  
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -760,7 +687,11 @@
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <link rel="stylesheet" href="gp-theme.css?v=20261123b">
 <link rel="stylesheet" href="gp-operations.css?v=1">
-<script src="gp-announcements.js?v=1" defer></script>
+<script src="gp-announcements.js?v=2" defer></script>
+<link rel="icon" type="image/png" href="icons/glasspro-192.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/glasspro-180.png?v=2">
+<link rel="manifest" href="glasspro.webmanifest?v=2">
+<script src="gp-push.js?v=1" defer></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -838,6 +769,8 @@
           <label>Message<textarea name="body" rows="4" maxlength="2000" required></textarea></label>
           <label>Expires (optional, your local time)<input name="expires" type="datetime-local"></label>
           <label><input name="pinned" type="checkbox"> Pin to the top</label>
+          <label id="gpAnnouncementPushChoice" hidden><input name="notify" type="checkbox"> Notify opted-in devices</label>
+          <p id="gpAnnouncementPushSetup" class="gp-operations-note" hidden>Device push is awaiting server setup. You can publish to staff Home now.</p>
           <div class="gp-operations-controls">
             <button id="gpAnnouncementSave" type="submit">Publish announcement</button>
             <button id="gpAnnouncementReset" type="button">Clear form</button>

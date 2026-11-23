@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.6 — fleet records, callback tools and announcements**.
+Current release: **2026.11.23.7 — team announcement push and the GLASSPRO app icon**.
+
+[Set up Web Push](WEB-PUSH-SETUP.md) for opt-in device alerts. The static site supplies the Home Screen icon and one app manifest across GLASSPRO.
 
 Apply [the fleet, callbacks and announcements migration](supabase/migrations/2026-11-23-fleet-callbacks-announcements.sql) in the GLASSPRO Supabase SQL Editor. It expects the existing fleet, quote and employee tables and Supabase Storage. This update has no Cron setup step.
 
