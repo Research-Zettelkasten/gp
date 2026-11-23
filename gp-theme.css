@@ -22,7 +22,9 @@ html[data-gp-theme="dark"] :is(.border-slate-200,.border-slate-300,.border-gray-
 html[data-gp-theme="dark"] :is(.bg-red-50,.bg-red-100){background:#482532!important;color:#ffc3cb!important}
 html[data-gp-theme="dark"] :is(.bg-emerald-50,.bg-green-50,.bg-emerald-100,.bg-green-100){background:#123b30!important;color:#9af0cf!important}
 html[data-gp-theme="dark"] :is(.bg-amber-50,.bg-yellow-50,.bg-amber-100){background:#44341c!important;color:#ffe1a0!important}
-html[data-gp-theme="dark"] :is(.text-red-700,.text-red-800,.text-red-900){color:#ffc3cb!important}html[data-gp-theme="dark"] :is(.text-blue-600,.text-blue-700,.text-indigo-600,.text-indigo-700){color:#b6d5ff!important}
+html[data-gp-theme="dark"] :is(.text-red-600,.text-red-700,.text-red-800,.text-red-900,.text-red-950){color:#ffc3cb!important}html[data-gp-theme="dark"] :is(.text-blue-600,.text-blue-700,.text-indigo-600,.text-indigo-700){color:#b6d5ff!important}
+html[data-gp-theme="dark"] :is(.text-amber-600,.text-amber-700,.text-amber-800,.text-amber-900,.text-amber-950,.text-yellow-600,.text-yellow-700,.text-yellow-800,.text-yellow-900,.text-yellow-950){color:#ffe1a0!important}
+html[data-gp-theme="dark"] :is(.text-emerald-600,.text-emerald-700,.text-emerald-800,.text-emerald-900,.text-emerald-950,.text-green-600,.text-green-700,.text-green-800,.text-green-900,.text-green-950){color:#9af0cf!important}
 html[data-gp-theme="dark"] .choice-btn.selected-no{background:#a82239!important;color:#fff!important;border-color:#d75a6b!important}
 html[data-gp-theme="dark"] :is(.check-item,.spec-drawer,.mos-bar,.mos-sop-chip){background:#192d44!important;color:var(--gp2-text)!important;border-color:#405a75!important}
 html[data-gp-theme="dark"] :is(.gp-payroll-week-range,.gp-payroll-week-summary,.gp-payroll-week-jump,.gp-payroll-week-range small){color:var(--gp2-muted)!important}
@@ -49,6 +51,7 @@ html[data-gp-theme="dark"] :is(.btn-red,.logout-btn){background:#a82239!importan
 .mono,.decimal-box strong,.gp-home-stat>strong,.kpi-value,[data-live-hours],#empOvertimeText,.gp-week-summary strong{font-variant-numeric:tabular-nums lining-nums}
 .decimal-box strong{display:block;min-inline-size:6ch;line-height:1.15;white-space:nowrap}
 .gp-home-stat{min-height:167px}.gp-home-shift-status{white-space:nowrap}.gp-home-stat p{min-height:21px}
+.gp-payroll-week-summary{display:flex;flex-wrap:wrap;gap:6px 16px;line-height:1.6}.gp-payroll-week-summary>span{display:inline-block}
 #gpWidgetLiveTime table{table-layout:fixed;width:100%;min-width:1080px}
 #gpWidgetLiveTime th:nth-child(1){width:16%}#gpWidgetLiveTime th:nth-child(2){width:12%}#gpWidgetLiveTime th:nth-child(3){width:13%}#gpWidgetLiveTime th:nth-child(4){width:11%}#gpWidgetLiveTime th:nth-child(5){width:16%}#gpWidgetLiveTime th:nth-child(6){width:20%}#gpWidgetLiveTime th:nth-child(7){width:12%}
 #adminActiveTimeTable td{height:72px;overflow-wrap:anywhere;vertical-align:middle}#adminActiveTimeTable td:nth-child(3),#adminActiveTimeTable td:nth-child(4),#adminActiveTimeTable td:nth-child(5){white-space:nowrap}#adminActiveTimeTable [data-live-hours]{display:inline-block;min-width:7ch;text-align:right;white-space:nowrap}#adminActiveTimeTable .badge{white-space:nowrap}
