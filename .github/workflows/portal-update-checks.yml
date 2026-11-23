@@ -54,6 +54,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/auto-clock-out.sql
       - name: Concurrent scheduled and administrator clock-out
         run: node tests/auto-clock-race.cjs
+      - name: Approved clock-in changes and live-only entry
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/clock-in-approval.sql
       - name: Install browser test runner
         timeout-minutes: 3
         run: |

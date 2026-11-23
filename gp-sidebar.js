@@ -13,8 +13,7 @@
   // original (permission-checked) tab controls instead of duplicating workflows.
   const MODULE_SECTIONS = {
     navLinkTime:{path:'index.html',views:[
-      ['timeLivePane','Live Punch Clock','timeSubBtnLive'],
-      ['timeManualPane','Manual Shift Entry','timeSubBtnManual']]},
+      ['timeLivePane','Live Punch Clock','timeSubBtnLive']]},
     navLinkQuotes:{path:'quotes.html',views:[
       ['board','Active Call-Back Board','tab-btn-board'],
       ['admin-review','Admin Review & Alerts','tab-btn-admin-review'],
@@ -388,6 +387,7 @@
     const settings=document.createElement('button');settings.type='button';settings.className='gp-side-settings-button';settings.innerHTML='<span aria-hidden="true">☷</span><span class="gp-side-foot-label">Display preferences</span>';
     settings.setAttribute('aria-expanded','false');
     const options=document.createElement('div');options.className='gp-side-options';
+    window.GP_UX?.mountThemeControl?.(options);
     const compact=document.createElement('label');compact.className='gp-side-settings-row';
     const check=document.createElement('input');check.type='checkbox';check.checked=storage.read('gp_nav_compact',false)===true;
     compact.append(check,document.createTextNode('Compact cards and tables'));options.append(compact);

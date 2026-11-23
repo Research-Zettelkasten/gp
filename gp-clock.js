@@ -18,7 +18,7 @@
       p_location:String(o.location||'').slice(0,500),p_coords:String(o.coords||'').slice(0,100)};
   }
   function preview(session,endMs=Date.now()){
-    const start=Number(session?.started_at_ms),out=Date.parse(session?.lunch_out_at||''),back=Date.parse(session?.lunch_in_at||'');
+    const start=Date.parse(session?.approved_clock_in_at||'')||Number(session?.started_at_ms),out=Date.parse(session?.lunch_out_at||''),back=Date.parse(session?.lunch_in_at||'');
     const gross=(Math.floor(endMs/60000)-Math.floor(start/60000));
     let unpaid=Number.isFinite(out)?Math.floor((Number.isFinite(back)?back:endMs)/60000)-Math.floor(out/60000):Math.max(0,Number(session?.break_minutes)||0);
     unpaid=Math.max(0,unpaid);

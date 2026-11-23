@@ -28,7 +28,7 @@ async function open(button){
     const session=await GP_CLOCK.readActive(config.client,userId);
     if(!session||Number(session.started_at_ms)!==start)throw new Error('This shift changed or already ended. Close this window and refresh the active shifts.');
     selected=session;id('gpClockEmployee').textContent=session.employee_name;
-    id('gpClockSession').textContent='Clocked in '+new Date(Number(session.started_at_ms)).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+    id('gpClockSession').textContent='Clocked in '+new Date(Date.parse(session.approved_clock_in_at||'')||Number(session.started_at_ms)).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
     id('gpClockEnd').min=GP_CLOCK.localInput(Number(session.started_at_ms)+60000);
     const onLunch=!!session.lunch_out_at&&!session.lunch_in_at;id('gpClockCloseLunchRow').hidden=!onLunch;
     id('gpClockTimezone').textContent='Time shown in '+Intl.DateTimeFormat().resolvedOptions().timeZone+'. Timecards use America/New_York.';

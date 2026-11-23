@@ -21,7 +21,7 @@ function render(){
   const hero=document.getElementById('gpHomeGreeting');if(hero)hero.textContent=greeting+', '+first;
   const date=document.getElementById('gpHomeDate');if(date)date.textContent=new Date().toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
   const shiftLabel=!shiftReady?'Status unavailable':!session?'Off the clock':session.lunch_out_at&&!session.lunch_in_at?'On lunch':'Clocked in';
-  const shiftDetail=session?'Since '+new Date(Number(session.started_at_ms)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'Open Time Clock when your workday begins.';
+  const shiftDetail=session?'Since '+new Date(Date.parse(session.approved_clock_in_at||'')||Number(session.started_at_ms)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'Open Time Clock when your workday begins.';
   mount.innerHTML=
     '<section class="gp-home-summary" aria-label="Your workday summary">'+
     (canTime?'<article class="gp-home-stat"><span class="gp-home-eyebrow">THIS WEEK</span><strong>'+(summaryReady?stats.hours.toFixed(2)+'<small> hrs</small>':'—')+'</strong><p>'+(summaryReady?stats.shifts+' recorded '+(stats.shifts===1?'shift':'shifts')+' · Monday–Sunday':'Timecard summary unavailable')+'</p></article>'+
@@ -64,3 +64,4 @@ function mount(p,fn,c){user=p;getTime=fn||(()=>[]);client=c||globalThis.GP_HOME_
 function updateData(state){if('session'in state){session=state.session;shiftReady=state.shiftReady!==false;}if('summaryReady'in state)summaryReady=state.summaryReady===true;if(!draft)render();}
 globalThis.GP_HOME={mount,render,updateData};
 })();
+

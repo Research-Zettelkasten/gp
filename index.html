@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="gp-theme-init.js?v=20261123b"></script>
   <script src="portal-utils.js?v=20261118c"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -282,18 +283,21 @@
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--obsidian); color: var(--white); border-left: 4px solid var(--red); padding: 13px 22px; border-radius: 8px; font-size: 13px; font-weight: 700; z-index: 100; display: none; }
   </style>
   <link rel="stylesheet" href="glasspro-theme.css?v=20261112">
-<link rel="stylesheet" href="gp-sidebar.css?v=20261117a">
-<script src="gp-sidebar.js?v=20261118c" defer></script>
+<link rel="stylesheet" href="gp-sidebar.css?v=20261123b">
+<script src="gp-sidebar.js?v=20261123b" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
-<script src="gp-employee-home.js?v=20261116d" defer></script>
+<script src="gp-employee-home.js?v=20261123b" defer></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
-<link rel="stylesheet" href="gp-ux.css?v=20261113c">
-<script src="gp-ux.js?v=20261113c" defer></script>
-<script src="gp-time-core.js?v=20261123a"></script>
-<script src="gp-clock.js?v=20261123a"></script>
+<link rel="stylesheet" href="gp-ux.css?v=20261123b">
+<script src="gp-ux.js?v=20261123b" defer></script>
+<script src="gp-time-core.js?v=20261123b"></script>
+<script src="gp-clock-in-change.js?v=20261123b"></script>
+<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
+<script src="gp-clock.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <script src="gp-home-core.js?v=20261118c"></script>
+<link rel="stylesheet" href="gp-theme.css?v=20261123b">
 </head>
 <body class="gp-app gp-auth-mode">
 
@@ -436,7 +440,7 @@
 
       <div class="sub-bar">
         <button type="button" id="timeSubBtnLive" class="sub-btn active" onclick="switchTimeTab('timeLivePane', this)">Live Punch Clock</button>
-        <button type="button" id="timeSubBtnManual" class="sub-btn" onclick="switchTimeTab('timeManualPane', this)">Manual Shift Entry</button>
+
         
       </div>
 
@@ -463,6 +467,8 @@
                 <strong id="liveDecimalDisplay">00.00</strong>
               </div>
 
+              <div id="gpClockInChange"></div>
+
               <div class="gp-lunch-panel" aria-label="Exact lunch tracking">
                 <div class="gp-lunch-heading"><strong>Lunch break</strong><span id="liveLunchStatus" class="badge badge-navy">Not started</span></div>
                 <p>Tap <b>Start Lunch</b> when you leave and <b>Return from Lunch</b> when you come back. Your exact timestamps sync to Supabase. There is no preset one-hour deduction.</p>
@@ -485,55 +491,6 @@
 
               <button type="button" id="btnClockIn" class="btn btn-green" onclick="clockInNow()">Clock In Now (Geotag Location)</button>
               <button type="button" id="btnClockOut" class="btn btn-red hidden" onclick="clockOutNow()">Clock Out & Sync Shift</button>
-            </div>
-          </div>
-
-          <!-- PANE 2: MANUAL SHIFT ENTRY -->
-          <div id="timeManualPane" class="hidden">
-            <div class="card">
-              <div class="card-title">Manual Shift Entry</div>
-              <div class="grid-2" style="margin-bottom:12px;">
-                <div>
-                  <label>Work Date</label>
-                  <input type="date" id="manDate" />
-                </div>
-                <div>
-                  <label>Lunch tracking</label>
-                  <div class="gp-manual-lunch-guide">Use the exact time left and time returned below. If no lunch was taken, leave both blank and explain why.</div>
-                </div>
-              </div>
-
-              <div class="grid-2" style="margin-bottom:18px; clear:both;">
-                <div>
-                  <label>Start Time</label>
-                  <input type="time" id="manStart" value="08:00" oninput="calcManualHours()" />
-                </div>
-                <div>
-                  <label>End Time</label>
-                  <input type="time" id="manEnd" value="17:00" oninput="calcManualHours()" />
-                </div>
-              </div>
-
-              <div class="grid-2 gp-manual-lunch-times" style="margin-bottom:12px;">
-                <div><label for="manLunchOut">Lunch Out — time left</label><input type="time" id="manLunchOut" oninput="calcManualHours()" /></div>
-                <div><label for="manLunchBack">Lunch Back — time returned</label><input type="time" id="manLunchBack" oninput="calcManualHours()" /></div>
-              </div>
-              <p id="manLunchSummary" class="gp-form-hint">Exact lunch times will calculate the unpaid deduction.</p>
-              <div id="manNoLunchBox" class="gp-no-lunch-reason">
-                <label for="manNoLunchReason">Reason no lunch was taken — required for manager approval *</label>
-                <textarea id="manNoLunchReason" rows="3" maxlength="2000" placeholder="Explain why no lunch was taken during this shift."></textarea>
-              </div>
-              <div style="margin-bottom:12px;">
-                <label>MultiplyOS Work Order # / Shift Notes (Optional)</label>
-                <input type="text" id="manNotes" placeholder="Optional WO# or shift reference" />
-              </div>
-
-              <div class="decimal-box">
-                <span>Calculated Shift Total (00.00)</span>
-                <strong id="manDecimalDisplay">08.50</strong>
-              </div>
-
-              <button type="button" id="btnManualSubmit" class="btn btn-navy" onclick="submitManualTime()">Submit Shift Hours</button>
             </div>
           </div>
 
@@ -925,12 +882,9 @@
         `<button type="button" class="mos-sop-chip" onclick="showCurrentSopModal(${idx})">${s.title}</button>`
       ).join("");
 
-      if (activeUser.department === "Front Office / Sales" || activeUser.department === "Accounting") {
-        switchTimeTab('timeManualPane', document.getElementById('timeSubBtnManual'));
-      } else {
-        switchTimeTab('timeLivePane', document.getElementById('timeSubBtnLive'));
-      }
+      switchTimeTab('timeLivePane', document.getElementById('timeSubBtnLive'));
 
+      window.GP_CLOCK_IN?.mountEmployee?.({client:supabaseClient,user:activeUser});
       await fetchTimeLogs();
       await resumeClockState();
       window.GP_HOME?.mount?.(activeUser,()=>timeLogs,supabaseClient);
@@ -962,9 +916,10 @@
     };
 
     window.switchTimeTab = function(paneId, btn) {
+      if(paneId!=='timePaycheckPane')paneId='timeLivePane';
       if (paneId !== 'timePaycheckPane') wipePayCalculator();
       document.getElementById("timeLivePane").classList.add("hidden");
-      document.getElementById("timeManualPane").classList.add("hidden");
+
       document.getElementById("timePaycheckPane").classList.add("hidden");
       document.getElementById(paneId).classList.remove("hidden");
 
@@ -1010,7 +965,7 @@
 
     let activeLunchState = null; // Refreshed from server: never trust a local dropdown for unpaid breaks.
     function lunchStateFromRow(row){
-      return row ? {lunch_out_at:row.lunch_out_at||null,lunch_in_at:row.lunch_in_at||null,break_minutes:Number(row.break_minutes)||0,started_at_ms:Number(row.started_at_ms)} : null;
+      return row ? {lunch_out_at:row.lunch_out_at||null,lunch_in_at:row.lunch_in_at||null,break_minutes:Number(row.break_minutes)||0,started_at_ms:Number(row.started_at_ms),approved_clock_in_at:row.approved_clock_in_at||null} : null;
     }
     function lunchBreakMinutes(now=Date.now()){return GP_LUNCH.liveBreakMinutes(activeLunchState,now);}
     function renderLunchState(){
@@ -1033,7 +988,7 @@
       const started=activeUser&&localStorage.getItem(getClockKey());
       if(!started||!isCloudConnected){activeLunchState=null;renderLunchState();return null;}
       const {data,error}=await supabaseClient.from("active_time_sessions")
-        .select("started_at_ms,lunch_out_at,lunch_in_at,break_minutes")
+        .select("*")
         .eq("auth_user_id",activeUser.auth_user_id).eq("started_at_ms",Number(started)).maybeSingle();
       if(error)throw error;
       if(!data)throw new Error("Your active shift is missing from Supabase. Contact a manager before clocking out.");
@@ -1050,7 +1005,7 @@
         const {data,error}=await supabaseClient.rpc(action==="start"?"gp_start_lunch":"gp_end_lunch");
         if(error)throw error;
         if(!data?.lunch_out_at)throw new Error("Supabase did not confirm your lunch punch.");
-        activeLunchState=lunchStateFromRow(data);
+        const approved=activeLunchState?.approved_clock_in_at;activeLunchState=lunchStateFromRow(data);if(approved&&!data.approved_clock_in_at)activeLunchState.approved_clock_in_at=approved;
         renderLunchState();refreshLiveTimer();
         showToast(action==="start"?"Lunch Out recorded in Supabase":"Lunch Back saved; exact break calculated");
       }catch(e){alert(`Lunch punch was NOT saved: ${e.message||e}`);try{await refreshLunchState();}catch(_){}}
@@ -1114,14 +1069,14 @@
           // A confirmed absent session also clears punches ended by a manager or the scheduler.
           localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
           localStorage.removeItem('gp_clock_out_saved_'+activeUser.auth_user_id);
-          activeLunchState=null;window.GP_HOME?.updateData?.({session:null,shiftReady:true});
+          activeLunchState=null;window.GP_CLOCK_IN?.setSession?.(null);window.GP_HOME?.updateData?.({session:null,shiftReady:true});
           if(wasActive)await fetchTimeLogs();
           return true;
         }
         localStorage.setItem(getClockKey(),String(row.started_at_ms));
         localStorage.setItem(getClockLocKey(),row.clock_in_location||"Location Not Recorded");
         localStorage.setItem(getClockCoordsKey(),row.clock_in_coords||"");
-        activeLunchState=lunchStateFromRow(row);
+        activeLunchState=lunchStateFromRow(row);window.GP_CLOCK_IN?.setSession?.(row);
         window.GP_HOME?.updateData?.({session:row,shiftReady:true});
         renderLunchState();return true;
       } catch (e) { return false; } // A failed read never erases an active punch.
@@ -1193,7 +1148,7 @@
         return;
       }
 
-      const startDate = new Date(parseInt(savedStart, 10));
+      const startDate = new Date(GP_TIME.effectiveStart(activeLunchState||{started_at_ms:Number(savedStart)}));
       document.getElementById("punchStatusText").textContent = "On Clock Since " + startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       document.getElementById("punchStatusText").className = "badge badge-ok";
       document.getElementById("liveGeoText").textContent = "Clock-In Address: " + savedLoc;
@@ -1238,63 +1193,6 @@
       finally{btn.disabled=false;btn.textContent="Clock Out & Sync Shift";}
     };
 
-    window.calcManualHours = function() {
-      const calc=GP_LUNCH.manualInterval(
-        document.getElementById("manStart").value,document.getElementById("manEnd").value,
-        document.getElementById("manLunchOut").value,document.getElementById("manLunchBack").value
-      );
-      document.getElementById("manDecimalDisplay").textContent=calc.error?"—":format00(calc.decimalHours);
-      document.getElementById("manLunchSummary").textContent=calc.error?calc.error:
-        calc.breakMinutes?`Exact lunch: ${calc.breakMinutes} minutes unpaid.`:"No lunch recorded; an explanation and manager approval are required.";
-      document.getElementById("manNoLunchBox").classList.toggle("hidden",!calc.error&&calc.breakMinutes>0);
-      return calc;
-    };
-
-    window.submitManualTime = async function() {
-      const btn=document.getElementById("btnManualSubmit");
-      if(btn.disabled)return;
-      btn.disabled=true;btn.textContent="Saving & Geotagging...";
-      try {
-        const date=document.getElementById("manDate").value;
-        const calc=calcManualHours();
-        if(!date || calc.error || !Number.isFinite(calc.decimalHours) || calc.decimalHours<=0)
-          throw new Error(calc.error||"Enter a valid work date and shift time.");
-        const noLunchReason=calc.breakMinutes===0?document.getElementById("manNoLunchReason").value.trim():"";
-        if(calc.breakMinutes===0&&noLunchReason.length<10)
-          throw new Error("No lunch recorded: enter a reason of at least 10 characters for manager approval.");
-        const geo=await captureGeotag();
-        const note=document.getElementById("manNotes").value.trim();
-        const record={
-          employee_name:activeUser.employee_name, department:activeUser.department,
-          work_date:date,clock_in:document.getElementById("manStart").value,
-          clock_out:document.getElementById("manEnd").value,
-          lunch_out_time:calc.lunchOut,lunch_in_time:calc.lunchBack,
-          break_minutes:calc.breakMinutes,decimal_hours:format00(calc.decimalHours),
-          no_lunch_reason:noLunchReason||null,
-          lunch_review_status:noLunchReason?"pending":"not_required",
-          clock_in_location:geo.address,clock_out_location:geo.address,
-          clock_in_coords:geo.coords,clock_out_coords:geo.coords,
-          notes:note?`${note} (${geo.address})`:`Manual Entry (${geo.address})`
-        };
-        await saveShiftRecord(record);
-        document.getElementById("manNotes").value="";
-        document.getElementById("manNoLunchReason").value="";
-        showToast(noLunchReason?"Shift saved — no-lunch exception pending manager approval":"Manual shift saved to Supabase.");
-      } catch (e) {alert(`Manual shift was NOT saved: ${e.message||e}`);}
-      finally {btn.disabled=false;btn.textContent="Submit Shift Hours";}
-    };
-
-    async function saveShiftRecord(record) {
-      if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable; your shift has NOT been saved.");
-      const result = await supabaseClient.from("time_logs").insert([record]).select("*").single();
-      if (result.error) throw new Error(`Shift save failed: ${result.error.message}`);
-      if (!result.data?.id) throw new Error("Supabase did not confirm your saved shift.");
-      timeLogs.unshift(result.data);
-      localStorage.setItem("gp_time_logs", JSON.stringify(timeLogs));
-      await fetchTimeLogs();
-      return result.data;
-    }
-
     async function fetchTimeLogs() {
       timeLogs = JSON.parse(localStorage.getItem("gp_time_logs") || "[]");
       if (isCloudConnected) {
@@ -1338,7 +1236,7 @@
       let hrs = GP_TIME.summary(timeLogs, activeUser, GP_TIME.week()).hours;
 
       const savedStart = localStorage.getItem(getClockKey());
-      if (savedStart && GP_TIME.inWeek(GP_TIME.day(Number(savedStart)), GP_TIME.week())) hrs += activeWeekEstimate();
+      if (savedStart && GP_TIME.inWeek(GP_TIME.day(GP_TIME.effectiveStart(activeLunchState||{started_at_ms:Number(savedStart)})), GP_TIME.week())) hrs += activeWeekEstimate();
 
       const isPT = activeUser.employment_type === "Part-Time";
       const cap = isPT ? 30.0 : 40.0;
@@ -1375,7 +1273,7 @@
 
     let employeeWeek=null,employeeWeekFollowsNow=true;
     function activeWeekEstimate(){
-      const start=Number(localStorage.getItem(getClockKey()));if(!start)return 0;
+      const original=Number(localStorage.getItem(getClockKey()));if(!original)return 0;const start=GP_TIME.effectiveStart({...activeLunchState,started_at_ms:original});
       const policy=GP_TIME.policy(start),end=Date.now()>=policy.dueAt?policy.endAt:Date.now();
       return GP_CLOCK.preview({...activeLunchState,started_at_ms:start},end).hours;
     }
@@ -1392,7 +1290,7 @@
       document.getElementById('empWeekDate').value=employeeWeek;document.getElementById('empWeekDate').max=GP_TIME.day();
       document.getElementById('empWeekNext').disabled=employeeWeek>=current;
       document.getElementById('empWeekHours').textContent=summary.hours.toFixed(2)+' hrs';document.getElementById('empWeekShifts').textContent=String(myLogs.length);document.getElementById('empWeekReviews').textContent=String(summary.review);document.getElementById('empWeekFooter').textContent=summary.hours.toFixed(2);
-      const start=Number(localStorage.getItem(getClockKey())),active=start&&GP_TIME.inWeek(GP_TIME.day(start),employeeWeek),estimate=active?activeWeekEstimate():0;
+      const originalStart=Number(localStorage.getItem(getClockKey())),start=originalStart?GP_TIME.effectiveStart({...activeLunchState,started_at_ms:originalStart}):0,active=start&&GP_TIME.inWeek(GP_TIME.day(start),employeeWeek),estimate=active?activeWeekEstimate():0;
       document.getElementById('empWeekLive').textContent=active?'Active shift estimate: '+estimate.toFixed(2)+' hrs · Total including active: '+(summary.hours+estimate).toFixed(2)+' hrs. Active estimates are separate from saved timecards.':summary.unpaidMinutes+' recorded unpaid lunch minutes. Recorded totals include entries awaiting manager review.';
       const tbody = document.getElementById('recentTimeTable');
       tbody.innerHTML=myLogs.map(r=>{
@@ -1400,6 +1298,7 @@
         const mapLink=validCoords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:'';
         return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td>${GP.escapeHtml(r.clock_in)} – ${GP.escapeHtml(r.clock_out)}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||r.notes||'Standard Punch')} ${mapLink}
         ${r.lunch_out_time&&r.lunch_in_time?`<div>Lunch ${GP.escapeHtml(r.lunch_out_time)}–${GP.escapeHtml(r.lunch_in_time)} · ${Number(r.break_minutes)||0}m</div>`:''}
+        ${r.clock_in_correction_id?'<div class="badge badge-ok">Clock-in correction approved</div>':''}
         ${r.auto_clocked_out?'<div class="badge badge-warn">Automatic clock-out</div>':''}
         ${r.clock_out_review_status==='pending'?'<div class="badge badge-warn">Clock-out pending manager review</div>':r.clock_out_review_status==='approved'?'<div class="badge badge-ok">Clock-out reviewed</div>':''}
         ${r.lunch_review_status==='pending'?'<div class="badge badge-warn">No lunch — pending manager review</div>':r.lunch_review_status==='rejected'?'<div class="badge badge-issue">Lunch exception rejected — contact manager</div>':r.lunch_review_status==='approved'?'<div class="badge badge-ok">No lunch approved</div>':''}</td><td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td></tr>`;
@@ -1448,14 +1347,14 @@
     };
 
     window.addEventListener("DOMContentLoaded", async function() {
-      document.getElementById("manDate").value = GP_TIME.day();
+
       document.getElementById('empWeekPrevious').onclick=()=>selectEmployeeWeek(GP_TIME.addDays(employeeWeek||GP_TIME.week(),-7));
       document.getElementById('empWeekNext').onclick=()=>{const next=GP_TIME.addDays(employeeWeek||GP_TIME.week(),7);if(next<=GP_TIME.week())selectEmployeeWeek(next);};
       document.getElementById('empWeekCurrent').onclick=()=>selectEmployeeWeek(GP_TIME.day(),true);
       document.getElementById('empWeekDate').onchange=e=>{if(GP_TIME.validDay(e.target.value)&&e.target.value<=GP_TIME.day())selectEmployeeWeek(e.target.value);};
       setInterval(()=>{if(activeUser&&!document.hidden){renderHistoryTable();updateOvertimeBanner();}},15000);
       setInterval(()=>{if(activeUser&&!document.hidden)fetchTimeLogs();},60000);
-      calcManualHours();
+
       document.getElementById("authPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") signInPortal(); });
       document.getElementById("pinLoginCode")?.addEventListener("input", e => { e.target.value=e.target.value.replace(/\D/g,'').slice(0,6); });
       document.getElementById("pinLoginCode")?.addEventListener("keydown", e => { if(e.key === 'Enter') signInWithPin(); });

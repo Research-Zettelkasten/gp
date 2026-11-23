@@ -42,7 +42,8 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     await page.getByRole('button',{name:'Account & PIN',exact:true}).click();
     await page.getByRole('heading',{name:'Your Quick PIN',exact:true}).waitFor();
     await page.locator('#gp-pin-close').click();
-    await page.getByRole('button',{name:/Dark mode/}).click();
+    await page.getByRole('button',{name:'Display preferences',exact:true}).click();
+    await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();
     assert.equal(await page.locator('html').getAttribute('data-gp-theme'),'dark');
     await page.getByRole('searchbox',{name:'Find a workspace or Management section'}).fill('time');
     assert.equal(await page.locator('.gp-side-link-row:not(.gp-search-hidden)').count(),1,'navigation search filters modules');
@@ -61,7 +62,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     assert.equal(await page.getByRole('button',{name:'Open GLASSPRO navigation'}).evaluate(el=>el===document.activeElement),true,'mobile Escape restores focus');
     fs.mkdirSync('test-results',{recursive:true});
     await page.screenshot({path:'test-results/home-mobile-dark.png',fullPage:true,animations:'disabled'});
-    await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:/Light mode/}).click();
+    await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();
     await page.waitForFunction(()=>parseFloat(getComputedStyle(document.body).paddingLeft)>=257);
     await page.screenshot({path:'test-results/home-desktop-light.png',fullPage:true,animations:'disabled'});
 
