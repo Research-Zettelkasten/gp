@@ -22,7 +22,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
     assert.equal(await page.locator('.gp-home-tool').count(),3,'permission-aware module cards');
     assert.equal(await page.locator('.gp-home-tool[href="admin.html"]').count(),0);
     assert.equal(await page.locator('a[aria-current="page"][href="home.html"]').count(),1,'home is active in navigation');
-    await page.waitForFunction(()=>parseFloat(getComputedStyle(document.body).paddingLeft)>=257);
+    await page.waitForFunction(()=>document.querySelector('.gp-home-outer').getBoundingClientRect().left>=document.querySelector('.gp-sidebar').getBoundingClientRect().right);
     assert.equal(await page.evaluate(()=>document.querySelector('.gp-home-outer').getBoundingClientRect().left>=document.querySelector('.gp-sidebar').getBoundingClientRect().right),true,'desktop content clears the fixed navigation');
     const nameContrast=await page.locator('#activeUserName').evaluate(el=>{
       const c=getComputedStyle(el),luminance=value=>{const v=value.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4;});return .2126*v[0]+.7152*v[1]+.0722*v[2];};

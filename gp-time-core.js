@@ -7,6 +7,8 @@
  function validDay(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return false;const d=new Date(value+'T12:00:00Z');return Number.isFinite(+d)&&d.toISOString().slice(0,10)===value;}
  function addDays(value,amount){if(!validDay(value))throw Error('Choose a valid calendar date.');const d=new Date(value+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+amount);return d.toISOString().slice(0,10);}
  function week(value=day()){if(!validDay(value))throw Error('Choose a valid week.');const dow=new Date(value+'T12:00:00Z').getUTCDay();return addDays(value,-((dow+6)%7));}
+ // Retain the previous Monday-Sunday review week throughout Monday for weekend follow-up.
+ function lunchReviewWeek(value=Date.now()){return week(addDays(day(value),-1));}
  function inWeek(value,start){return validDay(value)&&value>=start&&value<=addDays(start,6);}
  function wallTime(date,time){const [y,m,d]=date.split('-').map(Number),[h,min]=time.split(':').map(Number),target=Date.UTC(y,m-1,d,h,min);let ms=target;for(let n=0;n<3;n++){const p=parts(ms);const wall=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute,+p.second);ms+=target-wall;}return ms;}
  function policy(start){const p=parts(start),date=day(start),emergency=Number(p.hour)*3600+Number(p.minute)*60+Number(p.second)>18*3600||(p.hour==='18'&&p.minute==='00'&&p.second==='00'&&Number(start)%1000>0);return{emergency,dueAt:wallTime(addDays(date,1),emergency?'07:30':'00:01'),endAt:wallTime(emergency?addDays(date,1):date,emergency?'07:30':'17:00')};}
@@ -14,5 +16,5 @@
  function own(row,user){return row.auth_user_id?String(row.auth_user_id)===String(user.auth_user_id):String(row.employee_name||'').trim().toLowerCase()===String(user.employee_name||'').trim().toLowerCase();}
  function summary(rows,user,start){const shifts=rows.filter(r=>own(r,user)&&inWeek(r.work_date,start)).sort((a,b)=>b.work_date.localeCompare(a.work_date)||String(b.clock_in||'').localeCompare(String(a.clock_in||'')));return{rows:shifts,hours:shifts.reduce((n,r)=>n+hours(r.decimal_hours),0)/100,unpaidMinutes:shifts.reduce((n,r)=>n+Math.max(0,Number(r.break_minutes)||0),0),review:shifts.filter(r=>r.clock_out_review_status==='pending'||r.lunch_review_status==='pending').length};}
  function effectiveStart(session){return Date.parse(session?.approved_clock_in_at||'')||Number(session?.started_at_ms);}
- return{zone,parts,day,validDay,addDays,week,inWeek,wallTime,policy,summary,effectiveStart};
+ return{zone,parts,day,validDay,addDays,week,lunchReviewWeek,inWeek,wallTime,policy,summary,effectiveStart};
 });

@@ -75,6 +75,8 @@ jobs:
         run: node tests/time-week-browser.cjs
       - name: Live entry, correction approvals, stable layouts and theme
         run: node tests/approval-theme-browser.cjs
+      - name: Tuesday lunch review weeks and retained outstanding items
+        run: node tests/lunch-review-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

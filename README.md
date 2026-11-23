@@ -1,6 +1,8 @@
 # GLASSPRO team portal
 
-Current release: **2026.11.23.2 — approved clock-in corrections, stable live panels and dark appearance**.
+Current release: **2026.11.23.3 — weekly lunch reviews with Tuesday rollover**.
+
+Lunch Exception Review now has independent Monday–Sunday week navigation. The current review week stays on the prior week throughout Monday for weekend follow-up and advances at midnight Eastern on Tuesday. Use Previous/Next week, Jump to a date, or All outstanding to review older pending and rejected items. Rollover never resolves or deletes exceptions. See [lunch review weeks](LUNCH-REVIEW-WEEKS.md). This release requires no new SQL.
 
 See [live punch approval and appearance setup](INSTALL-LIVE-PUNCH-APPROVALS-AND-THEME.md) for installation, employee requests, administrator review and Display preferences.
 

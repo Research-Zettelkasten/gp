@@ -740,14 +740,14 @@
 <script src="gp-sidebar.js?v=20261123b" defer></script>
 <script src="gp-lunch-core.js?v=20261112b"></script>
 <link rel="stylesheet" href="gp-lunch.css?v=20261112b">
-<link rel="stylesheet" href="gp-payroll-weeks.css?v=20261112d">
+<link rel="stylesheet" href="gp-payroll-weeks.css?v=20261123c">
 <link rel="stylesheet" href="gp-accounting-bridge.css?v=20261112e">
 <script src="gp-accounting-core.js?v=20261112e"></script>
 <script src="gp-accounting-bridge.js?v=20261112e"></script>
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261123b">
 <script src="gp-ux.js?v=20261123b" defer></script>
-<script src="gp-time-core.js?v=20261123b"></script>
+<script src="gp-time-core.js?v=20261123c"></script>
 <script src="gp-clock-in-change.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-clock-in-change.css?v=20261123b">
 <script src="gp-clock.js?v=20261123b"></script>
@@ -1170,9 +1170,19 @@
       <section id="gpWidgetLunchReview" class="card gp-lunch-review gp-widget-section" aria-label="Lunch exceptions requiring manager review">
         <div class="card-title" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
           <span>Lunch Exception Review <span id="lunchPendingCount" class="badge badge-warn">0 pending</span></span>
-          <button type="button" class="btn-outline" onclick="renderLunchApprovalQueue()">Refresh Review Queue</button>
+          <button type="button" class="btn-outline" onclick="loadAdminData()">Refresh Review Queue</button>
         </div>
         <p style="font-size:12px;color:var(--muted);margin:0 0 12px;">Employees who did not take lunch must explain why at shift submission. Their hours are saved <strong>without a fabricated break deduction</strong>, but the exception stays pending until a manager approves or rejects it. Rejected cases remain visible for correction.</p>
+        <div class="gp-payroll-week-controls gp-lunch-week-controls" role="group" aria-label="Choose lunch review week">
+          <button type="button" class="btn-outline" id="gpLunchPrev" onclick="changeLunchReviewWeek(-1)">← Previous week</button>
+          <div class="gp-payroll-week-range" role="status" aria-live="polite"><strong id="gpLunchWeekLabel"></strong><small id="gpLunchWeekMode"></small></div>
+          <button type="button" class="btn-outline" id="gpLunchNext" onclick="changeLunchReviewWeek(1)">Next week →</button>
+          <label class="gp-payroll-week-jump">Jump to a date<input type="date" id="gpLunchWeekPicker" aria-label="Jump to lunch review week containing date" onchange="chooseLunchReviewWeek(this.value)"></label>
+          <button type="button" class="btn-outline" id="gpLunchCurrent" aria-pressed="true" onclick="showCurrentLunchReviewWeek()">Current review week</button>
+          <button type="button" class="btn-outline" id="gpLunchAll" aria-pressed="false" onclick="showAllLunchReviews()">All outstanding</button>
+        </div>
+        <p class="gp-lunch-week-policy">Monday–Sunday shifts, grouped by clock-in/work date. The current review week advances every Tuesday at 12:00 AM Eastern, leaving Monday for weekend follow-up. Changing weeks does not resolve any exceptions.</p>
+        <p id="gpLunchWeekSummary" class="gp-lunch-week-summary" role="status" aria-live="polite"></p>
         <div class="table-wrap"><table><thead><tr><th>Employee / date</th><th>Shift</th><th>No-lunch explanation</th><th>Review status</th><th>Manager action</th></tr></thead><tbody id="lunchReviewRows"><tr><td colspan="5">Loading exceptions...</td></tr></tbody></table></div>
       </section>
 
@@ -1490,6 +1500,8 @@
     let auditLimit = 10;
     let currentModalEmployeeName = "";
     let payrollWeekMonday = GP_PAYROLL_WEEKS.readSavedWeek();
+    let lunchReviewMonday = GP_TIME.lunchReviewWeek();
+    let lunchReviewWeekMode = "current";
     const DASHBOARD_PREF_DEFAULTS=Object.freeze(GP_DASH_CORE.defaults());
     const VALID_ADMIN_PANES=new Set(["adminOverviewPane","adminMOSPane","adminUsersPane","adminCommissionsPane","adminTimePane","adminFleetPane"]);
     let dashboardPrefs={...DASHBOARD_PREF_DEFAULTS};
@@ -1986,7 +1998,7 @@
       const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>loadAdminData(),350);}
-    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dashboardPrefs.locked)loadDashboardPreferences();});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(renderActiveTimeMonitor,10000);}
+    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden){renderLunchApprovalQueue();if(dashboardPrefs.locked)loadDashboardPreferences();}});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>loadAdminData(),15000);liveClockRenderTimer=setInterval(()=>{renderActiveTimeMonitor();renderLunchApprovalQueue();},10000);}
 
     function requireManagementCloud() {
       if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable. No changes were made. Reconnect and retry.");
@@ -2144,12 +2156,37 @@
       });
     }
 
+    window.chooseLunchReviewWeek = function(date){
+      if(!GP_TIME.validDay(date)||date>GP_TIME.day())return;
+      lunchReviewMonday=GP_TIME.week(date);
+      lunchReviewWeekMode=lunchReviewMonday===GP_TIME.lunchReviewWeek()?"current":"selected";
+      renderLunchApprovalQueue();
+    };
+    window.changeLunchReviewWeek = function(direction){
+      if(lunchReviewWeekMode==="all")return;
+      chooseLunchReviewWeek(GP_TIME.addDays(lunchReviewMonday,7*direction));
+    };
+    window.showCurrentLunchReviewWeek = function(){lunchReviewWeekMode="current";renderLunchApprovalQueue();};
+    window.showAllLunchReviews = function(){lunchReviewWeekMode="all";renderLunchApprovalQueue();};
     window.renderLunchApprovalQueue = function(){
       const body=document.getElementById("lunchReviewRows");if(!body)return;
-      const rows=timeLogs.filter(r=>["pending","rejected"].includes(r.lunch_review_status)).sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||"")));
-      const pending=rows.filter(r=>r.lunch_review_status==="pending").length;
+      if(lunchReviewWeekMode==="current")lunchReviewMonday=GP_TIME.lunchReviewWeek();
+      const all=lunchReviewWeekMode==="all",range=GP_PAYROLL_WEEKS.range(lunchReviewMonday);
+      const outstanding=timeLogs.filter(r=>["pending","rejected"].includes(r.lunch_review_status));
+      const rows=outstanding.filter(r=>all||GP_TIME.inWeek(r.work_date,lunchReviewMonday)).sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||"")));
+      const pending=rows.filter(r=>r.lunch_review_status==="pending").length,rejected=rows.length-pending;
       document.getElementById("lunchPendingCount").textContent=`${pending} pending`;
-      body.innerHTML=rows.map(r=>{
+      document.getElementById("gpLunchWeekLabel").textContent=all?"All outstanding weeks":range.label;
+      document.getElementById("gpLunchWeekMode").textContent=all?"Pending and rejected exceptions":lunchReviewWeekMode==="current"?"Current review week · Tuesday rollover":"Selected review week";
+      document.getElementById("gpLunchPrev").disabled=all;
+      document.getElementById("gpLunchNext").disabled=all||lunchReviewMonday>=GP_TIME.week();
+      const picker=document.getElementById("gpLunchWeekPicker");
+      picker.disabled=all;picker.max=GP_TIME.day();if(document.activeElement!==picker)picker.value=lunchReviewMonday;
+      document.getElementById("gpLunchCurrent").setAttribute("aria-pressed",String(lunchReviewWeekMode==="current"));
+      const allButton=document.getElementById("gpLunchAll");allButton.setAttribute("aria-pressed",String(all));allButton.textContent=`All outstanding (${outstanding.length})`;
+      const outside=outstanding.length-rows.length;
+      document.getElementById("gpLunchWeekSummary").textContent=`${pending} pending · ${rejected} need correction${all?" across all weeks":` in this week${outside?` · ${outside} outstanding outside this week — use All outstanding to review them`:""}`}.`;
+      const markup=rows.map(r=>{
         const rejected=r.lunch_review_status==="rejected";
         return `<tr>
           <td><b>${GP.escapeHtml(r.employee_name||"Unknown")}</b><br><small>${GP.escapeHtml(r.work_date||"")}</small></td>
@@ -2158,7 +2195,8 @@
           <td><span class="badge ${rejected?"badge-issue":"badge-warn"}">${rejected?"Rejected — needs correction":"Pending Approval"}</span></td>
           <td style="white-space:nowrap;"><button type="button" class="btn-outline" onclick="reviewNoLunch('${r.id}','approved')">Approve</button> <button type="button" class="btn-outline" style="color:var(--red);" onclick="reviewNoLunch('${r.id}','rejected')">Reject</button> <button type="button" class="btn-outline" onclick="openEditTime('${r.id}')">Edit</button></td>
         </tr>`;
-      }).join("")||'<tr><td colspan="5" style="text-align:center;color:var(--muted);">No unresolved no-lunch exceptions. Previously approved entries remain in timecard history.</td></tr>';
+      }).join("")||`<tr><td colspan="5" style="text-align:center;color:var(--muted);">${all?"No unresolved no-lunch exceptions.":"No unresolved no-lunch exceptions for this week. Choose another week or All outstanding to find other reviews."} Previously approved entries remain in timecard history.</td></tr>`;
+      if(body._gpMarkup!==markup){body.innerHTML=markup;body._gpMarkup=markup;}
     };
     window.reviewNoLunch = async function(id,status){
       if(!["approved","rejected"].includes(status))return;
