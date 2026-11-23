@@ -290,7 +290,9 @@
 <script>try {document.documentElement.dataset.gpTheme=localStorage.getItem('gp2_theme_default')==='dark'?'dark':'light';} catch(e) {}</script>
 <link rel="stylesheet" href="gp-ux.css?v=20261113c">
 <script src="gp-ux.js?v=20261113c" defer></script>
-<script src="gp-clock.js?v=20261116d"></script>
+<script src="gp-time-core.js?v=20261123a"></script>
+<script src="gp-clock.js?v=20261123a"></script>
+<link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <script src="gp-home-core.js?v=20261118c"></script>
 </head>
 <body class="gp-app gp-auth-mode">
@@ -583,6 +585,10 @@
         <div>
           <div class="card">
             <div class="card-title">My Shift & Geotag History</div>
+            <div class="gp-week-nav" aria-label="Timecard week selection"><button type="button" id="empWeekPrevious">← Previous week</button><button type="button" id="empWeekCurrent">This week</button><button type="button" id="empWeekNext">Next week →</button><label for="empWeekDate">Jump to a date<input type="date" id="empWeekDate"></label></div>
+            <div id="empWeekRange" class="gp-week-period" aria-live="polite"></div>
+            <div class="gp-week-summary"><div><small>Recorded paid hours</small><strong id="empWeekHours">0.00 hrs</strong></div><div><small>Completed shifts</small><strong id="empWeekShifts">0</strong></div><div><small>Needs manager review</small><strong id="empWeekReviews">0</strong></div></div>
+            <p id="empWeekLive" class="gp-week-hint"></p><p class="gp-week-hint">Monday–Sunday · America/New_York. Overnight shifts belong to their clock-in date. Previous weeks remain saved.</p>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -594,8 +600,10 @@
                   </tr>
                 </thead>
                 <tbody id="recentTimeTable"></tbody>
+                <tfoot class="gp-week-footer"><tr><td colspan="3">Recorded total for selected week</td><td id="empWeekFooter" class="mono">0.00</td></tr></tfoot>
               </table>
             </div>
+            <p class="gp-time-policy">Missed clock-out: at 12:01 AM, a regular shift defaults to 5:00 PM on its clock-in date and is sent for review. Starts after 6:00 PM may continue until 7:30 AM the next day. Automatic entries always require manager review.</p>
           </div>
         </div>
       </div>
@@ -1102,10 +1110,12 @@
       try {
         const row = await GP_CLOCK.readActive(supabaseClient, String(activeUser.auth_user_id));
         if (!row) {
-          // A confirmed absent session also clears punches ended by a manager on another device.
+          const wasActive=!!localStorage.getItem(getClockKey());
+          // A confirmed absent session also clears punches ended by a manager or the scheduler.
           localStorage.removeItem(getClockKey());localStorage.removeItem(getClockLocKey());localStorage.removeItem(getClockCoordsKey());
           localStorage.removeItem('gp_clock_out_saved_'+activeUser.auth_user_id);
           activeLunchState=null;window.GP_HOME?.updateData?.({session:null,shiftReady:true});
+          if(wasActive)await fetchTimeLogs();
           return true;
         }
         localStorage.setItem(getClockKey(),String(row.started_at_ms));
@@ -1199,9 +1209,8 @@
       if (!activeUser) return;
       const savedStart = localStorage.getItem(getClockKey());
       if (!savedStart) return;
-      const elapsed = (Date.now() - parseInt(savedStart, 10)) / 3600000;
-      const brk = lunchBreakMinutes() / 60;
-      document.getElementById("liveDecimalDisplay").textContent = format00(Math.max(0, elapsed - brk));
+      document.getElementById("liveDecimalDisplay").textContent = format00(activeWeekEstimate());
+      renderHistoryTable();
       renderLunchState();
       updateOvertimeBanner();
     };
@@ -1326,15 +1335,10 @@
 
     function updateOvertimeBanner() {
       if (!activeUser) return;
-      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase() && GP.isInCurrentWeek(r.work_date));
-      let hrs = myLogs.reduce((acc, r) => acc + parseFloat(r.decimal_hours || 0), 0);
+      let hrs = GP_TIME.summary(timeLogs, activeUser, GP_TIME.week()).hours;
 
       const savedStart = localStorage.getItem(getClockKey());
-      if (savedStart) {
-        const elapsed = (Date.now() - Math.max(Number(savedStart), GP.weekStart().getTime())) / 3600000;
-        const brk = lunchBreakMinutes() / 60;
-        hrs += Math.max(0, elapsed - brk);
-      }
+      if (savedStart && GP_TIME.inWeek(GP_TIME.day(Number(savedStart)), GP_TIME.week())) hrs += activeWeekEstimate();
 
       const isPT = activeUser.employment_type === "Part-Time";
       const cap = isPT ? 30.0 : 40.0;
@@ -1369,29 +1373,37 @@
       }
     }
 
+    let employeeWeek=null,employeeWeekFollowsNow=true;
+    function activeWeekEstimate(){
+      const start=Number(localStorage.getItem(getClockKey()));if(!start)return 0;
+      const policy=GP_TIME.policy(start),end=Date.now()>=policy.dueAt?policy.endAt:Date.now();
+      return GP_CLOCK.preview({...activeLunchState,started_at_ms:start},end).hours;
+    }
+    function selectEmployeeWeek(value,follow=false){
+      if(!GP_TIME.validDay(value))return;
+      employeeWeek=GP_TIME.week(value);employeeWeekFollowsNow=follow||employeeWeek===GP_TIME.week();renderHistoryTable();
+    }
     function renderHistoryTable() {
       if (!activeUser) return;
-      const myLogs = timeLogs.filter(r => (r.employee_name || "").toLowerCase() === activeUser.employee_name.toLowerCase());
-      const tbody = document.getElementById("recentTimeTable");
-      if (myLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted);">No shifts logged yet.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = myLogs.slice(0, 10).map(r => {
-        const validCoords = /^-?\d{1,3}(?:\.\d+)?,-?\d{1,3}(?:\.\d+)?$/.test(r.clock_in_coords || "");
-        const mapLink = validCoords ? `<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>` : "";
-        return `
-          <tr>
-            <td>${GP.escapeHtml(r.work_date)}</td>
-            <td>${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td>
-            <td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location || r.notes || "Standard Punch")} ${mapLink}
-              ${r.lunch_out_time&&r.lunch_in_time?`<div style="margin-top:5px;">Lunch ${GP.escapeHtml(r.lunch_out_time)}–${GP.escapeHtml(r.lunch_in_time)} · ${Number(r.break_minutes)||0}m</div>`:""}
-              ${r.lunch_review_status==="pending"?'<div class="badge badge-warn" style="margin-top:5px;">No lunch — pending manager review</div>':r.lunch_review_status==="rejected"?'<div class="badge badge-issue" style="margin-top:5px;">Lunch exception rejected — contact manager</div>':r.lunch_review_status==="approved"?'<div class="badge badge-ok" style="margin-top:5px;">No lunch approved</div>':""}
-            </td>
-            <td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td>
-          </tr>
-        `;
-      }).join("");
+      const current=GP_TIME.week();if(!employeeWeek||employeeWeekFollowsNow)employeeWeek=current;
+      const summary=GP_TIME.summary(timeLogs,activeUser,employeeWeek),myLogs=summary.rows;
+      const dateLabel=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'});
+      document.getElementById('empWeekRange').textContent=dateLabel(employeeWeek)+' – '+dateLabel(GP_TIME.addDays(employeeWeek,6))+(employeeWeek===current?' · Current week':' · Previous week');
+      document.getElementById('empWeekDate').value=employeeWeek;document.getElementById('empWeekDate').max=GP_TIME.day();
+      document.getElementById('empWeekNext').disabled=employeeWeek>=current;
+      document.getElementById('empWeekHours').textContent=summary.hours.toFixed(2)+' hrs';document.getElementById('empWeekShifts').textContent=String(myLogs.length);document.getElementById('empWeekReviews').textContent=String(summary.review);document.getElementById('empWeekFooter').textContent=summary.hours.toFixed(2);
+      const start=Number(localStorage.getItem(getClockKey())),active=start&&GP_TIME.inWeek(GP_TIME.day(start),employeeWeek),estimate=active?activeWeekEstimate():0;
+      document.getElementById('empWeekLive').textContent=active?'Active shift estimate: '+estimate.toFixed(2)+' hrs · Total including active: '+(summary.hours+estimate).toFixed(2)+' hrs. Active estimates are separate from saved timecards.':summary.unpaidMinutes+' recorded unpaid lunch minutes. Recorded totals include entries awaiting manager review.';
+      const tbody = document.getElementById('recentTimeTable');
+      tbody.innerHTML=myLogs.map(r=>{
+        const validCoords=/^-?\d{1,3}(?:\.\d+)?,-?\d{1,3}(?:\.\d+)?$/.test(r.clock_in_coords||'');
+        const mapLink=validCoords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:'';
+        return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td>${GP.escapeHtml(r.clock_in)} – ${GP.escapeHtml(r.clock_out)}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||r.notes||'Standard Punch')} ${mapLink}
+        ${r.lunch_out_time&&r.lunch_in_time?`<div>Lunch ${GP.escapeHtml(r.lunch_out_time)}–${GP.escapeHtml(r.lunch_in_time)} · ${Number(r.break_minutes)||0}m</div>`:''}
+        ${r.auto_clocked_out?'<div class="badge badge-warn">Automatic clock-out</div>':''}
+        ${r.clock_out_review_status==='pending'?'<div class="badge badge-warn">Clock-out pending manager review</div>':r.clock_out_review_status==='approved'?'<div class="badge badge-ok">Clock-out reviewed</div>':''}
+        ${r.lunch_review_status==='pending'?'<div class="badge badge-warn">No lunch — pending manager review</div>':r.lunch_review_status==='rejected'?'<div class="badge badge-issue">Lunch exception rejected — contact manager</div>':r.lunch_review_status==='approved'?'<div class="badge badge-ok">No lunch approved</div>':''}</td><td class="mono" style="font-weight:800;">${format00(r.decimal_hours)}</td></tr>`;
+      }).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--muted);">No completed shifts for this week. Use Previous week or Jump to a date to view earlier records.</td></tr>';
     }
 
     // PRIVATE ON-DEMAND PAY CALCULATOR
@@ -1436,7 +1448,13 @@
     };
 
     window.addEventListener("DOMContentLoaded", async function() {
-      document.getElementById("manDate").value = GP.localDate();
+      document.getElementById("manDate").value = GP_TIME.day();
+      document.getElementById('empWeekPrevious').onclick=()=>selectEmployeeWeek(GP_TIME.addDays(employeeWeek||GP_TIME.week(),-7));
+      document.getElementById('empWeekNext').onclick=()=>{const next=GP_TIME.addDays(employeeWeek||GP_TIME.week(),7);if(next<=GP_TIME.week())selectEmployeeWeek(next);};
+      document.getElementById('empWeekCurrent').onclick=()=>selectEmployeeWeek(GP_TIME.day(),true);
+      document.getElementById('empWeekDate').onchange=e=>{if(GP_TIME.validDay(e.target.value)&&e.target.value<=GP_TIME.day())selectEmployeeWeek(e.target.value);};
+      setInterval(()=>{if(activeUser&&!document.hidden){renderHistoryTable();updateOvertimeBanner();}},15000);
+      setInterval(()=>{if(activeUser&&!document.hidden)fetchTimeLogs();},60000);
       calcManualHours();
       document.getElementById("authPassword")?.addEventListener("keydown", e => { if (e.key === "Enter") signInPortal(); });
       document.getElementById("pinLoginCode")?.addEventListener("input", e => { e.target.value=e.target.value.replace(/\D/g,'').slice(0,6); });
@@ -1445,7 +1463,7 @@
       document.getElementById("authEmail")?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("authPassword")?.focus(); });
       await initializeAuthPortal();
       setInterval(()=>{if(activeUser&&!document.hidden&&!document.getElementById("btnClockOut").disabled)resumeClockState();},15000);
-      document.addEventListener("visibilitychange",()=>{if(activeUser&&!document.hidden&&!document.getElementById("btnClockOut").disabled)resumeClockState();});
+      document.addEventListener("visibilitychange",()=>{if(activeUser&&!document.hidden){renderHistoryTable();fetchTimeLogs();if(!document.getElementById("btnClockOut").disabled)resumeClockState();}});
     });
   </script>
 <script src="gp-pin.js?v=20261112"></script>

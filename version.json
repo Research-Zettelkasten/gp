@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.18.2",
-  "notes": "Customer registry, unified scoped notes and source history, protected directory import, and automatic audited verified-zero Collections archival with positive-balance reopening. Run the combined Customers and Collections SQL install before deploying.",
-  "release_date": "2026-11-18",
-  "released_at": "2026-11-18"
+  "version": "2026.11.23.1",
+  "notes": "Weekly timecard navigation and totals, saved-timecard recovery, reviewed automatic 5 PM defaults at the 12:01 AM cutoff, and 7:30 AM emergency cutoff. Run GLASSPRO-WEEKLY-TIME-INSTALL.sql in Supabase.",
+  "release_date": "2026-11-23",
+  "released_at": "2026-11-23"
 }

@@ -49,5 +49,16 @@
     const d=new Date(ms),pad=x=>String(x).padStart(2,'0');
     return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
   }
-  globalThis.GP_CLOCK=Object.freeze({validate,preview,readActive,finishShift,localInput});
+  async function savedTimecards(client,employeeId,start){
+    const {data,error}=await confirmedWithin(client.rpc('gp_saved_timecards_for_session',{p_employee_id:employeeId,p_expected_start_ms:start}));
+    if(error?.code==='PGRST202')return null;if(error)throw error;return Array.isArray(data)?data:[];
+  }
+  async function clearSaved(client,o){
+    if(!uuid.test(o.employeeId)||!Number.isSafeInteger(o.startedAtMs)||!/^\d+$/.test(String(o.timeLogId||'')))throw Error('Select a confirmed employee shift and existing timecard.');
+    if(String(o.reason||'').trim().length<10||String(o.reason||'').trim().length>500)throw Error('Enter an audit reason of 10–500 characters.');
+    const {data,error}=await confirmedWithin(client.rpc('gp_clear_saved_active_shift',{p_employee_id:o.employeeId,p_expected_start_ms:o.startedAtMs,p_time_log_id:o.timeLogId,p_reason:o.reason.trim()}));
+    if(error)throw error;if(data?.ok!==true)throw Error('The saved timecard was not confirmed.');return data;
+  }
+  globalThis.GP_CLOCK=Object.freeze({validate,preview,readActive,finishShift,localInput,savedTimecards,clearSaved});
 })();
+
