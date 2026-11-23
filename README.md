@@ -4,6 +4,8 @@ Current release: **2026.11.23.7 — team announcement push and the GLASSPRO app 
 
 [Set up Web Push](WEB-PUSH-SETUP.md) for opt-in device alerts. The static site supplies the Home Screen icon and one app manifest across GLASSPRO.
 
+**Live Time Monitoring** supports one-time location requests during a shift. The employee chooses to share or decline, and managers see the shared pin with the reported accuracy. GLASSPRO targets a radius of 50 feet when capturing a location. The [setup guide](WEB-PUSH-SETUP.md#request-a-location) links the SQL update and explains how to enable alerts for requests.
+
 Apply [the fleet, callbacks and announcements migration](supabase/migrations/2026-11-23-fleet-callbacks-announcements.sql) in the GLASSPRO Supabase SQL Editor. It expects the existing fleet, quote and employee tables and Supabase Storage. This update has no Cron setup step.
 
 - **Fleet → Fleet Garage**: choose Vehicle or Trailer, add the tag expiration and last renewal date, and filter the directory by renewal status. Open **Photos** on a saved unit to attach JPEG, PNG, or WebP images. Fleet viewers can open photos. Administrators can upload and remove them. Trailers remain separate from the motor-vehicle inspection checklist.

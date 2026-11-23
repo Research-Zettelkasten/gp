@@ -52,3 +52,14 @@ test('all shared app pages use fresh static icon files and the same manifest', (
     assert.match(page,/rel="apple-touch-icon" sizes="180x180" href="icons\/glasspro-180\.png/);
   }
 });
+
+test('location push only opens the consent prompt on GLASSPRO', async () => {
+  const app = worker();
+  await app.event('push',{data:{json:()=>({locationRequestId:id, latitude:30.83, longitude:-83.28})}});
+  const notice = app.results[0];
+  assert.equal(notice.options.tag,'gp-location-' + id);
+  assert.match(notice.options.body,/Open GLASSPRO to respond/);
+  assert.doesNotMatch(JSON.stringify(notice),/30\.83|83\.28/);
+  await app.event('notificationclick',{notification:{data:{locationRequestId:id},close(){}}});
+  assert.equal(app.results[1],'https://portal.example/ops/index.html?locationRequest='+id+'#gpLiveLocation');
+});

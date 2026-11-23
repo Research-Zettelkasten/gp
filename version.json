@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.7",
-  "notes": "Add administrator live lunch corrections, opt-in Web Push for team announcements, and the restored GLASSPRO app icon.",
+  "version": "2026.11.23.8",
+  "notes": "Add on-shift location requests and targeted push alerts, with a 50-foot accuracy target for new GPS readings.",
   "release_date": "2026-11-23",
   "released_at": "2026-11-23"
 }

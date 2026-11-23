@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: JavaScript, permissions, and asset checks
-        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs tests/callback-tools.test.cjs tests/push-worker.test.cjs
+        run: node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs tests/callback-tools.test.cjs tests/push-worker.test.cjs tests/geolocation.test.cjs
       - name: Build reproducible timekeeping installers
         run: |
           python3 scripts/build-time-installers.py
@@ -53,6 +53,8 @@ jobs:
           PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/fleet-callbacks-announcements.sql
       - name: Push subscription permissions, delivery claims and retries
         run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/announcement-web-push.sql
+      - name: Location request ownership, device targeting and shift cleanup
+        run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/live-location-requests.sql
       - name: Customer registry and reconciliation integration
         run: |
           createdb gp_customer_test
