@@ -5,13 +5,13 @@ GLASSPRO can send a lock screen alert for a team announcement or an on-shift loc
 ## Supabase setup
 
 1. Open the GLASSPRO project's **SQL Editor**. If the announcement updates are still pending, apply [fleet, callbacks and announcements](supabase/migrations/2026-11-23-fleet-callbacks-announcements.sql) first. Apply [the Web Push migration](supabase/migrations/2026-11-23-announcement-web-push.sql) in its own query, then run the [live location requests migration](supabase/migrations/2026-11-23-live-location-requests.sql) in a new query.
-2. In a terminal on a computer with Node.js, generate the Web Push keys once.
+2. For automatic setup, apply [the Vault signing key migration](supabase/migrations/2026-11-24-web-push-vault-keys.sql). The sender generates a keypair if needed and saves it in Supabase Vault. If this project already uses Edge Function signing key secrets, keep the existing pair. To provision keys manually on a new project, generate them once.
 
    ```sh
    npx --yes web-push@3.6.7 generate-vapid-keys --json
    ```
 
-3. In **Supabase → Edge Functions → Secrets**, add these three values. Keep the private key in Supabase secrets and save a backup in your password manager.
+3. For manual setup only, add these values in **Supabase → Edge Functions → Secrets**. Keep the private key in Supabase secrets and save a backup in your password manager.
 
    | Name | Value |
    | --- | --- |
@@ -32,7 +32,7 @@ GLASSPRO can send a lock screen alert for a team announcement or an on-shift loc
 
 1. On iPhone or iPad, open the site in Safari and choose **Share → Add to Home Screen**. If offered, turn on **Open as Web App**. To refresh a cached icon, remove the old Home Screen shortcut and add it again.
 2. Launch GLASSPRO from the new Home Screen icon and sign in. Open **Home → Team announcements** or **Time Clock → Device notifications**.
-3. Tap **Enable notifications**, then **Allow**. The same control supports opt-out.
+3. On Time Clock, Device notifications opens for devices that need to opt in. Tap **Enable notifications**, then **Allow** in the system prompt. The same control supports opt-out.
 4. In **Management → Command Center → Team announcements**, publish with **Notify opted-in devices** checked, or use **Notify devices** on an already published announcement. For a delivery check, send an announcement after opting in, then look for the GLASSPRO alert on your device.
 5. Management shows how many push services accepted the alert. Retry pending items with **Notify devices** after five minutes. The queue skips completed deliveries. Staff can open any current notice directly in GLASSPRO.
 

@@ -101,6 +101,7 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
           getSubscription:async () => current,
           subscribe:async options => {
             if (!options.userVisibleOnly || options.applicationServerKey.length !== 65) throw Error('Missing application key');
+            if (!navigator.userActivation.isActive) throw Error('Push subscription needs a user interaction');
             current = {
               endpoint,
               toJSON:() => ({endpoint,keys:{p256dh:'A'.repeat(87),auth:'B'.repeat(22)}}),
@@ -191,6 +192,15 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     await page.getByRole('button',{name:'Enable notifications'}).waitFor();
     assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.name==='gp_remove_push_device').args.p_endpoint),
       'https://web.push.apple.com/synthetic-device');
+    await page.goto(base+'/index.html');
+    const invite = page.locator('#gpClockNotifications');
+    await invite.getByRole('button',{name:'Enable notifications',exact:true}).waitFor();
+    assert.equal(await invite.evaluate(panel=>panel.open),true,'Time Clock opens the opt-in for a device that has not subscribed');
+    assert.equal(await page.evaluate(()=>window.__pushCalls.some(call=>call.name==='gp_save_push_device')),false,
+      'loading the invitation does not subscribe the device');
+    await invite.getByRole('button',{name:'Enable notifications',exact:true}).click();
+    await invite.getByRole('button',{name:'Disable notifications',exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>window.__pushCalls.some(call=>call.name==='gp_save_push_device')),true,'the opt-in click enrolls the device');
     assert.deepEqual(errors,[]);
     console.log('PASS: fleet, Safety, callbacks, announcement push, enrollment and opt-out');
   } finally { await browser?.close(); server.kill(); }

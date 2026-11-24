@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.24.2",
-  "notes": "Place employee lunch correction requests directly below clock-in corrections on the live Time Clock.",
+  "version": "2026.11.24.3",
+  "notes": "Show the notifications opt-in on Time Clock and initialize persistent Web Push signing keys.",
   "release_date": "2026-11-24",
   "released_at": "2026-11-24"
 }
