@@ -17,3 +17,18 @@ export function deliveryState(status: number, attempts: number): "sent" | "retry
   if ([400, 404, 410, 413].includes(status) || attempts >= 3) return "unavailable";
   return "retry";
 }
+
+function previewText(text: string, limit: number): string {
+  const cleaned = text.replace(/[\s\p{Cc}]+/gu, " ").trim();
+  const characters = Array.from(cleaned);
+  return characters.length <= limit ? cleaned : characters.slice(0, limit - 1).join("").trimEnd() + "…";
+}
+
+export function announcementPayload(announcementId: string, expiresAt: string | null,
+                                    preview?: {title: string; body: string}) {
+  return {
+    announcementId,
+    ...(expiresAt ? {expiresAt: Date.parse(expiresAt)} : {}),
+    ...(preview ? {preview:{title: previewText(preview.title, 120), body: previewText(preview.body, 500)}} : {}),
+  };
+}

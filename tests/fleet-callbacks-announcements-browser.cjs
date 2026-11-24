@@ -42,7 +42,14 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
         return {data:one ? resultRows[0] || null : resultRows,error:null};
       };
       const chain = {
-        select:()=>chain, order:()=>chain, limit:()=>chain, or:()=>chain,
+        select:()=>chain, order:()=>chain, limit:()=>chain,
+        or:condition=>{
+          if (condition.startsWith('recipient_user_id.')) {
+            const recipient = condition.split('recipient_user_id.eq.')[1];
+            conditions.push(row=>!row.recipient_user_id || row.recipient_user_id===recipient);
+          }
+          return chain;
+        },
         eq:(key,value)=>{conditions.push(row=>String(row[key])===String(value));return chain;},
         is:(key,value)=>{conditions.push(row=>(row[key]??null)===value);return chain;},
         lte:()=>chain, range:start=>{offset=start;return chain;},
@@ -177,12 +184,35 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     await page.locator('#gpAnnouncementForm [name=pinned]').check();
     await page.getByText('Notify opted-in devices',{exact:true}).waitFor();
     await page.locator('#gpAnnouncementForm [name=notify]').check();
+    await page.locator('#gpAnnouncementForm [name=includePreview]').check();
     await page.locator('#gpAnnouncementSave').click();
     await page.locator('#gpAnnouncementStatus').filter({hasText:'1 accepted by push services'}).waitFor();
-    assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.body?.action==='send').body.announcementId),100);
+    const teamPush=await page.evaluate(()=>window.__pushCalls.find(call=>call.body?.action==='send').body);
+    assert.equal(teamPush.announcementId,100);
+    assert.equal(teamPush.includePreview,true);
+    const adminId='11111111-1111-4111-8111-111111111111';
+    await page.getByLabel('Audience',{exact:true}).selectOption(adminId);
+    await page.locator('#gpAnnouncementForm [name=title]').fill('Synthetic directed announcement');
+    await page.locator('#gpAnnouncementForm [name=body]').fill('A message only for this employee.');
+    await page.locator('#gpAnnouncementForm [name=notify]').check();
+    assert.equal(await page.locator('#gpAnnouncementForm [name=includePreview]').isChecked(),false);
+    await page.locator('#gpAnnouncementSave').click();
+    await page.locator('#gpAnnouncementList').getByText('Synthetic directed announcement',{exact:true}).waitFor();
+    await page.waitForFunction(()=>window.__pushCalls.some(call=>call.body?.announcementId===101));
+    assert.equal(await page.evaluate(()=>window.__fixture.gp_announcements.find(item=>item.id===101).recipient_user_id),adminId);
+    assert.equal(await page.evaluate(()=>window.__pushCalls.find(call=>call.body?.announcementId===101).body.includePreview),false);
+    await page.evaluate(()=>localStorage.setItem('gpFixtureAnnouncements',JSON.stringify([
+      ...window.__fixture.gp_announcements,
+      {id:102,title:'Different recipient',body:'Another employee only.',recipient_user_id:'22222222-2222-4222-8222-222222222222',published_at:'2026-11-20T15:00:00Z'},
+      {id:103,title:'Already expired',body:'Retire this from the Home feed.',expires_at:'2026-11-21T15:00:00Z',published_at:'2026-11-20T15:00:00Z'}
+    ])));
     await page.goto(base+'/home.html');
     const announcement = page.locator('#gpHomeAnnouncements');
     await announcement.getByText('Synthetic staff announcement',{exact:true}).waitFor();
+    const directed = announcement.locator('article').filter({hasText:'Synthetic directed announcement'});
+    await directed.getByText('Just for you',{exact:false}).waitFor();
+    assert.equal(await announcement.getByText('Different recipient',{exact:true}).count(),0);
+    assert.equal(await announcement.getByText('Already expired',{exact:true}).count(),0);
     assert.match(await announcement.textContent(),/Pinned/);
     await page.getByRole('button',{name:'Enable notifications'}).click();
     await page.getByRole('button',{name:'Disable notifications'}).waitFor();

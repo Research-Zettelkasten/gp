@@ -5,13 +5,14 @@ const vm = require('node:vm');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const id = '80000000-0000-0000-0000-000000000001';
-function worker(windows = []) {
+function worker(windows = [], notices = []) {
   const events = new Map(), results = [];
   const self = {
     addEventListener(name, callback) { events.set(name, callback); },
     registration:{
       scope:'https://portal.example/ops/',
-      async showNotification(title, options) { results.push({title,options}); }
+      async showNotification(title, options) { results.push({title,options}); },
+      async getNotifications() { return notices; }
     },
     clients:{
       async matchAll() { return windows; },
@@ -55,11 +56,40 @@ test('all shared app pages use fresh static icon files and the same manifest', (
 
 test('location push only opens the consent prompt on GLASSPRO', async () => {
   const app = worker();
-  await app.event('push',{data:{json:()=>({locationRequestId:id, latitude:30.83, longitude:-83.28})}});
+  await app.event('push',{data:{json:()=>({locationRequestId:id, announcementId:id, latitude:30.83, longitude:-83.28,
+    preview:{title:'Private',body:'Private content'}})}});
   const notice = app.results[0];
   assert.equal(notice.options.tag,'gp-location-' + id);
   assert.match(notice.options.body,/Open GLASSPRO to respond/);
   assert.doesNotMatch(JSON.stringify(notice),/30\.83|83\.28/);
+  assert.doesNotMatch(JSON.stringify(notice),/Private/);
   await app.event('notificationclick',{notification:{data:{locationRequestId:id},close(){}}});
   assert.equal(app.results[1],'https://portal.example/ops/index.html?locationRequest='+id+'#gpLiveLocation');
+});
+
+test('optional previews show the announcement title and text and reopen the full message', async () => {
+  const app = worker();
+  const preview = {title:'Shop opening',body:'Please arrive at 9 a.m. tomorrow.'};
+  const expiresAt = Date.now() + 60000;
+  await app.event('push',{data:{json:()=>({announcementId:id, preview, expiresAt})}});
+  const notice = app.results[0];
+  assert.equal(notice.title,preview.title);
+  assert.equal(notice.options.body,preview.body);
+  assert.equal(notice.options.data.expiresAt,expiresAt);
+  await app.event('notificationclick',{notification:{data:notice.options.data,close(){}}});
+  assert.equal(app.results[1],'https://portal.example/ops/home.html?announcement='+id+'#gpHomeAnnouncements');
+});
+
+test('the worker clears expired announcement banners and skips overdue pushes', async () => {
+  const now = Date.now();
+  const closed = [];
+  const app = worker([], [
+    {tag:'gp-announcement-old',data:{expiresAt:now-1000},close:()=>closed.push('expired')},
+    {tag:'gp-announcement-active',data:{expiresAt:now+60000},close:()=>closed.push('active')},
+    {tag:'gp-location-request',data:{expiresAt:now-1000},close:()=>closed.push('location')}
+  ]);
+  await app.event('message',{data:{type:'gp-clear-expired-announcements'}});
+  assert.deepEqual(closed,['expired']);
+  await app.event('push',{data:{json:()=>({announcementId:id, expiresAt:now-1000})}});
+  assert.equal(app.results.length,0);
 });

@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import webPush from "npm:web-push@3.6.7";
-import { allowedPushEndpoint, deliveryState } from "./push.ts";
+import { allowedPushEndpoint, announcementPayload, deliveryState } from "./push.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -57,7 +57,7 @@ type Device = {
 };
 type Delivery = Device & { delivery_id: string; attempts: number };
 
-async function deliver(row: Device, payload: {announcementId: string} | {locationRequestId: string}): Promise<number> {
+async function deliver(row: Device, payload: ReturnType<typeof announcementPayload> | {locationRequestId: string}): Promise<number> {
   if (!allowedPushEndpoint(row.endpoint)) return 400;
   try {
     const details = webPush.generateRequestDetails({
@@ -105,7 +105,9 @@ Deno.serve(async (request) => {
   const token = request.headers.get("Authorization")?.match(/^Bearer ([^\s]+)$/i)?.[1];
   if (!token || !url || !userKey) return json({ error: "Sign in to GLASSPRO." }, 401);
   try {
-    const session = createClient(url, userKey, clientOptions);
+    const session = createClient(url, userKey, {
+      ...clientOptions, global: { headers: { Authorization: `Bearer ${token}` } },
+    });
     const auth = await session.auth.getUser(token);
     if (auth.error || !auth.data.user) return json({ error: "Sign in to GLASSPRO." }, 401);
     const raw = await request.text();
@@ -123,6 +125,13 @@ Deno.serve(async (request) => {
     }
     if (!configured) return json({ error: "Web Push is awaiting server setup." }, 503);
     const id = body.announcementId;
+    const now = new Date().toISOString();
+    const {data: announcement, error: readError} = await session.from("gp_announcements").select("title,body,expires_at")
+      .eq("id", id).is("archived_at", null).lte("published_at", now)
+      .or("expires_at.is.null,expires_at.gt." + now).maybeSingle();
+    if (readError) return json({error:"Could not load the announcement. Try again."},503);
+    if (!announcement) return json({error:"Choose an announcement that is still active."},409);
+    const payload = announcementPayload(id, announcement.expires_at, body.includePreview === true ? announcement : undefined);
     const db = createClient(url, serverKey, clientOptions);
     const { data, error } = await db.rpc("gp_claim_announcement_push", {
       p_announcement: id, p_admin: auth.data.user.id,
@@ -138,7 +147,7 @@ Deno.serve(async (request) => {
     let next = 0;
     async function worker() {
       for (let row = targets[next++]; row; row = targets[next++]) {
-        const status = await deliver(row, {announcementId:id});
+        const status = await deliver(row, payload);
         const outcome = deliveryState(status, row.attempts);
         const update = await db.from("gp_push_deliveries").update({
           state: outcome, updated_at: new Date().toISOString(),

@@ -55,6 +55,8 @@ jobs:
         run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/announcement-web-push.sql
       - name: Location request ownership, device targeting and shift cleanup
         run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/live-location-requests.sql
+      - name: Private announcement audiences, expiration and audit history
+        run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/targeted-announcements.sql
       - name: Customer registry and reconciliation integration
         run: |
           createdb gp_customer_test

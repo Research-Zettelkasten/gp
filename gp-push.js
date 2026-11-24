@@ -19,10 +19,10 @@
     catch { return {configured:false}; }
   }
 
-  async function send(client, announcementId) {
+  async function send(client, announcementId, includePreview = false) {
     let summary;
     for (let batch = 0; batch < 20; batch++) {
-      summary = await request(client, {action:'send', announcementId});
+      summary = await request(client, {action:'send', announcementId, includePreview});
       if (!summary.queued) return summary;
     }
     return summary;
@@ -30,6 +30,10 @@
 
   function sendLocation(client, requestId) {
     return request(client, {action:'location', requestId});
+  }
+
+  function clearExpired(worker = navigator.serviceWorker?.controller) {
+    worker?.postMessage?.({type:'gp-clear-expired-announcements'});
   }
 
   async function detach(client, subscription) {
@@ -89,6 +93,7 @@
       const key = applicationKey(config.publicKey);
       const pending = await navigator.serviceWorker.register(workerUrl);
       const registration = pending.active ? pending : await navigator.serviceWorker.ready;
+      clearExpired(registration.active);
       let subscription = await registration.pushManager.getSubscription();
       const storedKey = subscription?.options?.applicationServerKey;
       const changedKey = storedKey && (storedKey.byteLength !== key.length || new Uint8Array(storedKey).some((byte,index) => byte !== key[index]));
@@ -146,5 +151,5 @@
     }
   }
 
-  root.GP_PUSH = Object.freeze({mount, readConfig, send, sendLocation, beforeSignOut});
+  root.GP_PUSH = Object.freeze({mount, readConfig, send, sendLocation, beforeSignOut, clearExpired});
 })(window);
