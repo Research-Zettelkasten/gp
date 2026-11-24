@@ -79,6 +79,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/admin-live-lunch.sql
       - name: Employee lunch requests, approval, and shift transitions
         run: psql -X -v ON_ERROR_STOP=1 -f tests/employee-lunch-requests.sql
+      - name: Recover missed clock-outs with verified punches
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/missed-clock-out-recovery.sql
       - name: Concurrent direct correction and clock-out
         run: node tests/admin-live-race.cjs
       - name: Complete installation with protected Cron permissions

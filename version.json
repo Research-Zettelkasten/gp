@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.23.9",
-  "notes": "Add employee lunch correction requests with manager approval for live shifts and saved timecards.",
-  "release_date": "2026-11-23",
-  "released_at": "2026-11-23"
+  "version": "2026.11.24.1",
+  "notes": "Resolve automatic clock-out reviews by saving verified punches or choosing a matching timecard.",
+  "release_date": "2026-11-24",
+  "released_at": "2026-11-24"
 }
