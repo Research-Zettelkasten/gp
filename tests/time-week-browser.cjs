@@ -6,7 +6,14 @@ const base='http://127.0.0.1:8768',mock=require('./fixtures/clock-browser-mock.c
  if(window.__testRole==='admin'){window.__active={auth_user_id:employee,employee_name:'Sam Employee',department:'Operations',started_at_ms:Date.parse('2026-11-19T07:51:00-05:00'),started_at:'2026-11-19T07:51:00-05:00',clock_in_location:'Synthetic shop',lunch_out_at:'2026-11-19T12:00:00-05:00',lunch_in_at:'2026-11-19T13:01:00-05:00'};}
  if(window.__dashboardFixture){
   window.__dashboardData={
-   time_logs:[legacy,{...legacy,id:502,work_date:'2026-11-21',decimal_hours:'14'},{...legacy,id:503,work_date:'2026-11-22',decimal_hours:'14'},{...legacy,id:504,work_date:'2026-11-23',decimal_hours:'4.50'}],
+   time_logs:[legacy,{...legacy,id:502,work_date:'2026-11-21',decimal_hours:'14'},{...legacy,id:503,work_date:'2026-11-22',decimal_hours:'14'},{...legacy,id:504,work_date:'2026-11-23',decimal_hours:'4.50'},
+    ...[
+     ['Jordan Baker Jr.','2026-11-15'],
+     ['Elaine Wingert-Toliver','2026-11-15'],
+     ['Zoe Adams','2026-11-13'],
+     ['BAKER, Asha','2026-11-15'],
+     ['Zoe Adams','2026-11-15']
+    ].map(([employee_name,work_date],i)=>({...legacy,id:510+i,employee_name,work_date}))],
    commission_logs:[
     {id:11,wo_number:'P1',work_date:'2026-11-17',job_amount:'100'},
     {id:12,wo_number:'P2',work_date:'2026-11-22',job_amount:'200'},
@@ -96,5 +103,11 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  await kpis.evaluate(()=>{window.__dashboardData.fleet_vehicles[0].status='Passed';window.__dashboardUpdates.fleet_vehicles();});
  await kpis.locator('#statFlaggedVehicles').filter({hasText:'0'}).waitFor();
  assert.doesNotMatch(await kpis.locator('#mosExceptionQueueTable').textContent(),/Open Fleet Flag/);
+ await kpis.evaluate(()=>choosePayrollWeek('2026-11-09'));
+ const timeGroups=kpis.locator('#adminTimeGroups .time-group');
+ assert.deepEqual(await timeGroups.evaluateAll(rows=>rows.map(row=>row.dataset.employee)),
+  ['zoe adams','baker, asha','jordan baker jr.','elaine wingert-toliver']);
+ assert.deepEqual(await timeGroups.first().locator('tbody tr td:first-child').allTextContents(),
+  ['2026-11-15','2026-11-13'],'the order of shifts within an employee is still newest first');
  assert.deepEqual(errors,[]);console.log('PASS: Eastern weekly rollover, live Command Center cards, stable updates, fleet resolution, saved-timecard recovery and automatic review workflow');
  }catch(e){if(page){fs.mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/time-week-failure.png',fullPage:true}).catch(()=>{});}throw e;}finally{await browser?.close();server.kill();}})().catch(e=>{console.error(e);process.exitCode=1;});
