@@ -772,7 +772,7 @@
         <form id="gpAnnouncementForm" class="gp-operations-form">
           <label>Title<input name="title" maxlength="120" required></label>
           <label>Message<textarea name="body" rows="4" maxlength="2000" required></textarea></label>
-          <label id="gpAnnouncementAudience">Audience<select name="recipient"><option value="">Everyone</option></select></label>
+          <label id="gpAnnouncementAudience"><span id="gpAnnouncementAudienceLabel">Audience</span><select name="recipient" aria-labelledby="gpAnnouncementAudienceLabel"><option value="">Everyone</option></select></label>
           <p id="gpAnnouncementAudienceStatus" class="gp-operations-note" hidden>The employee list could not load. Reopen this page to try again.</p>
           <label>Expires (optional, your local time)<input name="expires" type="datetime-local"></label>
           <label><input name="pinned" type="checkbox"> Pin to the top</label>

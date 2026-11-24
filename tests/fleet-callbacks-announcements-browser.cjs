@@ -191,7 +191,7 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     assert.equal(teamPush.announcementId,100);
     assert.equal(teamPush.includePreview,true);
     const adminId='11111111-1111-4111-8111-111111111111';
-    await page.getByLabel('Audience',{exact:true}).selectOption(adminId);
+    await page.getByRole('combobox',{name:'Audience',exact:true}).selectOption(adminId);
     await page.locator('#gpAnnouncementForm [name=title]').fill('Synthetic directed announcement');
     await page.locator('#gpAnnouncementForm [name=body]').fill('A message only for this employee.');
     await page.locator('#gpAnnouncementForm [name=notify]').check();
