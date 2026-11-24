@@ -6,4 +6,5 @@
 #gpLunchRequestShift{width:100%;border:1px solid var(--gp2-border);border-radius:8px;padding:10px;background:var(--gp2-surface);color:var(--gp2-text);font:inherit}
 [data-lunch-request-status]:empty,[data-lunch-review-status]:empty,[data-lunch-request-shift]:empty{display:none}
 @media(max-width:640px){.gp-lunch-request-fields{grid-template-columns:1fr;gap:0}}
-body #gpClockViews{display:flex!important;flex-wrap:wrap}
+#gpLunchCorrection[open] > summary{margin-bottom:8px}
+#gpLunchCorrection form{margin-bottom:12px}

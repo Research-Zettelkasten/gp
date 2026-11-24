@@ -34,7 +34,7 @@
   }
 
   function mountEmployee({client, getUser, getShifts}) {
-    const host = document.getElementById('timeLunchRequestPane');
+    const host = document.getElementById('gpLunchCorrection');
     const form = host.querySelector('form');
     const shift = form.elements.shift;
     const out = form.elements.lunchOut;
@@ -109,10 +109,15 @@
         history.replaceChildren(...entries.length ? entries : [document.createTextNode('No lunch correction requests yet.')]);
       } catch (error) {
         if (getUser()?.auth_user_id === me.auth_user_id && current === revision)
-          history.textContent = missing(error) ? unavailable : 'Could not load your requests. Reopen this tab to retry.';
+          history.textContent = missing(error) ? unavailable : 'Could not load your requests. Reopen this section to retry.';
       } finally { loading = false; }
     }
 
+    host.addEventListener('toggle', () => {
+      if (!host.open) return;
+      refreshChoices();
+      void loadHistory();
+    });
     shift.addEventListener('change', fillTimes);
     form.addEventListener('submit', async event => {
       event.preventDefault();
@@ -145,8 +150,7 @@
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     host.querySelector('[data-lunch-request-timezone]').textContent = 'Enter dates and times in ' + timezone.replaceAll('_',' ') + '.';
     return {
-      open() { refreshChoices(); void loadHistory(); },
-      reset() { revision++; available.clear(); form.reset(); shift.replaceChildren(); history.replaceChildren(); status.textContent = ''; shiftInfo.textContent = ''; }
+      reset() { host.open = false; revision++; available.clear(); form.reset(); shift.replaceChildren(); history.replaceChildren(); status.textContent = ''; shiftInfo.textContent = ''; }
     };
   }
 
