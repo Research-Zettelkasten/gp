@@ -1,6 +1,6 @@
 {
-  "version": "2026.11.24.4",
-  "notes": "Send announcements to one employee, include message previews, and archive expired notices with an audit trail.",
+  "version": "2026.11.24.5",
+  "notes": "Show live, current-week hours, overtime alerts and work orders in the Command Center, with persistent fleet flags and number-only highlights.",
   "release_date": "2026-11-24",
   "released_at": "2026-11-24"
 }

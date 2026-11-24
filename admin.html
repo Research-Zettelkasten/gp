@@ -795,17 +795,17 @@
       </section>
       <div id="dashWidgetKpis" class="grid-4 gp-widget-section" style="margin-bottom:18px;">
         <div class="kpi-card">
-          <label>Total Logged Hours</label>
+          <label>Logged Hours This Week</label>
           <div id="statTotalHours" class="kpi-value">00.00</div>
           
         </div>
         <div class="kpi-card kpi-amber">
-          <label>Overtime / Cap Alerts</label>
+          <label>Overtime / Cap Alerts This Week</label>
           <div id="statOtAlerts" class="kpi-value" style="color:var(--amber);">0</div>
           
         </div>
         <div class="kpi-card kpi-mos">
-          <label>MultiplyOS WOs Logged</label>
+          <label>MultiplyOS WOs This Week</label>
           <div id="statTotalCommissions" class="kpi-value" style="color:var(--mos-indigo);">0</div>
           <div id="statTotalCommVolume" class="hidden">$0.00 logged volume</div>
         </div>
@@ -1470,6 +1470,7 @@
     let timeLogs = [];
     let commissionLogs = [];
     let vehicleLogs = [];
+    let fleetVehicles = [];
     let auditLogs = [];
     let quoteLogs = [];
     let activeTimeSessions = [];
@@ -1924,8 +1925,7 @@
         if(seen.has(key))possibleDuplicates++;else seen.add(key);
         if(row.work_date===w.sunday && row.clock_in && row.clock_out && to24HourTime(row.clock_out)<to24HourTime(row.clock_in))overnightBoundary++;
       }
-      const summary=document.getElementById("gpPayrollWeekSummary");
-      if(summary) summary.innerHTML=`<span><b>${shifts.length}</b> recorded shifts</span><span><b>${people}</b> employees</span><span><b>${format00(hours)}</b> paid hours</span><span><b>${exceptions}</b> lunch exceptions in this week</span>${unmatched?`<span class="gp-week-warning"><b>${unmatched}</b> unmatched employee shifts — review names</span>`:""}${possibleDuplicates?`<span class="gp-week-warning"><b>${possibleDuplicates}</b> possible duplicate shifts — review entries</span>`:""}${overnightBoundary?`<span class="gp-week-warning"><b>${overnightBoundary}</b> Sunday overnight shift(s) — payroll boundary review required</span>`:""}`;
+      renderChangedMarkup("gpPayrollWeekSummary",`<span><b>${shifts.length}</b> recorded shifts</span><span><b>${people}</b> employees</span><span><b>${format00(hours)}</b> paid hours</span><span><b>${exceptions}</b> lunch exceptions in this week</span>${unmatched?`<span class="gp-week-warning"><b>${unmatched}</b> unmatched employee shifts — review names</span>`:""}${possibleDuplicates?`<span class="gp-week-warning"><b>${possibleDuplicates}</b> possible duplicate shifts — review entries</span>`:""}${overnightBoundary?`<span class="gp-week-warning"><b>${overnightBoundary}</b> Sunday overnight shift(s) — payroll boundary review required</span>`:""}`);
       const badge=document.getElementById("payrollWeekHeaderBadge");if(badge)badge.textContent=w.label;
     }
     window.choosePayrollWeek=function(date){
@@ -1946,10 +1946,10 @@
     function renderGroupedTimeLogs(){
       const host=document.getElementById("adminTimeGroups");if(!host)return;const openGroups=new Set(getOpenTimeGroups()),grouped=new Map();
       selectedPayrollShifts().forEach(r=>{const key=String(r.employee_name||"Unknown Employee").trim()||"Unknown Employee";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(r);});
-      const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){host.innerHTML=`<div style="text-align:center;color:var(--muted);padding:20px;">No shifts recorded for this Monday–Sunday week. Use Previous week or Jump to a date to view history.</div>`;return;}
-      host.innerHTML=names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
+      const names=[...grouped.keys()].sort((a,b)=>a.localeCompare(b));if(!names.length){renderChangedMarkup("adminTimeGroups", `<div style="text-align:center;color:var(--muted);padding:20px;">No shifts recorded for this Monday–Sunday week. Use Previous week or Jump to a date to view history.</div>`);return;}
+      renderChangedMarkup("adminTimeGroups",names.map(name=>{const rows=grouped.get(name).slice().sort((a,b)=>String(b.work_date||"").localeCompare(String(a.work_date||""))),hrs=rows.reduce((sum,r)=>sum+getShiftHours(r),0),user=usersList.find(u=>isSameEmployee(u.employee_name,name)),dept=user?.department||rows[0]?.department||"",safeKey=normalizeName(name),openAttr=openGroups.has(safeKey)?" open":"";
         const body=rows.map(r=>{const mapPin=r.clock_in_coords?`<a class="map-link" href="https://www.google.com/maps?q=${encodeURIComponent(r.clock_in_coords)}" target="_blank" rel="noopener noreferrer">[Map Pin]</a>`:"",edited=(r.notes||"").includes("[ADMIN EDIT")||(r.notes||"").includes("[ADMIN ADDED")||(r.notes||"").includes("[ADMIN CLOCK OUT");return `<tr><td>${GP.escapeHtml(r.work_date)}</td><td class="mono">${GP.escapeHtml(r.clock_in)} - ${GP.escapeHtml(r.clock_out)}</td><td class="mono">${r.lunch_out_time && r.lunch_in_time ? `<small style="display:block;white-space:nowrap;">${GP.escapeHtml(r.lunch_out_time)} → ${GP.escapeHtml(r.lunch_in_time)}</small>` : ""}${Number(r.break_minutes)||0}m${r.lunch_out_time && r.lunch_in_time ? " <small>(exact)</small>" : ""}</td><td class="mono" style="font-weight:800;">${format00(getShiftHours(r))}</td><td style="font-size:11px;">${GP.escapeHtml(r.clock_in_location||"Standard")} ${mapPin}</td><td style="font-size:12px;">${r.lunch_review_status==="pending"?'<span class="badge badge-warn">No Lunch — Pending Approval</span><br>':r.lunch_review_status==="rejected"?'<span class="badge badge-issue">No Lunch — Rejected</span><br>':r.lunch_review_status==="approved"?'<span class="badge badge-ok">No Lunch — Approved</span><br>':""}${edited?`<span class="badge badge-warn">Audited Edit</span><br>`:""}${GP.escapeHtml(r.notes||"")}</td><td style="white-space:nowrap;"><button type="button" class="btn-outline" style="padding:5px 9px;border-color:var(--navy);color:var(--navy);" onclick="openEditTime('${r.id}')">Edit Punch</button> <button type="button" class="btn-outline" style="color:var(--red);border-color:var(--red);padding:5px 9px;" onclick="deleteTime('${r.id}')">Del</button></td></tr>`;}).join("");
-        return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join("");
+        return `<details class="time-group" data-employee="${GP.escapeHtml(safeKey)}" ontoggle="rememberTimeGroupState(this)"${openAttr}><summary><span>${GP.escapeHtml(name)} <small style="font-weight:600;color:var(--muted);">(${GP.escapeHtml(dept)})</small></span><span class="time-group-meta"><span class="badge badge-navy">${rows.length} shift${rows.length===1?"":"s"}</span><span class="mono">${format00(hrs)} total hrs</span></span></summary><div class="table-wrap"><table><thead><tr><th>Date</th><th>In / Out</th><th>Break</th><th>Hours</th><th>Geotag</th><th>Notes / Audit</th><th>Actions</th></tr></thead><tbody>${body}</tbody></table></div></details>`;}).join(""));
     }
     function parseClockAudit(a){if(!a||!["TIME_CLOCK_IN","TIME_CLOCK_OUT"].includes(a.action_type))return null;try{return {...JSON.parse(a.details||"{}"),action_type:a.action_type,fallbackName:a.supervisor_name};}catch(e){return{action_type:a.action_type,employee_name:a.supervisor_name||"Unknown"};}}
     function getLatestClockAuditMap(){const latest=new Map(),ordered=auditLogs.slice().sort((a,b)=>{const bt=Date.parse(b.timestamp)||Number(b.id)||0,at=Date.parse(a.timestamp)||Number(a.id)||0;return bt-at;});ordered.forEach(a=>{const e=parseClockAudit(a);if(!e)return;const name=e.employee_name||e.fallbackName||a.supervisor_name||"Unknown",key=normalizeName(name);if(!latest.has(key))latest.set(key,{...e,employee_name:name,audit_timestamp:a.timestamp});});return latest;}
@@ -1972,7 +1972,46 @@
       const cells=body.querySelectorAll('[data-live-hours]');active.forEach((e,i)=>{if(!cells[i])return;const value=format00(GP_CLOCK.preview(e).hours);if(cells[i].textContent!==value)cells[i].textContent=value;});
     }
     function scheduleAdminRefresh(){if(adminRefreshTimer)clearTimeout(adminRefreshTimer);adminRefreshTimer=setTimeout(()=>{if(!document.hidden)loadAdminData();},350);}
-    function startAdminLiveSync(){const status=document.getElementById("timeLiveSyncStatus");if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}window.addEventListener("storage",e=>{if(["gp_time_logs","gp_audit_logs","gp_app_users"].includes(e.key))scheduleAdminRefresh();if(e.key===getDashboardPrefsKey()&&dashboardPrefs.locked){try{const incoming=JSON.parse(e.newValue||"null");if(incoming){dashboardPrefs=normalizeDashboardPreferences(incoming);dashboardPrefs.locked=true;dashboardSavedPrefs={...dashboardPrefs};applyDashboardPreferences();showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));setDashboardSaveState("Dashboard updated from another tab");}}catch(err){}}});document.addEventListener("visibilitychange",()=>{if(!document.hidden){renderLunchApprovalQueue();loadAdminData(true);if(dashboardPrefs.locked)loadDashboardPreferences();}});if(isCloudConnected&&supabaseClient?.channel){try{adminRealtimeChannel=supabaseClient.channel("gp-manager-live-time").on("postgres_changes",{event:"*",schema:"public",table:"time_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"audit_logs"},scheduleAdminRefresh).on("postgres_changes",{event:"*",schema:"public",table:"active_time_sessions"},scheduleAdminRefresh).subscribe(st=>{if(!status)return;const ok=st==="SUBSCRIBED";status.textContent=ok?"Live Sync Active":"Live Sync Connecting";status.className=`badge ${ok?"badge-ok":"badge-warn"}`;});}catch(e){}}setInterval(()=>{if(!document.hidden)loadAdminData(true);},60000);liveClockRenderTimer=setInterval(()=>{renderActiveTimeMonitor();renderLunchApprovalQueue();},10000);}
+    function startAdminLiveSync(){
+      const status=document.getElementById("timeLiveSyncStatus");
+      if(status){status.textContent=isCloudConnected?"Live Sync Active":"Local Live Sync";status.className=`badge ${isCloudConnected?"badge-ok":"badge-warn"}`;}
+      window.addEventListener("storage",e=>{
+        if(["gp_time_logs","gp_audit_logs","gp_app_users","gp_commission_logs","gp_fleet_garage","gp_vehicle_logs"].includes(e.key))scheduleAdminRefresh();
+        if(e.key!==getDashboardPrefsKey()||!dashboardPrefs.locked)return;
+        try{
+          const incoming=JSON.parse(e.newValue||"null");
+          if(!incoming)return;
+          dashboardPrefs=normalizeDashboardPreferences(incoming);
+          dashboardPrefs.locked=true;
+          dashboardSavedPrefs={...dashboardPrefs};
+          applyDashboardPreferences();
+          showAdminSubTab(dashboardPrefs.defaultPane,getDashboardButtonForPane(dashboardPrefs.defaultPane));
+          setDashboardSaveState("Dashboard updated from another tab");
+        }catch(err){}
+      });
+      document.addEventListener("visibilitychange",()=>{
+        if(document.hidden)return;
+        renderLunchApprovalQueue();
+        loadAdminData(true);
+        if(dashboardPrefs.locked)loadDashboardPreferences();
+      });
+      if(isCloudConnected&&supabaseClient?.channel){
+        try{
+          const channel=supabaseClient.channel("gp-manager-live-time");
+          for(const table of ["time_logs","audit_logs","active_time_sessions","commission_logs","fleet_vehicles"]){
+            channel.on("postgres_changes",{event:"*",schema:"public",table},scheduleAdminRefresh);
+          }
+          adminRealtimeChannel=channel.subscribe(st=>{
+            if(!status)return;
+            const ok=st==="SUBSCRIBED";
+            status.textContent=ok?"Live Sync Active":"Live Sync Connecting";
+            status.className=`badge ${ok?"badge-ok":"badge-warn"}`;
+          });
+        }catch(e){}
+      }
+      setInterval(()=>{if(!document.hidden)loadAdminData(true);},60000);
+      liveClockRenderTimer=setInterval(()=>{renderActiveTimeMonitor();renderLunchApprovalQueue();},10000);
+    }
 
     function requireManagementCloud() {
       if (!isCloudConnected || !supabaseClient) throw new Error("Supabase is unavailable. No changes were made. Reconnect and retry.");
@@ -2012,7 +2051,6 @@
     }
 
     async function readAdminData() {
-      activeTimeSessionsConfirmed = false;
       const localUsers = JSON.parse(localStorage.getItem("gp_app_users") || "[]");
       if (localUsers.length > 0) usersList = localUsers;
       usersList = usersList.map(u => ({ ...u, perm_quotes: u.perm_quotes !== false }));
@@ -2020,12 +2058,14 @@
       const localTime = JSON.parse(localStorage.getItem("gp_time_logs") || "[]");
       const localComm = JSON.parse(localStorage.getItem("gp_commission_logs") || "[]");
       const localVeh = JSON.parse(localStorage.getItem("gp_vehicle_logs") || "[]");
+      const localGarage = JSON.parse(localStorage.getItem("gp_fleet_garage") || "[]");
       const localAudit = JSON.parse(localStorage.getItem("gp_audit_logs") || "[]");
       const localQuotes = JSON.parse(localStorage.getItem("glasspro_quotes_v1") || "[]");
 
       timeLogs = localTime;
       commissionLogs = localComm;
       vehicleLogs = localVeh;
+      fleetVehicles = localGarage;
       auditLogs = localAudit;
       quoteLogs = localQuotes;
 
@@ -2056,6 +2096,9 @@
             localStorage.setItem("gp_vehicle_logs", JSON.stringify(vehicleLogs));
           }
 
+          fleetVehicles = await GP.fetchAllRows(supabaseClient.from("fleet_vehicles").select("*").order("id", { ascending: true }));
+          localStorage.setItem("gp_fleet_garage", JSON.stringify(fleetVehicles));
+
           const aRes = {data:await GP.fetchAllRows(supabaseClient.from("audit_logs").select("*").order("id", { ascending: false }))};
           if (aRes.data) {
             auditLogs = aRes.data;
@@ -2063,7 +2106,7 @@
           }
 
           const activeRes = await supabaseClient.from("active_time_sessions").select("*").order("started_at", { ascending: true });
-          if (activeRes.error) throw activeRes.error;
+          if (activeRes.error) { activeTimeSessionsConfirmed = false; throw activeRes.error; }
           if (Array.isArray(activeRes.data)) { activeTimeSessions = activeRes.data; activeTimeSessionsConfirmed = true; }
 
           const qRes = {data:await GP.fetchAllRows(supabaseClient.from("outstanding_quotes").select("*").order("quote_number", { ascending: false }))};
@@ -2102,19 +2145,44 @@
       renderAdminUI();
     }
 
-    function buildMOSScoreboard() {
+    function currentWeekActivity() {
+      const monday = GP_TIME.week();
+      return {
+        shifts: timeLogs.filter(row => GP_TIME.inWeek(row.work_date, monday)),
+        workOrders: commissionLogs.filter(row => GP_TIME.inWeek(row.work_date, monday))
+      };
+    }
+
+    function updateKpiNumber(id, value) {
+      const number = document.getElementById(id);
+      const text = String(value);
+      if (number.textContent !== text) {
+        number.textContent = text;
+        if (number.dataset.loaded && number.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          number.animate([{opacity:0.6}, {opacity:1}], {duration:280, easing:"ease-out"});
+        }
+      }
+      if (!number.dataset.loaded) number.dataset.loaded = "true";
+    }
+
+    function renderChangedMarkup(id, markup) {
+      const element = document.getElementById(id);
+      if (element._gpRenderedMarkup === markup) return;
+      element.innerHTML = markup;
+      element._gpRenderedMarkup = markup;
+    }
+
+    function buildMOSScoreboard({shifts, workOrders} = currentWeekActivity()) {
       return Object.keys(DIV_LEADS).map(div => {
         const staff = usersList.filter(u => u.department === div);
-        const divTime = timeLogs.filter(t => {
-          if (!GP.isInCurrentWeek(t.work_date)) return false;
+        const divTime = shifts.filter(t => {
           if (t.department === div) return true;
           const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, t.employee_name));
           return matchedUser && matchedUser.department === div;
         });
 
         const hrs = divTime.reduce((a, r) => a + getShiftHours(r), 0);
-        const wos = commissionLogs.filter(c => {
-          if (!GP.isInCurrentWeek(c.work_date)) return false;
+        const wos = workOrders.filter(c => {
           if (c.department === div) return true;
           const matchedUser = usersList.find(u => isSameEmployee(u.employee_name, c.employee_name));
           return matchedUser && matchedUser.department === div;
@@ -2123,7 +2191,7 @@
 
         let alerts = 0;
         staff.forEach(u => {
-          const eHrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
+          const eHrs = shifts.filter(t => isSameEmployee(t.employee_name, u.employee_name))
                                .reduce((a, r) => a + getShiftHours(r), 0);
           if ((u.employment_type === "Part-Time" && eHrs >= 25) || (u.employment_type !== "Part-Time" && eHrs >= 35)) {
             alerts++;
@@ -2205,16 +2273,19 @@
 
     window.renderAdminUI = function() {
       renderPayrollWeekControl();
-      const totalHrs = timeLogs.reduce((a, r) => a + getShiftHours(r), 0);
-      const totalVol = commissionLogs.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
-      const flaggedVeh = vehicleLogs.filter(v => (v.issues_count || 0) > 0).length;
+      const activity = currentWeekActivity();
+      const totalHrs = activity.shifts.reduce((a, r) => a + getShiftHours(r), 0);
+      const totalVol = activity.workOrders.reduce((a, c) => a + parseFloat(c.job_amount || 0), 0);
+      const flaggedVehicles = fleetVehicles.filter(v => v.status === "Flagged");
 
-      document.getElementById("statTotalHours").textContent = format00(totalHrs);
-      document.getElementById("statTotalCommissions").textContent = commissionLogs.length;
-      document.getElementById("statTotalCommVolume").textContent = `${formatCurrency(totalVol)} logged volume`;
-      document.getElementById("statFlaggedVehicles").textContent = flaggedVeh;
+      updateKpiNumber("statTotalHours", format00(totalHrs));
+      updateKpiNumber("statTotalCommissions", activity.workOrders.length);
+      const workOrderVolume = document.getElementById("statTotalCommVolume");
+      const volume = `${formatCurrency(totalVol)} logged volume`;
+      if (workOrderVolume.textContent !== volume) workOrderVolume.textContent = volume;
+      updateKpiNumber("statFlaggedVehicles", flaggedVehicles.length);
 
-      // Live refresh runs every 15 seconds. Never recreate a selected employee option:
+      // Never recreate a selected employee option on refresh:
       // doing so silently selects the first staff member while the supervisor is typing.
       const shiftSelect = document.getElementById("addShiftEmpSelect");
       const employeeChoices = usersList.filter(u => u.employee_name).map(u => ({
@@ -2232,8 +2303,8 @@
       }
 
       let otAlerts = 0;
-      document.getElementById("adminOtWatchlistTable").innerHTML = usersList.map(u => {
-        const hrs = timeLogs.filter(t => isSameEmployee(t.employee_name, u.employee_name) && GP.isInCurrentWeek(t.work_date))
+      renderChangedMarkup("adminOtWatchlistTable",usersList.map(u => {
+        const hrs = activity.shifts.filter(t => isSameEmployee(t.employee_name, u.employee_name))
                             .reduce((a, r) => a + getShiftHours(r), 0);
         const isPT = u.employment_type === "Part-Time";
         const cap = isPT ? 30.0 : 40.0;
@@ -2254,11 +2325,11 @@
             <td><span class="badge ${bClass}">${bText}</span></td>
           </tr>
         `;
-      }).join("");
-      document.getElementById("statOtAlerts").textContent = otAlerts;
+      }).join(""));
+      updateKpiNumber("statOtAlerts", otAlerts);
 
       // Render Payroll Summary Table inside Time & Geotags Pane
-      document.getElementById("adminPayrollTable").innerHTML = usersList.map(u => {
+      renderChangedMarkup("adminPayrollTable", usersList.map(u => {
         const hrs = timeLogs.filter(t => payrollEmployeeMatches(t.employee_name, u.employee_name) && inSelectedPayrollWeek(t.work_date))
                             .reduce((a, r) => a + getShiftHours(r), 0);
         const wosCount = commissionLogs.filter(c => payrollEmployeeMatches(c.employee_name, u.employee_name) && inSelectedPayrollWeek(c.work_date)).length;
@@ -2279,10 +2350,10 @@
             <td class="mono" style="font-weight:800; color:var(--mos-indigo);">${wosCount} WOs</td>
           </tr>
         `;
-      }).join("");
+      }).join(""));
 
-      const mosRows = buildMOSScoreboard();
-      document.getElementById("adminDeptSummaryTable").innerHTML = mosRows.map(r => `
+      const mosRows = buildMOSScoreboard(activity);
+      renderChangedMarkup("adminDeptSummaryTable", mosRows.map(r => `
         <tr>
           <td><b>${r.division}</b></td>
           <td>${r.lead}</td>
@@ -2290,9 +2361,9 @@
           <td class="mono" style="font-weight:700;">${r.loggedHours}</td>
           <td class="mono" style="color:var(--mos-indigo); font-weight:700;">${r.loggedWOs}</td>
         </tr>
-      `).join("");
+      `).join(""));
 
-      document.getElementById("mosScoreboardMatrixTable").innerHTML = mosRows.map(r => `
+      renderChangedMarkup("mosScoreboardMatrixTable", mosRows.map(r => `
         <tr>
           <td><b>${r.division}</b></td>
           <td>${r.lead}</td>
@@ -2303,13 +2374,16 @@
           <td class="mono" style="font-weight:700;">${formatCurrency(r.woVolume)}</td>
           <td><span class="badge ${r.otExceptions > 0 ? 'badge-warn' : 'badge-ok'}">${r.otExceptions > 0 ? 'Review' : 'On Track'}</span></td>
         </tr>
-      `).join("");
+      `).join(""));
 
      let exList = [];
       
       // 1. Pull in Flagged Fleet Vehicles
-      vehicleLogs.filter(v => (v.issues_count || 0) > 0).slice(0, 4).forEach(v => {
-        exList.push({ cat: "FLEET DEFECT", subj: `${v.make || ""} ${v.model || ""} (${v.license_plate || ""})`, det: v.discrepancies });
+      flaggedVehicles.slice(0, 4).forEach(v => {
+        const plate = String(v.license_plate || "").trim().toUpperCase();
+        const inspection = vehicleLogs.find(log => plate && String(log.license_plate || "").trim().toUpperCase() === plate);
+        exList.push({ cat: "FLEET DEFECT", subj: `${v.unit_name || [v.make, v.model].filter(Boolean).join(" ")} (${v.license_plate || ""})`,
+          det: inspection?.discrepancies || "Flagged in Fleet Garage" });
       });
       
       // 2. Pull in Supervisor Audit Logs
@@ -2341,15 +2415,15 @@
         if(c.oneSource)exList.push({cat:"SOURCE COVERAGE",subj:`${c.oneSource} one-source invoice(s)`,det:"Open Collections > Source reconciliation before assuming a payment or error"});
       }
       // Render it all to the table
-      document.getElementById("mosExceptionQueueTable").innerHTML = exList.map(x => `
+      renderChangedMarkup("mosExceptionQueueTable", exList.map(x => `
         <tr>
           <td><span class="badge badge-issue">${GP.escapeHtml(x.cat)}</span></td>
           <td><b>${GP.escapeHtml(x.subj)}</b></td>
           <td>${x.cat === "QUOTE RECEIPT" || x.cat === "QUOTE FOLLOW-UP" ? x.det : GP.escapeHtml(x.det)}</td>
         </tr>
-      `).join("") || `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Zero exceptions flagged.</td></tr>`;
+      `).join("") || `<tr><td colspan="3" style="text-align:center; color:var(--muted);">Zero exceptions flagged.</td></tr>`);
 
-      document.getElementById("adminUsersTable").innerHTML = usersList.filter(u => gpShowArchivedUsers || !u.archived_at).map(u => {
+      renderChangedMarkup("adminUsersTable", usersList.filter(u => gpShowArchivedUsers || !u.archived_at).map(u => {
         let perms = [];
         if (u.perm_time) perms.push("Time");
         if (u.perm_quotes !== false) perms.push("Quotes");
@@ -2387,9 +2461,9 @@
             </td>
           </tr>
         `;
-      }).join("");
+      }).join(""));
 
-      document.getElementById("adminCommissionsTable").innerHTML = commissionLogs.map(c => {
+      renderChangedMarkup("adminCommissionsTable", commissionLogs.map(c => {
         const specs = [c.service_type, c.glass_spec !== "N/A" ? c.glass_spec : "", c.materials_used, c.helper_tech].filter(Boolean).join(" | ");
         const bClass = c.status === "Approved" ? "badge-ok" : (c.status === "Flagged" ? "badge-issue" : "badge-warn");
         const safeName = GP.escapeHtml(JSON.stringify(String(c.employee_name || "")));
@@ -2409,20 +2483,20 @@
             </td>
           </tr>
         `;
-      }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`;
+      }).join("") || `<tr><td colspan="8" style="text-align:center; color:var(--muted);">No work orders logged yet.</td></tr>`);
 
       renderGroupedTimeLogs();
       renderActiveTimeMonitor();
       renderLunchApprovalQueue();
 
-      document.getElementById("adminAuditTable").innerHTML = auditLogs.slice(0, auditLimit).map(a => `
+      renderChangedMarkup("adminAuditTable", auditLogs.slice(0, auditLimit).map(a => `
         <tr>
           <td style="font-size:11px; color:var(--muted); white-space:nowrap;">${GP.escapeHtml(a.timestamp)}</td>
           <td><b>${GP.escapeHtml(a.supervisor_name)}</b></td>
           <td><span class="badge badge-navy">${GP.escapeHtml(a.action_type)}</span></td>
           <td style="font-size:12px; line-height:1.4;">${GP.escapeHtml(a.details)}</td>
         </tr>
-      `).join("") || `<tr><td colspan="4" style="text-align:center; color:var(--muted);">No audit events recorded yet.</td></tr>`;
+      `).join("") || `<tr><td colspan="4" style="text-align:center; color:var(--muted);">No audit events recorded yet.</td></tr>`);
       document.getElementById("auditLoadMoreContainer").classList.toggle("hidden", auditLogs.length <= auditLimit);
     };
 
@@ -2977,7 +3051,7 @@
     window.exportMOSSyncPayload = function() {
       const blob = new Blob([JSON.stringify({
         exported_at: new Date().toISOString(),
-        payroll_week: GP_PAYROLL_WEEKS.range(GP_PAYROLL_WEEKS.today()),
+        payroll_week: GP_PAYROLL_WEEKS.range(GP_TIME.week()),
         data_provenance: "GLASSPRO Supabase and manually imported Mainstreet/QBO collection snapshots; no external accounting writes performed",
         accounting_snapshot: window.GP_ACCOUNTING_BRIDGE?.getSnapshot?.() ? {
           mainstreet_as_of: window.GP_ACCOUNTING_BRIDGE.getSnapshot().mainstreet.latest?.report_as_of || null,
