@@ -221,8 +221,8 @@
 <script src="gp-ux.js?v=20261123d" defer></script>
 <script src="gp-time-core.js?v=20261123b"></script>
 <script src="gp-clock-in-change.js?v=20261123e"></script>
-<link rel="stylesheet" href="gp-clock-in-change.css?v=20261123i">
-<script src="gp-lunch-requests.js?v=1" defer></script>
+<link rel="stylesheet" href="gp-clock-in-change.css?v=20261124b">
+<script src="gp-lunch-requests.js?v=2" defer></script>
 <script src="gp-clock.js?v=20261123b"></script>
 <link rel="stylesheet" href="gp-time-history.css?v=20261123a">
 <script src="gp-home-core.js?v=20261123e"></script>
@@ -374,11 +374,8 @@
         <span id="empOvertimeBadge" class="badge badge-ok">Within Limit</span>
       </div>
 
-      <div id="gpClockViews" class="sub-bar" role="group" aria-label="Time Clock views">
-        <button type="button" id="timeSubBtnLive" class="sub-btn active" aria-controls="timeLivePane" aria-pressed="true" onclick="switchTimeTab('timeLivePane', this)">Live Punch Clock</button>
-        <button type="button" id="timeSubBtnLunchRequest" class="sub-btn" aria-controls="timeLunchRequestPane" aria-pressed="false" onclick="switchTimeTab('timeLunchRequestPane', this)">Request Lunch Correction</button>
-
-        
+      <div class="sub-bar">
+        <button type="button" id="timeSubBtnLive" class="sub-btn active" onclick="switchTimeTab('timeLivePane', this)">Live Punch Clock</button>
       </div>
 
       <div class="desktop-split">
@@ -414,6 +411,28 @@
 
               <div id="gpClockInChange"></div>
 
+              <details id="gpLunchCorrection" class="gp-clock-correction">
+                <summary>Request a lunch correction</summary>
+                <p class="gp-lunch-request-note">Choose a shift and enter the actual Lunch Out and Lunch Back times. A manager will review your request before updating the punches.</p>
+                <p data-lunch-request-empty hidden>No shifts are available to correct. If a shift is missing, contact a manager.</p>
+                <form hidden>
+                  <label for="gpLunchRequestShift">Shift</label>
+                  <select id="gpLunchRequestShift" name="shift" required></select>
+                  <p data-lunch-request-shift></p>
+                  <div class="gp-lunch-request-fields">
+                    <div><label for="gpLunchRequestOut">Actual Lunch Out</label><input type="datetime-local" id="gpLunchRequestOut" name="lunchOut" required></div>
+                    <div><label for="gpLunchRequestBack">Actual Lunch Back</label><input type="datetime-local" id="gpLunchRequestBack" name="lunchBack" required></div>
+                  </div>
+                  <p data-lunch-request-timezone></p>
+                  <label for="gpLunchRequestReason">Reason for correction</label>
+                  <textarea id="gpLunchRequestReason" name="reason" rows="3" minlength="10" maxlength="1000" required></textarea>
+                  <button type="submit">Send Request</button>
+                </form>
+                <p data-lunch-request-status class="gp-correction-status" role="status"></p>
+                <h3 class="gp-lunch-request-history-title">Recent requests</h3>
+                <div data-lunch-request-history aria-live="polite"></div>
+              </details>
+
               <div class="gp-lunch-panel" aria-label="Exact lunch tracking">
                 <div class="gp-lunch-heading"><strong>Lunch break</strong><span id="liveLunchStatus" class="badge badge-navy">Not started</span></div>
                 <p>Tap <b>Start Lunch</b> when you leave and <b>Return from Lunch</b> when you come back. Your exact timestamps sync to Supabase. There is no preset one-hour deduction.</p>
@@ -440,27 +459,6 @@
           </div>
 
           <!-- PANE 3: PRIVATE ON-DEMAND PAY CALCULATOR -->
-          <section id="timeLunchRequestPane" class="card hidden" aria-labelledby="gpLunchRequestTitle">
-            <h2 id="gpLunchRequestTitle" class="card-title">Request Lunch Correction</h2>
-            <p class="gp-lunch-request-note">Choose a shift and enter the actual Lunch Out and Lunch Back times. A manager will review your request before updating the punches.</p>
-            <p data-lunch-request-empty hidden>No shifts are available to correct. If a shift is missing, contact a manager.</p>
-            <form class="gp-clock-correction" hidden>
-              <label for="gpLunchRequestShift">Shift</label>
-              <select id="gpLunchRequestShift" name="shift" required></select>
-              <p data-lunch-request-shift></p>
-              <div class="gp-lunch-request-fields">
-                <div><label for="gpLunchRequestOut">Actual Lunch Out</label><input type="datetime-local" id="gpLunchRequestOut" name="lunchOut" required></div>
-                <div><label for="gpLunchRequestBack">Actual Lunch Back</label><input type="datetime-local" id="gpLunchRequestBack" name="lunchBack" required></div>
-              </div>
-              <p data-lunch-request-timezone></p>
-              <label for="gpLunchRequestReason">Reason for correction</label>
-              <textarea id="gpLunchRequestReason" name="reason" rows="3" minlength="10" maxlength="1000" required></textarea>
-              <button type="submit">Send Request</button>
-            </form>
-            <p data-lunch-request-status class="gp-correction-status" role="status"></p>
-            <h3 class="gp-lunch-request-history-title">Recent requests</h3>
-            <div data-lunch-request-history aria-live="polite"></div>
-          </section>
           <div id="timePaycheckPane" class="hidden">
             <div class="card">
               <div class="card-title">
@@ -891,20 +889,16 @@
     };
 
     window.switchTimeTab = function(paneId, btn) {
-      if(!['timePaycheckPane','timeLunchRequestPane'].includes(paneId))paneId='timeLivePane';
+      if(paneId!=='timePaycheckPane')paneId='timeLivePane';
       if (paneId !== 'timePaycheckPane') wipePayCalculator();
       document.getElementById("timeLivePane").classList.add("hidden");
-      document.getElementById("timeLunchRequestPane").classList.add("hidden");
 
       document.getElementById("timePaycheckPane").classList.add("hidden");
       document.getElementById(paneId).classList.remove("hidden");
 
-      document.querySelectorAll(".sub-btn").forEach(b => {
-        b.classList.toggle("active", b === btn);
-        if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", String(b === btn));
-      });
+      document.querySelectorAll(".sub-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
       if (paneId === 'timePaycheckPane') initPayCalculator();
-      if (paneId === 'timeLunchRequestPane') employeeLunchRequests?.open();
     };
 
     window.previewGPS = async function() {
