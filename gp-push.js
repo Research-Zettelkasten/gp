@@ -66,9 +66,12 @@
     const status = document.getElementById('gpPushStatus');
     if (!button || !status || !user?.auth_user_id) return;
     const setStatus = message => { status.textContent = message; };
+    const panel = button.closest('#gpClockNotifications');
+    const showInvitation = () => { if (panel) panel.open = true; };
     const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
     if (isAppleMobile && !navigator.standalone && !matchMedia('(display-mode: standalone)').matches) {
+      showInvitation();
       setStatus('To enable push on iPhone or iPad, add GLASSPRO to your Home Screen in Safari and open it from that icon.');
       return;
     }
@@ -78,6 +81,7 @@
     }
     const config = await readConfig(client);
     if (!config?.configured || !config.publicKey) {
+      showInvitation();
       setStatus('Device notifications are awaiting GLASSPRO server setup.');
       return;
     }
@@ -100,9 +104,10 @@
         button.disabled = !enabled && Notification.permission === 'denied';
         setStatus(message || (button.disabled
           ? 'Permission is blocked. Allow notifications in your browser or device settings, then reopen GLASSPRO.'
-          : enabled ? 'GLASSPRO notifications are enabled on this device.' : 'Get notifications for team announcements and location requests.'));
+          : enabled ? 'GLASSPRO notifications are enabled on this device.' : 'Choose Enable notifications, then Allow, to receive team announcements and location requests here.'));
       }
       showState();
+      if (!enabled) showInvitation();
       let busy = false;
       button.onclick = async () => {
         if (busy) return;
@@ -136,6 +141,7 @@
         } finally { busy = false; }
       };
     } catch {
+      showInvitation();
       setStatus('Could not prepare notifications on this device. Refresh to try again.');
     }
   }

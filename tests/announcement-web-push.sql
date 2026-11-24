@@ -59,3 +59,28 @@ select pg_temp.assert_push((select count(*)=0 from public.gp_claim_announcement_
 select pg_temp.assert_push((public.gp_announcement_push_summary('80000000-0000-0000-0000-000000000001')->>'unavailable')::integer=1,'removed device retained only as an unavailable delivery');
 reset role;
 select 'PASS: device consent, administrator gate, endpoint restrictions, claims and opt-out';
+
+-- Substitute only the Vault interface on this disposable database. The deployed
+-- instance uses Supabase Vault to encrypt the persisted signing keys.
+create schema vault;
+create table vault.decrypted_secrets (id uuid default gen_random_uuid(),name text unique,decrypted_secret text);
+create function vault.create_secret(secret text, name text, description text)
+returns uuid language sql as $$
+  insert into vault.decrypted_secrets(name,decrypted_secret) values($2,$1) returning id;
+$$;
+\ir ../supabase/migrations/2026-11-24-web-push-vault-keys.sql
+begin;
+
+set role authenticated;
+select pg_temp.push_expected_error($q$select public.gp_push_vault_keys(repeat('a',87),repeat('b',43))$q$,'permission denied');
+reset role;
+set role service_role;
+select pg_temp.push_expected_error($q$select public.gp_push_vault_keys(repeat('a',87),repeat('b',43))$q$,'Restore the original');
+reset role;
+delete from public.gp_push_devices;
+set role service_role;
+select pg_temp.assert_push(public.gp_push_vault_keys(repeat('a',87),repeat('b',43))->>'publicKey'=repeat('a',87),'first setup stores a keypair');
+select pg_temp.assert_push(public.gp_push_vault_keys(repeat('c',87),repeat('d',43))->>'publicKey'=repeat('a',87),'later Edge instances reuse the same keypair');
+reset role;
+select pg_temp.assert_push((select count(*)=1 from vault.decrypted_secrets),'initializer creates one Vault entry');
+rollback;

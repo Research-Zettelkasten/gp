@@ -11,18 +11,41 @@ const cors = {
 const url = Deno.env.get("SUPABASE_URL") ?? "";
 const userKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const serverKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const publicKey = Deno.env.get("GP_PUSH_PUBLIC_KEY") ?? "";
-const privateKey = Deno.env.get("GP_PUSH_PRIVATE_KEY") ?? "";
-const subject = Deno.env.get("GP_PUSH_SUBJECT") ?? "";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: cors });
 const clientOptions = { auth: { persistSession: false, autoRefreshToken: false } };
 
-let configured = false;
-try {
-  webPush.setVapidDetails(subject, publicKey, privateKey);
-  configured = Boolean(url && userKey && serverKey);
-} catch { /* The client can report that push needs setup. */ }
+async function signingKey(): Promise<string | null> {
+  if (!url || !userKey || !serverKey) return null;
+  const subject = Deno.env.get("GP_PUSH_SUBJECT") || url;
+  const envPublicKey = Deno.env.get("GP_PUSH_PUBLIC_KEY");
+  const envPrivateKey = Deno.env.get("GP_PUSH_PRIVATE_KEY");
+  if (envPublicKey && envPrivateKey) {
+    try {
+      webPush.setVapidDetails(subject, envPublicKey, envPrivateKey);
+      return envPublicKey;
+    } catch {
+      console.error("Web Push environment signing keys are invalid.");
+    }
+  } else if (envPublicKey || envPrivateKey) {
+    console.error("Web Push environment signing keys are incomplete.");
+  }
+  try {
+    const proposed = webPush.generateVAPIDKeys();
+    const db = createClient(url, serverKey, clientOptions);
+    const {data, error} = await db.rpc("gp_push_vault_keys",
+      {p_public_key:proposed.publicKey, p_private_key:proposed.privateKey});
+    if (error || !data) throw Error("Web Push vault lookup failed");
+    webPush.setVapidDetails(subject, data.publicKey, data.privateKey);
+    return data.publicKey;
+  } catch {
+    console.error("Web Push could not prepare its Vault signing keys.");
+    return null;
+  }
+}
+
+const publicKey = await signingKey();
+const configured = publicKey !== null;
 
 type Device = {
   device_id: string;
@@ -74,7 +97,10 @@ async function sendLocation(db: ReturnType<typeof createClient>, requestId: stri
 }
 
 Deno.serve(async (request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (request.method === "OPTIONS") return new Response(null, {
+    status: 204,
+    headers: {...cors, "X-GLASSPRO-Push-Ready": configured ? "yes" : "no"},
+  });
   if (request.method !== "POST") return json({ error: "Use POST." }, 405);
   const token = request.headers.get("Authorization")?.match(/^Bearer ([^\s]+)$/i)?.[1];
   if (!token || !url || !userKey) return json({ error: "Sign in to GLASSPRO." }, 401);
