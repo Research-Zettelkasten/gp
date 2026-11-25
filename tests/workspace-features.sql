@@ -1,6 +1,10 @@
 \set ON_ERROR_STOP on
-create role anon;
-create role authenticated;
+do $$
+begin
+  if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if;
+  if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if;
+end
+$$;
 create schema auth;
 create schema private;
 create schema storage;
