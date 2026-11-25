@@ -697,6 +697,8 @@
 <script src="gp-geolocation.js?v=1" defer></script>
 <script src="gp-location-requests.js?v=1" defer></script>
 <link rel="stylesheet" href="gp-location-requests.css?v=1">
+<link rel="stylesheet" href="gp-workspace.css?v=1">
+<script defer src="gp-workspace.js?v=1"></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -971,6 +973,23 @@
          PANE 3: USERS & ROLES
          ==================================================================== -->
     <div id="adminUsersPane" class="gp-managed-pane hidden">
+      <section id="gpWorkspacePermissions" class="gpw-panel" hidden>
+        <div class="gpw-head"><h2>Workspace permissions</h2><button type="button" data-refresh>Reload settings</button></div>
+        <p>Release or hide individual features inside a workspace. These controls use each employee’s existing workspace access.</p>
+        <p class="gpw-muted">Pilot mode adds individual approvals. A block overrides access. Hiding customer quote links pauses previously shared links while the feature is off.</p>
+        <p class="gpw-status" role="status"></p>
+        <div data-modes></div>
+        <form>
+          <h3>Employee override</h3>
+          <div class="gpw-grid">
+            <label>Employee<select name="employee" required></select></label>
+            <label>Feature<select name="feature" required></select></label>
+            <label>Access<select name="override"><option value="inherit">Inherit release mode</option><option value="allow">Allow in pilot mode</option><option value="deny">Block access</option></select></label>
+          </div>
+          <p class="gpw-muted" data-eligibility></p>
+          <div class="gpw-actions"><button class="gpw-primary" name="save" type="submit" disabled>Save employee override</button></div>
+        </form>
+      </section>
       <div id="gpWidgetUserEditor" class="card gp-widget-section">
         <div class="card-title">
           <span id="userFormTitle">Add or Update Employee Account</span>
@@ -1022,7 +1041,7 @@
           </div>
         </div>
 
-        <label>Assign Workspace Permissions:</label>
+        <label>Base workspace access</label>
         <div class="perm-grid">
           <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
           <label class="perm-label"><input type="checkbox" id="permQuotes" checked /> Quote Call-Backs</label>
@@ -3118,6 +3137,7 @@
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
       GP.applyNavPermissions(activeUser);
       window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
+      window.GP_WORKSPACE?.mountPermissions(supabaseClient);
       await loadDashboardPreferences();
 
       await loadAdminData();

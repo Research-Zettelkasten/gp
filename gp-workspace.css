@@ -1,0 +1,82 @@
+.gpw-btn[hidden], .gpw-panel[hidden], :is(.gpw-dialog,.gpw-panel) [hidden],
+.gpw-tools:not(:has(> :not([hidden]))) { display: none !important; }
+.gpw-panel, .gpw-dialog {
+  --gpw-bg: #fff;
+  --gpw-ink: #152c46;
+  --gpw-muted: #536c85;
+  --gpw-line: #d5e1ee;
+  --gpw-soft: #f1f5fa;
+  --gpw-accent: #193c61;
+  color: var(--gpw-ink);
+  background: var(--gpw-bg);
+  border: 1px solid var(--gpw-line);
+  border-radius: 16px;
+  padding: 18px;
+}
+[data-gp-theme="dark"] :is(.gpw-panel, .gpw-dialog) {
+  --gpw-bg: #122338;
+  --gpw-ink: #ecf4fc;
+  --gpw-muted: #acc4dc;
+  --gpw-line: #38516b;
+  --gpw-soft: #1b3048;
+  --gpw-accent: #275e8b;
+}
+.gpw-panel { margin: 0 0 16px; }
+.gpw-dialog {
+  width: min(740px, calc(100% - 24px));
+  max-height: min(88dvh, 900px);
+  overflow: auto;
+  margin: auto;
+  box-shadow: 0 20px 60px #0005;
+  line-height: 1.45;
+  text-align: left;
+}
+.gpw-dialog.gpw-wide { width: min(1000px, calc(100% - 24px)); }
+.gpw-dialog::backdrop { background: #081928b8; }
+.gpw-head, .gpw-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.gpw-actions { justify-content: flex-start; }
+.gpw-head { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--gpw-line); }
+.gpw-dialog h2, .gpw-panel h2 { margin: 0; font-size: 1.25rem; font-weight: 750; }
+.gpw-dialog h3, .gpw-panel h3 { margin: 0; font-size: 1rem; font-weight: 750; }
+.gpw-dialog p, .gpw-panel p { margin: 8px 0; }
+.gpw-dialog form, .gpw-panel form { display: grid; gap: 12px; margin: 12px 0; }
+.gpw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
+.gpw-form-row { padding: 10px 0; border-bottom: 1px solid var(--gpw-line); }
+.gpw-muted { color: var(--gpw-muted); font-size: .88rem; }
+.gpw-status { min-height: 1.4em; overflow-wrap: anywhere; }
+.gpw-status[data-error="true"] { color: #b62235; }
+[data-gp-theme="dark"] .gpw-status[data-error="true"] { color: #ffadba; }
+.gpw-btn, .gpw-dialog button, .gpw-panel button {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #809bb5; border-radius: 8px;
+  background: var(--gpw-soft, #eef4fa); color: var(--gpw-ink, #152c46);
+  padding: 7px 11px; min-height: 38px; font: 650 .87rem/1.2 system-ui, sans-serif; cursor: pointer;
+}
+.gpw-dialog .gpw-primary, .gpw-panel .gpw-primary { background: var(--gpw-accent); border-color: transparent; color: white; }
+.gpw-dialog button:disabled, .gpw-panel button:disabled { opacity: .6; cursor: default; }
+.gpw-dialog :is(input,select,textarea), .gpw-panel :is(input,select,textarea) {
+  display: block; width: 100%; min-height: 40px; border: 1px solid var(--gpw-line); border-radius: 8px;
+  font: inherit; font-weight: 400; padding: 8px; background: var(--gpw-soft); color: var(--gpw-ink);
+  box-sizing: border-box;
+}
+.gpw-dialog label, .gpw-panel label { display: grid; gap: 4px; font-size: .87rem; font-weight: 650; }
+.gpw-dialog textarea { resize: vertical; }
+.gpw-dialog img { max-width: 100%; }
+.gpw-list { display: grid; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
+.gpw-item { border: 1px solid var(--gpw-line); background: var(--gpw-soft); border-radius: 10px; padding: 10px; overflow-wrap: anywhere; }
+.gpw-item p { white-space: pre-wrap; }
+.gpw-dialog a { color: var(--gpw-ink); text-decoration: underline; }
+.gpw-tools { margin: 8px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.gpw-markup { display: inline-block; position: relative; max-width: 100%; overflow: hidden; border-radius: 8px; touch-action: manipulation; }
+.gpw-markup img { display: block; max-height: 52vh; object-fit: contain; }
+.gpw-dialog .gpw-marker { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; width: 28px; height: 28px; min-height: 0; padding: 0; background: #a51229; border: 2px solid #fff; color: #fff; }
+.gpw-map { position: relative; overflow: hidden; height: clamp(250px, 48vh, 420px); border: 1px solid var(--gpw-line); border-radius: 12px; background: var(--gpw-soft); }
+.gpw-map :is(img,.gpw-marker) { position: absolute; }
+.gpw-map img { width: 256px; height: 256px; max-width: none; user-select: none; pointer-events: none; }
+.gpw-map-credit { position: absolute; right: 0; bottom: 0; padding: 2px 5px; font-size: .75rem; background: #fff; color: #142c44 !important; }
+.gpw-dialog .gpw-map .gpw-marker[data-kind="emergency"] { background: #b31527; }
+.gpw-dialog .gpw-map .gpw-marker { background: #234c7b; }
+.gpw-dialog .gpw-map .gpw-marker[data-kind="selected"] { background: #0c7460; }
+.gpw-customer-page { padding: 20px 12px; margin: 0; background: #eff4fa; min-height: 100vh; font: 1rem/1.5 system-ui,sans-serif; }
+.gpw-customer-page .gpw-panel { max-width: 680px; margin: 16px auto; }
+.gpw-customer-page .gpw-brand img { border-radius: 12px; width: 46px; height: 46px; vertical-align: middle; margin-right: 8px; }

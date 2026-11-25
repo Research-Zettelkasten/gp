@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Review your quote | GLASSPRO</title>
+  <link rel="icon" href="icons/glasspro-192.png">
+  <link rel="stylesheet" href="gp-workspace.css?v=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="gp-workspace.js?v=1" defer></script>
+  <script src="gp-quote-links.js?v=1" defer></script>
+  <script defer src="review-quote.js?v=1"></script>
+</head>
+<body class="gpw-customer-page">
+  <header class="gpw-panel">
+    <div class="gpw-brand"><img src="icons/glasspro-192.png" alt=""><strong>GLASSPRO by American Glass</strong></div>
+    <h1 data-heading>Review your quote</h1>
+    <p data-caption></p>
+    <p class="gpw-status" role="status">Checking your quote link…</p>
+  </header>
+  <main class="gpw-panel" hidden>
+    <h2>Your options</h2>
+    <ul class="gpw-list" data-choices></ul>
+    <p data-confirmation></p>
+    <form data-approval>
+      <div class="gpw-grid">
+        <label>Option to approve<select name="option" required></select></label>
+        <label>Your full name<input name="signer" autocomplete="name" required minlength="2" maxlength="120"></label>
+      </div>
+      <button class="gpw-primary">Approve selected option</button>
+    </form>
+    <section>
+      <div class="gpw-head"><h2>Questions and replies</h2><button type="button" data-refresh>Refresh</button></div>
+      <ul class="gpw-list" data-replies></ul>
+      <form data-question>
+        <label>Your question<textarea name="question" maxlength="1600" required rows="3"></textarea></label>
+        <button>Send question</button>
+      </form>
+      <form data-photo>
+        <label>Send a photo of the job site or damage<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required></label>
+        <button>Upload photo</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

@@ -156,6 +156,10 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/glasspro-180.png?v=2">
 <link rel="manifest" href="glasspro.webmanifest?v=2">
 <script src="gp-push.js?v=1" defer></script>
+<link rel="stylesheet" href="gp-workspace.css?v=1">
+<script defer src="gp-workspace.js?v=1"></script>
+<script defer src="gp-job-tools.js?v=1"></script>
+<script defer src="gp-quote-links.js?v=1"></script>
 </head>
 <body class="min-h-screen flex flex-col gp-app">
 
@@ -203,6 +207,10 @@
       <div class="gp-page-mark"><span class="gp-online-dot"></span>CSR workspace</div>
     </section>
 
+    <div class="gpw-tools">
+      <button id="gpPhotoIntake" type="button" class="gpw-btn" hidden>Photo-to-quote</button>
+      <button id="gpQuoteJobSearch" type="button" class="gpw-btn" hidden>Search past jobs</button>
+    </div>
     <!-- MODULE SUB-NAVIGATION BAR -->
     <div id="quoteInteriorTabBar" class="flex items-center gap-1.5 bg-slate-200/90 p-1.5 rounded-xl mb-6 overflow-x-auto border border-slate-300">
       <button onclick="switchTab('board')" id="tab-btn-board" class="flex-1 min-w-[180px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-glasspro-obsidian text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer">
@@ -543,6 +551,10 @@
         </button>
       </div>
 
+      <div class="gpw-tools px-5">
+        <button id="gpCallbackPhotoIntake" type="button" class="gpw-btn" hidden>Photo intake for this quote</button>
+        <button id="gpCallbackQuoteLink" type="button" class="gpw-btn" hidden>Customer quote link</button>
+      </div>
       <!-- LOCKED QUOTE HEADER -->
       <div class="p-5 bg-slate-50 border-b-2 border-slate-200">
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -1205,6 +1217,25 @@
       GP.applyNavPermissions(activePortalUser);
       window.GP_UX?.onSignedIn?.(activePortalUser,supabaseClient);
 
+      const photoIntake = document.getElementById('gpPhotoIntake');
+      const quoteJobSearch = document.getElementById('gpQuoteJobSearch');
+      photoIntake.onclick = () => GP_JOB_TOOLS.photoToQuote(supabaseClient, activePortalUser);
+      quoteJobSearch.onclick = () => GP_JOB_TOOLS.search(supabaseClient);
+      GP_WORKSPACE.bindGates(supabaseClient, [
+        [photoIntake, 'photo_intake'], [quoteJobSearch, 'job_search'],
+        [document.getElementById('gpCallbackPhotoIntake'), 'photo_intake'],
+        [document.getElementById('gpCallbackQuoteLink'), 'quote_links']
+      ]);
+      const intakeQuery = new URLSearchParams(location.search);
+      const intakeId = intakeQuery.get('intake');
+      const intakeWo = intakeQuery.get('intakeWo');
+      if ((intakeId && /^[0-9a-f-]{36}$/i.test(intakeId)) || (intakeWo && intakeWo.length <= 80)) {
+        void GP_WORKSPACE.access(supabaseClient).then(access => {
+          if (access.photo_intake) GP_JOB_TOOLS.photoToQuote(supabaseClient, activePortalUser,
+            intakeId ? {id:intakeId} : {workOrder:intakeWo});
+        });
+      }
+
       // Derive the employee's Mainstreet-style CSR stamp without embedding a
       // static staff directory in the publicly delivered HTML. Historical CSR
       // stamps are populated from the authenticated quote dataset after load.
@@ -1474,6 +1505,9 @@
       document.getElementById("modalPhoneText").textContent = quote.phone || "No Phone Listed";
       document.getElementById("modalPhoneLink").href = GP_CALLBACKS.links(quote.phone,"","","",false).call || "#";
       prepareCallbackContact(quote);
+      document.getElementById('gpCallbackPhotoIntake').onclick = () =>
+        GP_JOB_TOOLS.photoToQuote(supabaseClient, activePortalUser, {quote:quote.quote_number,customer:quote.customer_name});
+      document.getElementById('gpCallbackQuoteLink').onclick = () => GP_QUOTE_LINKS.staff(supabaseClient, quote);
 
       const cellBadge = document.getElementById("modalCellBadge");
       cellBadge.textContent = quote.has_cell ? "CELL / SMS READY" : "LANDLINE";

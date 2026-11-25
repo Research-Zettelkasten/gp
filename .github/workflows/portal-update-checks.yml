@@ -51,6 +51,10 @@ jobs:
         run: |
           createdb gp_operations_test
           PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/fleet-callbacks-announcements.sql
+      - name: Feature releases, customer quotes, private photos, and dispatch conflicts
+        run: |
+          createdb gp_workspace_test
+          PGDATABASE=gp_workspace_test psql -X -v ON_ERROR_STOP=1 -f tests/workspace-features.sql
       - name: Push subscription permissions, delivery claims and retries
         run: PGDATABASE=gp_operations_test psql -X -v ON_ERROR_STOP=1 -f tests/announcement-web-push.sql
       - name: Location request ownership, device targeting and shift cleanup
@@ -92,7 +96,7 @@ jobs:
           deno-version: v2.x
       - name: Type-check the push sender and test provider validation
         run: |
-          deno check --no-lock supabase/functions/gp-announcement-push/index.ts
+          deno check --no-lock supabase/functions/gp-announcement-push/index.ts supabase/functions/gp-photo-draft/index.ts
           deno test --no-lock supabase/functions/gp-announcement-push/push_test.ts
       - name: Install browser test runner
         timeout-minutes: 3
@@ -117,6 +121,8 @@ jobs:
         run: node tests/personal-navigation-browser.cjs
       - name: Fleet and Safety, callback tools and announcements workflow
         run: node tests/fleet-callbacks-announcements-browser.cjs
+      - name: Workspace controls, photo intake, dispatch, search, and customer quote page
+        run: node tests/workspace-features-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
