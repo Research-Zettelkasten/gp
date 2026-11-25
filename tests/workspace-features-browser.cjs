@@ -16,6 +16,7 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
   const intakes = [];
   const stops = [];
   const replies = [];
+  const exceptions = [];
   const snapshot = {quote_number:810,customer:'Sample storefront',expires_at:'2026-12-09T12:00:00Z',
     options:[{label:'Glass panel',description:'Replace the storefront panel',amount:'245'}],replies};
   const modes = JSON.parse(localStorage.getItem('workspaceTestModes') ||
@@ -36,9 +37,20 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
       window.__calls.push({name,args});
       let data;
       switch(name) {
-        case 'gp_workspace_permissions': data={features:modes,exceptions:[],staff:[{id:1,name:'Test Administrator',admin:true}]};break;
+        case 'gp_workspace_permissions':
+          if (window.__workspaceMigrationMissing) return {data:null,error:{code:'PGRST202',message:'Could not find the function in the schema cache'}};
+          data={features:modes,exceptions,staff:[{id:1,name:'Test Administrator',admin:true}]};break;
         case 'gp_workspace_features': data=Object.fromEntries(Object.entries(modes).map(([key,value])=>[key,value!=='off']));break;
-        case 'gp_set_workspace_permission': modes[args.p_feature]=args.p_value;localStorage.setItem('workspaceTestModes',JSON.stringify(modes));break;
+        case 'gp_set_workspace_permission':
+          if (args.p_employee_id) {
+            const idx=exceptions.findIndex(e=>e.feature===args.p_feature && e.employee_id===args.p_employee_id);
+            if(idx>=0) exceptions.splice(idx,1);
+            if(args.p_value!=='inherit') exceptions.push({feature:args.p_feature,employee_id:args.p_employee_id,allowed:args.p_value==='allow'});
+          } else {
+            modes[args.p_feature]=args.p_value;
+            localStorage.setItem('workspaceTestModes',JSON.stringify(modes));
+          }
+          break;
         case 'gp_quote_link_staff': data=[];break;
         case 'gp_publish_quote_link': data='a'.repeat(64);break;
         case 'gp_customer_quote':
@@ -92,8 +104,33 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     assert.equal(await page.locator('#gpCallbackPhotoIntake').isVisible(),false);
 
     await page.goto(base+'/admin.html#adminUsersPane');
-    const settings = page.locator('#gpWorkspacePermissions');
-    await settings.getByRole('heading',{name:'Workspace permissions'}).waitFor();
+    const settings = page.locator('#gpWidgetUserEditor #gpWorkspacePermissions');
+    await settings.locator(':scope > summary').waitFor();
+    assert.equal(await settings.getAttribute('open'),null);
+    await page.evaluate(()=>{window.__workspaceMigrationMissing=true;});
+    await settings.locator(':scope > summary').click();
+    await settings.getByRole('status').filter({hasText:'20261125152759_workspace_features.sql'}).waitFor();
+    assert.equal(await settings.getByRole('heading',{name:'Employee override'}).isVisible(),false);
+
+    await page.evaluate(()=>{window.__workspaceMigrationMissing=false;});
+    await settings.getByRole('button',{name:'Reload settings'}).click();
+    await settings.getByText('Select Edit beside an employee', {exact:false}).waitFor();
+    assert.equal(await settings.getByRole('button',{name:'Save employee override'}).isVisible(),false);
+    await page.locator('#adminUsersTable tr').filter({hasText:'Test Administrator'}).getByRole('button',{name:'Edit',exact:true}).click();
+    await settings.getByText('Editing feature access for Test Administrator.',{exact:false}).waitFor();
+    assert.equal(await settings.locator('select[name=employee]').count(),0);
+    await settings.getByLabel('Access',{exact:true}).selectOption('deny');
+    await settings.getByRole('button',{name:'Save employee override'}).click();
+    await settings.getByRole('status').filter({hasText:'Feature override saved for Test Administrator.'}).waitFor();
+    const override = await page.evaluate(()=>window.__calls.find(call=>call.name==='gp_set_workspace_permission').args);
+    assert.deepEqual(override,{p_feature:'photo_intake',p_value:'deny',p_employee_id:1});
+    await settings.getByLabel('Access',{exact:true}).selectOption('inherit');
+    await settings.getByRole('button',{name:'Save employee override'}).click();
+    await settings.getByRole('status').filter({hasText:'Feature override saved for Test Administrator.'}).waitFor();
+    await page.getByRole('button',{name:'Save Employee Account',exact:true}).click();
+    await page.getByText('Employee Auth profile updated',{exact:true}).waitFor();
+    await settings.getByText('Editing feature access for Test Administrator.',{exact:false}).waitFor();
+    await settings.getByText('Company-wide feature release',{exact:true}).click();
     for (const feature of ['Photo-to-quote','Customer quote links','Dispatch map','Past-job search']) {
       const featureRow = settings.locator('.gpw-form-row').filter({hasText:feature});
       await featureRow.locator('select').selectOption('admins');
@@ -102,6 +139,9 @@ const fixture = require('./fixtures/clock-browser-mock.cjs') + String.raw`
     }
     mkdirSync('test-results',{recursive:true});
     await settings.screenshot({path:'test-results/workspace-permissions.png'});
+    await page.getByRole('button',{name:'Clear Form',exact:true}).click();
+    await settings.getByText('Select Edit beside an employee',{exact:false}).waitFor();
+    assert.equal(await settings.getByRole('button',{name:'Save employee override'}).isVisible(),false);
 
     await page.goto(base+'/quotes.html?quote=810');
     await page.locator('#gpCallbackQuoteLink').click();

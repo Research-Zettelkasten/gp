@@ -50,7 +50,7 @@
 
   async function rpc(client, name, args) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw Error(error.message || 'Request failed. Try again.');
+    if (error) throw Object.assign(new Error(error.message || 'Request failed. Try again.'), { code: error.code });
     return data;
   }
 
@@ -113,43 +113,102 @@
   function mountPermissions(client) {
     const root = document.getElementById('gpWorkspacePermissions');
     if (!root) return;
-    root.hidden = false;
     const message = root.querySelector('[role=status]');
+    const settings = root.querySelector('[data-settings]');
     const modeArea = root.querySelector('[data-modes]');
     const form = root.querySelector('form');
+    const employeeHint = root.querySelector('[data-employee]');
+    const eligibility = root.querySelector('[data-eligibility]');
+    const refresh = root.querySelector('[data-refresh]');
+    const controls = root.querySelectorAll('[data-controls]');
     const field = key => form.elements.namedItem(key);
+    const modes = [
+      ['off', 'Hidden for everyone'], ['admins', 'Administrators only'],
+      ['pilot', 'Administrators and selected staff'], ['workspace', 'Everyone with workspace access']
+    ];
     let snapshot;
-    function showOverride() {
-      const match = snapshot?.exceptions.find(row => row.feature === field('feature').value &&
-        String(row.employee_id) === field('employee').value);
-      field('override').value = match ? (match.allowed ? 'allow' : 'deny') : 'inherit';
-      const person = snapshot?.staff.find(row => String(row.id) === field('employee').value);
-      const key = field('feature').value;
-      const eligible = person?.admin || (key === 'dispatch' ? person?.commission :
-        key === 'job_search' ? (person?.quotes || person?.commission) : person?.quotes);
-      root.querySelector('[data-eligibility]').textContent = person && !eligible
-        ? 'This employee also needs access to the parent workspace.' : '';
+    let selectedEmployee;
+    let busy = false;
+
+    function tell(text = '', error = false) {
+      message.hidden = !text;
+      status(message, text, error);
     }
+
+    function currentEmployee() {
+      return selectedEmployee && snapshot?.staff.find(person => String(person.id) === String(selectedEmployee.id));
+    }
+
+    function renderEmployee() {
+      const person = currentEmployee();
+      form.hidden = !person;
+      if (!selectedEmployee) {
+        employeeHint.textContent = 'Select Edit beside an employee in the roster, or save a new employee account.';
+        return;
+      }
+      if (!person) {
+        employeeHint.textContent = selectedEmployee.employee_name + ' must have an active saved account to edit feature access.';
+        return;
+      }
+      employeeHint.textContent = 'Editing feature access for ' + person.name + '. Eligibility uses their saved base workspace access.';
+      const key = field('feature').value;
+      const match = snapshot.exceptions.find(row => row.feature === key && String(row.employee_id) === String(person.id));
+      field('override').value = match ? (match.allowed ? 'allow' : 'deny') : 'inherit';
+
+      const mode = snapshot.features[key];
+      const eligible = person.admin || (key === 'dispatch' ? person.commission :
+        key === 'job_search' ? (person.quotes || person.commission) : person.quotes);
+      const modeLabel = modes.find(([value]) => value === mode)?.[1] || '';
+      let access = 'Available to this employee.';
+      if (mode === 'off') access = 'Hidden company-wide.';
+      else if (match?.allowed === false) access = 'Blocked for this employee.';
+      else if (!eligible) access = 'The employee needs base access to ' + features[key][1] + '.';
+      else if (mode === 'admins' && !person.admin) access = 'Only administrators have access.';
+      else if (mode === 'pilot' && !person.admin && match?.allowed !== true) access = 'This employee needs a pilot override.';
+      eligibility.textContent = 'Saved release mode: ' + modeLabel + '. ' + access;
+    }
+
+    async function run(callback) {
+      if (busy) return;
+      busy = true;
+      refresh.disabled = true;
+      controls.forEach(control => { control.disabled = true; });
+      tell();
+      try {
+        await callback();
+      } catch (error) {
+        const missing = error.code === 'PGRST202' || error.code === '42883';
+        tell(missing
+          ? 'Workspace Permissions needs the Supabase update 20261125152759_workspace_features.sql. Run it in the GLASSPRO project, then select Reload settings.'
+          : error.message, true);
+      } finally {
+        busy = false;
+        refresh.disabled = false;
+        controls.forEach(control => { control.disabled = false; });
+      }
+    }
+
     async function load() {
-      snapshot = await rpc(client, 'gp_workspace_permissions');
-      const currentEmployee = field('employee').value;
-      field('employee').replaceChildren(...snapshot.staff.map(person => new Option(
-        [person.name, person.department].filter(Boolean).join(' · '), person.id)));
-      if (snapshot.staff.some(person => String(person.id) === currentEmployee)) field('employee').value = currentEmployee;
-      field('save').disabled = !snapshot.staff.length;
+      try {
+        snapshot = await rpc(client, 'gp_workspace_permissions');
+        if (!snapshot?.features) throw Error('Workspace settings could not be loaded. Select Reload settings to try again.');
+      } catch (error) {
+        snapshot = null;
+        settings.hidden = true;
+        throw error;
+      }
+      settings.hidden = false;
       modeArea.replaceChildren(...Object.entries(features).map(([key, [name, parent]]) => {
         const row = element('div', null, 'gpw-form-row gpw-grid');
-        const label = element('label', name);
+        const label = element('label', name + ' release mode');
         const select = element('select');
-        [['off','Hidden for everyone'],['admins','Administrators only'],['pilot','Administrators and selected staff'],['workspace','Everyone with workspace access']]
-          .forEach(([value, text]) => select.add(new Option(text, value)));
+        modes.forEach(([value, text]) => select.add(new Option(text, value)));
         select.value = snapshot.features[key];
         const parentNote = element('div', parent, 'gpw-muted');
-        const save = button('Save release mode', () => action(save, message, async () => {
-          const mode = select.value;
-          await rpc(client, 'gp_set_workspace_permission', { p_feature: key, p_value: mode });
+        const save = button('Save release mode', () => run(async () => {
+          await rpc(client, 'gp_set_workspace_permission', { p_feature: key, p_value: select.value });
           await load();
-          status(message, name + ' release mode saved.');
+          tell(name + ' release mode saved.');
         }));
         label.append(select, parentNote);
         const actions = element('div', null, 'gpw-actions');
@@ -157,24 +216,36 @@
         row.append(label, actions);
         return row;
       }));
-      showOverride();
+      renderEmployee();
     }
 
     for (const [key, [label]] of Object.entries(features)) field('feature').add(new Option(label, key));
-    field('feature').onchange = field('employee').onchange = showOverride;
+    field('feature').onchange = renderEmployee;
     form.onsubmit = event => {
       event.preventDefault();
-      void action(field('save'), message, async () => {
-        await rpc(client, 'gp_set_workspace_permission', {
-          p_feature: field('feature').value, p_value: field('override').value, p_employee_id: field('employee').value
-        });
+      const person = currentEmployee();
+      if (!person) return;
+      const key = field('feature').value;
+      const override = field('override').value;
+      void run(async () => {
+        await rpc(client, 'gp_set_workspace_permission', { p_feature: key, p_value: override, p_employee_id: person.id });
         await load();
-        status(message, 'Employee override saved.');
+        tell('Feature override saved for ' + person.name + '.');
       });
     };
-    const refresh = root.querySelector('[data-refresh]');
-    refresh.onclick = () => action(refresh, message, load);
-    void action(refresh, message, load);
+    refresh.onclick = () => run(load);
+    root.addEventListener('toggle', () => {
+      if (root.open) void run(load);
+    });
+    root.hidden = false;
+
+    return {
+      setEmployee(user) {
+        selectedEmployee = user;
+        if (snapshot) renderEmployee();
+        if (root.open) void run(load);
+      }
+    };
   }
 
   window.GP_WORKSPACE = { element, button, link, dialog, status, rpc, access, bindGates, action, jpeg, signedPhoto, mountPermissions };

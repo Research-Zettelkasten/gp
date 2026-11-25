@@ -80,3 +80,14 @@
 .gpw-customer-page { padding: 20px 12px; margin: 0; background: #eff4fa; min-height: 100vh; font: 1rem/1.5 system-ui,sans-serif; }
 .gpw-customer-page .gpw-panel { max-width: 680px; margin: 16px auto; }
 .gpw-customer-page .gpw-brand img { border-radius: 12px; width: 46px; height: 46px; vertical-align: middle; margin-right: 8px; }
+
+.gpw-account-permissions {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+.gpw-account-permissions summary { cursor: pointer; font-weight: 750; }
+.gpw-account-permissions > summary { font-size: 1rem; }
+.gpw-account-permissions [data-settings] { margin-top: 14px; }
+.gpw-account-permissions fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.gpw-company-permissions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gpw-line); }

@@ -55,7 +55,11 @@ Run `node --test tests/portal-core.test.cjs tests/collections-core.test.cjs test
 
 ## Pilot tools and workspace permissions
 
-In **Management → People & Access → Workspace permissions**, set each feature to hidden, administrators only, administrators and selected staff, or everyone with the existing parent workspace permission. Use **Employee override** to grant pilot access or block one account. An override requires the parent workspace permission. Changes appear in the Audit Trail. All four features start hidden.
+Go to **Management → People & Access → Add or Update Employee Account → Workspace Permissions**. **Company-wide feature release** sets who can see each tool. Choose hidden, administrators only, administrators and selected staff, or everyone with base access to the workspace. All four features start hidden.
+
+For an individual, select **Edit** next to their name in the roster or save a new employee account. Open **Workspace Permissions**, select a feature, and choose **Inherit release mode**, **Allow in pilot mode**, or **Block access**. Select **Save employee override**. An override uses the selected employee's saved base workspace permissions. Use **Save Employee Account** first if those change. Company-wide and individual changes appear in the Audit Trail.
+
+If the workspace settings report a missing database update, apply the migration below in the GLASSPRO Supabase project, then select **Reload settings**.
 
 | Feature | Where to find it | Pilot workflow |
 | --- | --- | --- |
