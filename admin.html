@@ -697,6 +697,8 @@
 <script src="gp-geolocation.js?v=1" defer></script>
 <script src="gp-location-requests.js?v=1" defer></script>
 <link rel="stylesheet" href="gp-location-requests.css?v=1">
+<link rel="stylesheet" href="gp-workspace.css?v=2">
+<script defer src="gp-workspace.js?v=2"></script>
 </head>
 <body class="gp-app gp-admin-shell">
 
@@ -1022,7 +1024,7 @@
           </div>
         </div>
 
-        <label>Assign Workspace Permissions:</label>
+        <label>Base workspace access</label>
         <div class="perm-grid">
           <label class="perm-label"><input type="checkbox" id="permTime" checked /> Time Clock</label>
           <label class="perm-label"><input type="checkbox" id="permQuotes" checked /> Quote Call-Backs</label>
@@ -1035,6 +1037,31 @@
         </div>
 
         <button type="button" class="btn btn-navy" style="margin-top:8px;" onclick="saveEmployeeUser()">Save Employee Account</button>
+        <details id="gpWorkspacePermissions" class="gpw-panel gpw-account-permissions" hidden>
+          <summary>Workspace Permissions</summary>
+          <p class="gpw-muted">Base workspace access above controls which tabs an employee can open. These settings control individual tools inside those tabs.</p>
+          <button type="button" data-refresh>Reload settings</button>
+          <p class="gpw-status" role="status" hidden></p>
+          <div data-settings hidden>
+            <h3>Employee override</h3>
+            <p class="gpw-muted" data-employee></p>
+            <form hidden>
+              <fieldset data-controls>
+                <div class="gpw-grid">
+                  <div><label for="gpWorkspaceFeature">Feature</label><select id="gpWorkspaceFeature" name="feature" required></select></div>
+                  <div><label for="gpWorkspaceOverride">Access</label><select id="gpWorkspaceOverride" name="override"><option value="inherit">Inherit release mode</option><option value="allow">Allow in pilot mode</option><option value="deny">Block access</option></select></div>
+                </div>
+                <p class="gpw-muted" data-eligibility></p>
+                <button class="gpw-primary" type="submit">Save employee override</button>
+              </fieldset>
+            </form>
+            <details class="gpw-company-permissions">
+              <summary>Company-wide feature release</summary>
+              <p class="gpw-muted">Choose who can use each tool. Start with Administrators only to test it yourself, or choose Administrators and selected staff to use employee pilot overrides.</p>
+              <fieldset data-modes data-controls></fieldset>
+            </details>
+          </div>
+        </details>
         <div class="gp2-provision-panel">
           <strong>Administrator-created logins — no email signup required</strong>
           <p>Save the employee profile first, then select <b>Create Login</b> beside their name in the roster. GLASSPRO creates a confirmed Supabase Auth account, links it to the selected employee, and generates a temporary password shown only once.</p>
@@ -1467,6 +1494,7 @@
 
     let activeUser = null;
     let usersList = [];
+    let workspacePermissions;
     let timeLogs = [];
     let commissionLogs = [];
     let vehicleLogs = [];
@@ -2909,11 +2937,10 @@
       document.getElementById("permSafety").checked = true;
       document.getElementById("permAdmin").checked = false;
       document.getElementById("userFormTitle").textContent = "Add or Update Employee Account";
+      workspacePermissions?.setEmployee(null);
     };
 
-    window.loadUserEditor = function(pin) {
-      const u = usersList.find(x => String(x.pin_code) === String(pin));
-      if (!u) return;
+    function populateEmployeeEditor(u) {
       document.getElementById("editingUserId").value = u.id;
       document.getElementById("newEmpName").value = u.employee_name;
       document.getElementById("newEmpDept").value = u.department;
@@ -2932,6 +2959,13 @@
       document.getElementById("permSafety").checked = !!u.perm_safety;
       document.getElementById("permAdmin").checked = !!u.perm_admin;
       document.getElementById("userFormTitle").textContent = `Editing: ${u.employee_name}`;
+      workspacePermissions?.setEmployee(u);
+    }
+
+    window.loadUserEditor = function(pin) {
+      const u = usersList.find(x => String(x.pin_code) === String(pin));
+      if (!u) return;
+      populateEmployeeEditor(u);
       showAdminSubTab('adminUsersPane', document.getElementById('adminSubBtnUsers'));
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -2993,7 +3027,7 @@
           document.getElementById("activeUserName").textContent=`${activeUser.employee_name} (${activeUser.department})`;
         }
         showToast(editId ? "Employee Auth profile updated" : "Employee profile created — employee can now complete First-Time Setup");
-        resetUserForm();
+        if (document.getElementById("editingUserId").value === editId) populateEmployeeEditor(savedCloudUser);
         await loadAdminData();
       } catch (e) {
         alert(`Employee save failed: ${e.message || e}`);
@@ -3118,6 +3152,7 @@
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
       GP.applyNavPermissions(activeUser);
       window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
+      workspacePermissions = window.GP_WORKSPACE?.mountPermissions(supabaseClient);
       await loadDashboardPreferences();
 
       await loadAdminData();

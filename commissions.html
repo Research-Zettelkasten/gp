@@ -100,6 +100,11 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/glasspro-180.png?v=2">
 <link rel="manifest" href="glasspro.webmanifest?v=2">
 <script src="gp-push.js?v=1" defer></script>
+<link rel="stylesheet" href="gp-workspace.css?v=1">
+<script defer src="gp-workspace.js?v=1"></script>
+<script defer src="gp-time-core.js?v=1"></script>
+<script defer src="gp-job-tools.js?v=1"></script>
+<script defer src="gp-dispatch.js?v=1"></script>
 </head>
 <body class="gp-app">
 
@@ -137,6 +142,10 @@
       <div class="gp-page-mark"><span class="gp-online-dot"></span>Employee workspace</div>
     </section>
 
+    <div class="gpw-tools">
+      <button id="gpDispatchBoard" type="button" class="gpw-btn" hidden>Dispatch map</button>
+      <button id="gpWorkOrderSearch" type="button" class="gpw-btn" hidden>Search past jobs</button>
+    </div>
     <div id="mosQuickBar" class="mos-bar hidden">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span class="mos-tag">MultiplyOS Playbooks</span>
@@ -425,13 +434,18 @@
         return `
           <tr>
             <td>${GP.escapeHtml(c.work_date)}</td>
-            <td class="mono" style="font-weight:700;">${GP.escapeHtml(c.wo_number)}</td>
+            <td class="mono" style="font-weight:700;">${GP.escapeHtml(c.wo_number)}
+              <a class="gpw-btn" data-gpw-wo-photo hidden href="quotes.html?intakeWo=${encodeURIComponent(c.wo_number || '')}">Site photo intake</a>
+            </td>
             <td><b>${GP.escapeHtml(c.job_type)}</b><br><small style="color:var(--muted);">${GP.escapeHtml(specs || "Standard")}</small></td>
             <td class="mono" style="font-weight:700;">${c.job_amount > 0 ? formatCurrency(c.job_amount) : "-"}</td>
             <td><span class="badge ${badgeClass}">${GP.escapeHtml(c.status || "Pending")}</span></td>
           </tr>
         `;
       }).join("");
+      void GP_WORKSPACE.access(supabaseClient).then(access => {
+        document.querySelectorAll('[data-gpw-wo-photo]').forEach(link => { link.hidden = !access.photo_intake; });
+      });
     }
 
     window.addEventListener("DOMContentLoaded", async function() {
@@ -443,6 +457,13 @@
       document.getElementById("activeUserTypeBadge").textContent = activeUser.employment_type || "Full-Time";
       GP.applyNavPermissions(activeUser);
       window.GP_UX?.onSignedIn?.(activeUser,supabaseClient);
+
+      const dispatch = document.getElementById('gpDispatchBoard');
+      const workSearch = document.getElementById('gpWorkOrderSearch');
+      dispatch.onclick = () => GP_DISPATCH.open(supabaseClient);
+      workSearch.onclick = () => GP_JOB_TOOLS.search(supabaseClient);
+      GP_WORKSPACE.bindGates(supabaseClient, [[dispatch,'dispatch'],[workSearch,'job_search'],
+        [() => document.querySelectorAll('[data-gpw-wo-photo]'),'photo_intake']]);
 
       const sops = MOS_SOPS[activeUser.department] || MOS_SOPS["Operations"];
       document.getElementById("mosDivisionLabel").textContent = `${activeUser.department} Playbooks:`;

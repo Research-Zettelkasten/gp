@@ -96,6 +96,9 @@ async function bootCustomers(){bindCustomers();try{
  const profile=await GP.requireAuth(customerState.client,'customers');if(!profile)return;customerState.profile=profile;customerState.staff=await GP.employeeDirectory(customerState.client);$('activeUserName').textContent=profile.employee_name;
  document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('hidden',!profile.perm_admin));
  $('noteScope').innerHTML='<option value="shared">Shared with customer-facing staff</option>'+(hasCollections()?'<option value="collections">Collections team only</option>':'')+(hasQuotes()?'<option value="quotes">Quote team only</option>':'')+(profile.perm_admin?'<option value="admin">Administrators only</option>':'');
+ $('gpCustomerJobs').onclick=()=>GP_JOB_TOOLS.search(customerState.client);
+ $('gpThisCustomerJobs').onclick=()=>GP_JOB_TOOLS.search(customerState.client,{customerId:customerState.current?.id});
+ GP_WORKSPACE.bindGates(customerState.client,[[$('gpCustomerJobs'),'job_search'],[$('gpThisCustomerJobs'),'job_search']]);
  await loadCustomers();customerMessage('');const id=new URLSearchParams(location.search).get('customer');if(id){const c=customerState.customers.find(c=>c.id===id);if(c)await openCustomer(c);else customerMessage('That customer is not available to this account.',true);}
  }catch(e){customerMessage(e.code==='42P01'||e.code==='PGRST205'?'Install the customer registry SQL migration in Supabase before opening this workspace.':e.message||'Customer directory could not be loaded.',true);}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootCustomers);else bootCustomers();

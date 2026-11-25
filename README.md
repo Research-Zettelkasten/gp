@@ -52,3 +52,42 @@ Install SQL before deploying the website. The update does not apply migrations t
 ## Checks
 
 Run `node --test tests/portal-core.test.cjs tests/collections-core.test.cjs tests/customers-core.test.cjs tests/time-week.test.cjs`. GitHub Actions additionally runs PostgreSQL permission/transaction tests, clock-out concurrency regressions and browser workflows with synthetic data. Preview screenshots cover desktop/mobile and both themes.
+
+## Pilot tools and workspace permissions
+
+Go to **Management → People & Access → Add or Update Employee Account → Workspace Permissions**. **Company-wide feature release** sets who can see each tool. Choose hidden, administrators only, administrators and selected staff, or everyone with base access to the workspace. All four features start hidden.
+
+For an individual, select **Edit** next to their name in the roster or save a new employee account. Open **Workspace Permissions**, select a feature, and choose **Inherit release mode**, **Allow in pilot mode**, or **Block access**. Select **Save employee override**. An override uses the selected employee's saved base workspace permissions. Use **Save Employee Account** first if those change. Company-wide and individual changes appear in the Audit Trail.
+
+If the workspace settings report a missing database update, apply the migration below in the GLASSPRO Supabase project, then select **Reload settings**.
+
+| Feature | Where to find it | Pilot workflow |
+| --- | --- | --- |
+| Photo-to-quote | Quote Call-Backs, including an open callback | Upload a JPG, PNG or WebP, mark areas on the photo, add observations, and select the next step. Link the intake by quote or work order number. Staff with intake access can open linked photos from Work Orders. |
+| Customer quote link | Inside a quote callback | Enter up to three customer-facing options and totals, choose an expiration, then copy or share the link. Reopen the tool to see approvals, questions, and photos. Reply there or revoke the link. A customer approval records a response for staff to process through the existing callback workflow. |
+| Dispatch map | Work Orders & Commissions | Select a date and add installs, service calls, pickups or emergencies. Enter a crew and time window, verify and pin the site, and save. The board checks overlapping crew assignments. Availability reflects the stops recorded for that day. |
+| Past-job search | Work Orders & Commissions, Quote Call-Backs and Customers | Search for a job type, material, quote or work order. Customer profiles can limit the search to linked records. Results respect the existing visibility of source records. |
+
+### Installation and verification
+
+1. Apply [the workspace feature migration](supabase/migrations/20261125152759_workspace_features.sql) to a staging Supabase project with the Quotes, Work Orders, and Customer Registry schema installed. For this repository’s hosted projects, the file can also be run as one script in the Supabase SQL Editor.
+2. Deploy the branch to an HTTPS preview site backed by staging. As an admin, verify the release buttons begin hidden and that the original Quotes and Work Orders screens are available. Enable one feature in pilot mode and add a single test user with its parent workspace access.
+3. For customer links, publish a synthetic quote and open it on a separate phone or in a private window. Submit a question, approve an option and upload a photo. Verify these in the originating quote callback, then revoke the link. Switching the feature off also pauses all unexpired links. Turning it on again restores access to eligible unexpired, unrevoked links.
+4. For dispatch, schedule a synthetic crew and try an overlapping stop. Verify that the overlap is blocked. Verify pin placement before saving. The map starts in Valdosta and uses OpenStreetMap tiles. The schedule uses Eastern Time, manual pins and scheduled crew stops. Directions open the selected pin in Google Maps.
+5. Once staging is verified, repeat the migration on production and deploy the site. A newly applied migration still leaves all four features hidden.
+
+The anonymous quote page uses an unguessable link as the customer's access credential. Send it directly to the intended recipient. Only published option details appear there. Photos are stored in private buckets. Authorized staff request short-lived photo URLs.
+
+### Optional AI photo drafting
+
+The checklist works immediately with the intake title and staff-entered markers. To enable image-based suggestions, deploy the `gp-photo-draft` Supabase Edge Function and set these secrets in the staging project first.
+
+- `GP_PHOTO_DRAFT_ENABLED=true`
+- `GP_PHOTO_DRAFT_ORIGINS` with the exact HTTPS site origins, comma-separated
+- `OPENAI_API_KEY` from the OpenAI project that should be billed for drafting
+
+The user confirms before sending a photo. The function checks the caller’s existing intake access and limits use to ten requests per employee per Eastern calendar day. It sends the resized photo and a fixed prompt. Staff review draft observations and questions before saving. The request uses the Responses API with response storage disabled. [OpenAI image inputs](https://developers.openai.com/api/docs/guides/images-vision)
+
+### Checks
+
+`tests/workspace-features.sql` uses a fresh PostgreSQL fixture and covers release permissions, the original source limits, link lifecycle, upload limits and dispatch conflicts. `tests/workspace-features-browser.cjs` exercises the portal and customer page in Chromium with synthetic data. Production records and registered customer links are outside the test fixture.
